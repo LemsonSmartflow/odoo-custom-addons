@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="res_partner_view_form_inherit_rental" model="ir.ui.view">
+        <field name="name">res.partner.form.rental</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='sale']" position="after">
+                <group name="rental_driver" string="Rental Driver Details">
+                    <field name="driver_license_number"/>
+                    <field name="driver_license_expiry"/>
+                    <field name="id_number"/>
+                    <field name="emergency_contact_name"/>
+                    <field name="emergency_contact_phone"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

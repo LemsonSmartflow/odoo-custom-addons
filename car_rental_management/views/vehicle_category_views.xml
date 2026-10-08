@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_rental_vehicle_category_form" model="ir.ui.view">
+        <field name="name">car.rental.vehicle.category.form</field>
+        <field name="model">car.rental.vehicle.category</field>
+        <field name="arch" type="xml">
+            <form string="Rental Vehicle Category">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. Mazda Demio"/></h1>
+                    </div>
+                    <group>
+                        <group string="Category">
+                            <field name="active" invisible="1"/>
+                            <field name="rental_product_id"/>
+                            <field name="deposit_method"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Fleet">
+                            <field name="vehicle_count"/>
+                        </group>
+                    </group>
+                    <group string="Description">
+                        <field name="description" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_rental_vehicle_category_list" model="ir.ui.view">
+        <field name="name">car.rental.vehicle.category.list</field>
+        <field name="model">car.rental.vehicle.category</field>
+        <field name="arch" type="xml">
+            <list string="Rental Vehicle Categories">
+                <field name="name"/>
+                <field name="rental_product_id"/>
+                <field name="deposit_method"/>
+                <field name="vehicle_count" string="Vehicles"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rental_vehicle_category_search" model="ir.ui.view">
+        <field name="name">car.rental.vehicle.category.search</field>
+        <field name="model">car.rental.vehicle.category</field>
+        <field name="arch" type="xml">
+            <search string="Search Vehicle Categories">
+                <field name="name"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rental_vehicle_category" model="ir.actions.act_window">
+        <field name="name">Rental Vehicle Categories</field>
+        <field name="res_model">car.rental.vehicle.category</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create a rental vehicle category</p>
+            <p>One commercial category per vehicle class (e.g. Mazda Demio). The category links the fleet to the rental product and pricing rules.</p>
+        </field>
+    </record>
+</odoo>

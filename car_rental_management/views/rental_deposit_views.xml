@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_rental_deposit_form" model="ir.ui.view">
+        <field name="name">car.rental.deposit.form</field>
+        <field name="model">car.rental.deposit</field>
+        <field name="arch" type="xml">
+            <form string="Rental Deposit">
+                <header>
+                    <button string="Mark Collected" name="action_mark_collected" type="object" class="btn-primary" invisible="status != 'required'"/>
+                    <button string="Queue Refund" name="action_request_refund" type="object" invisible="status not in ('collected', 'partially_applied')"/>
+                    <button string="Refund" name="action_refund" type="object" class="btn-primary" invisible="status != 'refund_pending'"/>
+                    <button string="Forfeit" name="action_forfeit" type="object" invisible="status not in ('refund_pending', 'collected', 'partially_applied')" confirm="Forfeit this deposit under policy?"/>
+                    <field name="status" widget="statusbar" statusbar_visible="required,collected,partially_applied,refund_pending,refunded"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Deposit">
+                            <field name="rental_order_id"/>
+                            <field name="customer_id" widget="many2one_avatar"/>
+                            <field name="vehicle_id"/>
+                            <field name="amount"/>
+                            <field name="journal_entry_id"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group string="Settlement">
+                            <field name="applied_amount"/>
+                            <field name="refunded_amount"/>
+                            <field name="remaining_amount"/>
+                            <field name="status"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_rental_deposit_list" model="ir.ui.view">
+        <field name="name">car.rental.deposit.list</field>
+        <field name="model">car.rental.deposit</field>
+        <field name="arch" type="xml">
+            <list string="Deposits" decoration-warning="status == 'refund_pending'" decoration-muted="status in ('refunded', 'forfeited')">
+                <field name="name"/>
+                <field name="rental_order_id"/>
+                <field name="customer_id" widget="many2one_avatar"/>
+                <field name="vehicle_id" optional="show"/>
+                <field name="amount"/>
+                <field name="applied_amount" optional="show"/>
+                <field name="refunded_amount" optional="hide"/>
+                <field name="remaining_amount" optional="hide"/>
+                <field name="status" widget="badge" decoration-success="status == 'collected'" decoration-info="status == 'required'" decoration-warning="status == 'refund_pending'"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rental_deposit_search" model="ir.ui.view">
+        <field name="name">car.rental.deposit.search</field>
+        <field name="model">car.rental.deposit</field>
+        <field name="arch" type="xml">
+            <search string="Search Deposits">
+                <field name="name"/>
+                <field name="rental_order_id"/>
+                <field name="customer_id"/>
+                <filter string="Required" name="required" domain="[('status', '=', 'required')]"/>
+                <filter string="Collected" name="collected" domain="[('status', 'in', ('collected', 'partially_applied'))]"/>
+                <filter string="Refund Pending" name="refund_pending" domain="[('status', '=', 'refund_pending')]"/>
+                <filter string="Refunded" name="refunded" domain="[('status', '=', 'refunded')]"/>
+                <filter string="Forfeited" name="forfeited" domain="[('status', '=', 'forfeited')]"/>
+                <group>
+                    <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Customer" name="group_customer" context="{'group_by': 'customer_id'}"/>
+                    <filter string="Rental Order" name="group_order" context="{'group_by': 'rental_order_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rental_deposit" model="ir.actions.act_window">
+        <field name="name">Deposits</field>
+        <field name="res_model">car.rental.deposit</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Track a security deposit</p>
+            <p>Deposits are refundable liabilities, not rental revenue. Current policy: one day of the applicable rental rate.</p>
+        </field>
+    </record>
+</odoo>

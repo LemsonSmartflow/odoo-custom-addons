@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_rental_inspection_form" model="ir.ui.view">
+        <field name="name">car.rental.inspection.form</field>
+        <field name="model">car.rental.inspection</field>
+        <field name="arch" type="xml">
+            <form string="Rental Inspection">
+                <header>
+                    <button string="Complete Inspection" name="action_done" type="object" class="btn-primary" invisible="state == 'done'"/>
+                    <button string="Reset to Draft" name="action_reset" type="object" invisible="state != 'done'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Completed" bg_color="text-bg-info" invisible="state != 'done'"/>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Inspection">
+                            <field name="inspection_type" readonly="state == 'done'"/>
+                            <field name="rental_order_id" readonly="state == 'done'"/>
+                            <field name="vehicle_id"/>
+                            <field name="customer_id"/>
+                            <field name="inspector_id" widget="many2one_avatar_user"/>
+                            <field name="inspection_date"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group string="Condition">
+                            <field name="mileage"/>
+                            <field name="fuel_level"/>
+                            <field name="cleanliness"/>
+                            <field name="damage_detected"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Checklist" name="checklist">
+                            <field name="line_ids" nolabel="1" readonly="state == 'done'">
+                                <list string="Checklist" editable="bottom">
+                                    <field name="area"/>
+                                    <field name="item"/>
+                                    <field name="result"/>
+                                    <field name="notes" optional="show"/>
+                                </list>
+                                <form string="Checklist Item">
+                                    <group>
+                                        <field name="area"/>
+                                        <field name="item"/>
+                                        <field name="result"/>
+                                        <field name="notes"/>
+                                    </group>
+                                </form>
+                            </field>
+                        </page>
+                        <page string="Photos" name="photos">
+                            <field name="attachment_ids" nolabel="1" widget="many2many_binary"/>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="notes" nolabel="1" placeholder="Additional observations..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_rental_inspection_list" model="ir.ui.view">
+        <field name="name">car.rental.inspection.list</field>
+        <field name="model">car.rental.inspection</field>
+        <field name="arch" type="xml">
+            <list string="Inspections" decoration-danger="damage_detected">
+                <field name="name"/>
+                <field name="inspection_type"/>
+                <field name="rental_order_id"/>
+                <field name="vehicle_id"/>
+                <field name="inspector_id" widget="many2one_avatar_user"/>
+                <field name="inspection_date"/>
+                <field name="mileage" optional="hide"/>
+                <field name="fuel_level" optional="hide"/>
+                <field name="damage_detected" widget="boolean"/>
+                <field name="state" widget="badge" decoration-success="state == 'done'" decoration-info="state == 'draft'"/>
+                <field name="company_id" groups="base.group_multi_company" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rental_inspection_search" model="ir.ui.view">
+        <field name="name">car.rental.inspection.search</field>
+        <field name="model">car.rental.inspection</field>
+        <field name="arch" type="xml">
+            <search string="Search Inspections">
+                <field name="name"/>
+                <field name="rental_order_id"/>
+                <field name="vehicle_id"/>
+                <filter string="Pickup" name="pickup" domain="[('inspection_type', '=', 'pickup')]"/>
+                <filter string="Return" name="return" domain="[('inspection_type', '=', 'return')]"/>
+                <filter string="Damage Detected" name="damage" domain="[('damage_detected', '=', True)]"/>
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <group>
+                    <filter string="Rental Order" name="group_order" context="{'group_by': 'rental_order_id'}"/>
+                    <filter string="Vehicle" name="group_vehicle" context="{'group_by': 'vehicle_id'}"/>
+                    <filter string="Inspector" name="group_inspector" context="{'group_by': 'inspector_id'}"/>
+                    <filter string="Inspection Type" name="group_type" context="{'group_by': 'inspection_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rental_inspection" model="ir.actions.act_window">
+        <field name="name">Inspections</field>
+        <field name="res_model">car.rental.inspection</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Record a pickup or return inspection</p>
+            <p>Pickup and return inspections are mandatory: they record the vehicle condition, mileage, fuel and checklist.</p>
+        </field>
+    </record>
+</odoo>

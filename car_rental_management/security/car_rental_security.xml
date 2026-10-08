@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record model="res.groups.privilege" id="res_groups_privilege_car_rental">
+        <field name="name">Car Rental</field>
+        <field name="sequence">24</field>
+        <field name="category_id" ref="base.module_category_sales"/>
+    </record>
+
+    <record id="car_rental_group_staff" model="res.groups">
+        <field name="name">Rental Staff</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_car_rental"/>
+        <field name="implied_ids" eval="[
+            (4, ref('base.group_user')),
+            (4, ref('sales_team.group_sale_salesman_all_leads')),
+            (4, ref('account.group_account_invoice')),
+        ]"/>
+    </record>
+
+    <record id="car_rental_group_manager" model="res.groups">
+        <field name="name">Rental Manager</field>
+        <field name="sequence">20</field>
+        <field name="privilege_id" ref="res_groups_privilege_car_rental"/>
+        <field name="implied_ids" eval="[(4, ref('car_rental_group_staff'))]"/>
+        <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+
+    <record id="car_rental_group_fleet" model="res.groups">
+        <field name="name">Fleet Manager</field>
+        <field name="sequence">15</field>
+        <field name="privilege_id" ref="res_groups_privilege_car_rental"/>
+        <field name="implied_ids" eval="[
+            (4, ref('car_rental_group_staff')),
+            (4, ref('fleet.fleet_group_user')),
+            (4, ref('maintenance.group_equipment_manager')),
+        ]"/>
+    </record>
+
+    <data noupdate="1">
+        <record id="rule_destination_company" model="ir.rule">
+            <field name="name">Rental Destination: Multi Company</field>
+            <field name="model_id" ref="model_car_rental_destination"/>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
+        </record>
+        <record id="rule_vehicle_category_company" model="ir.rule">
+            <field name="name">Rental Vehicle Category: Multi Company</field>
+            <field name="model_id" ref="model_car_rental_vehicle_category"/>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
+        </record>
+        <record id="rule_pricing_rule_company" model="ir.rule">
+            <field name="name">Rental Pricing Rule: Multi Company</field>
+            <field name="model_id" ref="model_car_rental_pricing_rule"/>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
+        </record>
+        <record id="rule_inspection_company" model="ir.rule">
+            <field name="name">Rental Inspection: Multi Company</field>
+            <field name="model_id" ref="model_car_rental_inspection"/>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
+        </record>
+        <record id="rule_inspection_line_company" model="ir.rule">
+            <field name="name">Rental Inspection Item: Multi Company</field>
+            <field name="model_id" ref="model_car_rental_inspection_line"/>
+            <field name="domain_force">[('inspection_id.company_id', 'in', company_ids + [False])]</field>
+        </record>
+        <record id="rule_damage_company" model="ir.rule">
+            <field name="name">Damage Assessment: Multi Company</field>
+            <field name="model_id" ref="model_car_rental_damage"/>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
+        </record>
+        <record id="rule_deposit_company" model="ir.rule">
+            <field name="name">Rental Deposit: Multi Company</field>
+            <field name="model_id" ref="model_car_rental_deposit"/>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
+        </record>
+        <record id="rule_charge_company" model="ir.rule">
+            <field name="name">Additional Rental Charge: Multi Company</field>
+            <field name="model_id" ref="model_car_rental_charge"/>
+            <field name="domain_force">[('company_id', 'in', company_ids + [False])]</field>
+        </record>
+
+        <!-- Portal Rules -->
+        <record id="rule_portal_published_vehicles" model="ir.rule">
+            <field name="name">Portal: Published Vehicles</field>
+            <field name="model_id" ref="fleet.model_fleet_vehicle"/>
+            <field name="domain_force">[('website_published', '=', True)]</field>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+        </record>
+        <record id="rule_portal_vehicle_prices" model="ir.rule">
+            <field name="name">Portal: Vehicle Website Prices</field>
+            <field name="model_id" ref="model_vehicle_website_price"/>
+            <field name="domain_force">[('vehicle_id.website_published', '=', True)]</field>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+        </record>
+        <record id="rule_portal_vehicle_gallery" model="ir.rule">
+            <field name="name">Portal: Vehicle Photo Gallery</field>
+            <field name="model_id" ref="model_vehicle_image_gallery"/>
+            <field name="domain_force">[('vehicle_id.website_published', '=', True)]</field>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+        </record>
+        <record id="rule_portal_own_rentals" model="ir.rule">
+            <field name="name">Portal: Own Rental Orders</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="domain_force">[('partner_id', '=', user.partner_id.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_portal'))]"/>
+        </record>
+    </data>
+</odoo>

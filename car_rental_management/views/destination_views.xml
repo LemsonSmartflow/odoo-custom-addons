@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_rental_destination_form" model="ir.ui.view">
+        <field name="name">car.rental.destination.form</field>
+        <field name="model">car.rental.destination</field>
+        <field name="arch" type="xml">
+            <form string="Rental Destination">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. Maun"/></h1>
+                    </div>
+                    <group>
+                        <group string="Destination">
+                            <field name="code" placeholder="e.g. MAUN"/>
+                            <field name="region_id"/>
+                            <field name="active" invisible="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Rental Conditions">
+                            <field name="is_cross_border"/>
+                            <field name="approval_required"/>
+                            <field name="delivery_fee"/>
+                            <field name="return_fee"/>
+                        </group>
+                    </group>
+                    <group string="Notes">
+                        <field name="notes" nolabel="1" placeholder="Delivery conditions, border requirements, ..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_rental_destination_list" model="ir.ui.view">
+        <field name="name">car.rental.destination.list</field>
+        <field name="model">car.rental.destination</field>
+        <field name="arch" type="xml">
+            <list string="Rental Destinations">
+                <field name="name"/>
+                <field name="code" optional="show"/>
+                <field name="region_id" optional="hide"/>
+                <field name="delivery_fee" optional="hide"/>
+                <field name="return_fee" optional="hide"/>
+                <field name="is_cross_border" optional="show" widget="boolean"/>
+                <field name="approval_required" optional="hide" widget="boolean"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rental_destination_search" model="ir.ui.view">
+        <field name="name">car.rental.destination.search</field>
+        <field name="model">car.rental.destination</field>
+        <field name="arch" type="xml">
+            <search string="Search Destinations">
+                <field name="name"/>
+                <field name="code"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <filter string="Cross Border" name="cross_border" domain="[('is_cross_border', '=', True)]"/>
+                <group>
+                    <filter string="Region" name="group_region" context="{'group_by': 'region_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rental_destination" model="ir.actions.act_window">
+        <field name="name">Rental Destinations</field>
+        <field name="res_model">car.rental.destination</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create a rental destination</p>
+            <p>Destinations drive the pricing engine: rates are matched per destination, vehicle category and duration band.</p>
+        </field>
+    </record>
+</odoo>

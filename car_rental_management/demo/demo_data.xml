@@ -1,0 +1,453 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Demo data: example rates for specification purposes.
+         Replace with approved City Delights rates before production. -->
+    <data>
+        <!-- Currency: BWP -->
+        <record id="base.BWP" model="res.currency">
+            <field name="active" eval="True"/>
+            <field name="symbol">P</field>
+            <field name="position">after</field>
+        </record>
+
+        <!-- Company: guarded demo setup (skips currency change if journal items exist) -->
+        <function model="res.company" name="_demo_configure_company" eval="[[ref('base.main_company')]]"/>
+
+        <!-- Accounting: rental-specific accounts and journal (map to the final chart of accounts) -->
+        <record id="account_rental_bank" model="account.account">
+            <field name="name">Bank - City Delights</field>
+            <field name="code">1005</field>
+            <field name="account_type">asset_current</field>
+        </record>
+        <record id="account_deposit_liability" model="account.account">
+            <field name="name">Customer Rental Deposits</field>
+            <field name="code">2105</field>
+            <field name="account_type">liability_current</field>
+        </record>
+        <record id="account_recovery_income" model="account.account">
+            <field name="name">Damage Recovery Income</field>
+            <field name="code">4105</field>
+            <field name="account_type">income</field>
+        </record>
+        <record id="journal_deposit_bank" model="account.journal">
+            <field name="name">Bank - Deposits</field>
+            <field name="code">CDBK</field>
+            <field name="type">bank</field>
+            <field name="default_account_id" ref="account_rental_bank"/>
+        </record>
+        <record id="base.main_company" model="res.company">
+            <field name="rental_deposit_liability_account_id" ref="account_deposit_liability"/>
+            <field name="rental_recovery_income_account_id" ref="account_recovery_income"/>
+            <field name="rental_deposit_journal_id" ref="journal_deposit_bank"/>
+            <field name="rental_late_grace_hours">2</field>
+        </record>
+
+        <!-- Fleet: Mazda Demio -->
+        <record id="fleet_brand_mazda" model="fleet.vehicle.model.brand">
+            <field name="name">Mazda</field>
+        </record>
+        <record id="fleet_model_demio" model="fleet.vehicle.model">
+            <field name="name">Demio</field>
+            <field name="brand_id" ref="fleet_brand_mazda"/>
+            <field name="vehicle_type">car</field>
+        </record>
+
+        <!-- Rental product and category -->
+        <record id="product_mazda_demio_rental" model="product.product">
+            <field name="name">Mazda Demio Rental</field>
+            <field name="type">consu</field>
+            <field name="list_price">500</field>
+            <field name="is_car_rental">True</field>
+            <field name="invoice_policy">order</field>
+            <field name="categ_id" ref="product.product_category_goods"/>
+        </record>
+        <record id="rental_category_mazda_demio" model="car.rental.vehicle.category">
+            <field name="name">Mazda Demio</field>
+            <field name="rental_product_id" ref="product_mazda_demio_rental"/>
+            <field name="deposit_method">card</field>
+            <field name="description">Compact hatchback rental class (Mazda Demio).</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="product_mazda_demio_rental" model="product.product">
+            <field name="rental_vehicle_category_id" ref="rental_category_mazda_demio"/>
+        </record>
+
+        <!-- Initial fleet: 10 Mazda Demios (registration/VIN details to be imported) -->
+        <record id="fleet_vehicle_demio_001" model="fleet.vehicle">
+            <field name="model_id" ref="fleet_model_demio"/>
+            <field name="license_plate">DEMIO-001</field>
+            <field name="vin_sn">TBC</field>
+            <field name="model_year">2023</field>
+            <field name="color">Silver</field>
+            <field name="fuel_type">gasoline</field>
+            <field name="transmission">automatic</field>
+            <field name="acquisition_date" eval="(DateTime.today() - timedelta(days=365)).strftime('%Y-%m-%d')"/>
+            <field name="rental_fleet_id">DEMIO-001</field>
+            <field name="rental_category_id" ref="rental_category_mazda_demio"/>
+            <field name="rental_status">available</field>
+            <field name="current_mileage">35000</field>
+            <field name="next_service_mileage">40000</field>
+            <field name="tracker_installed">True</field>
+            <field name="tracker_id">TRK-001</field>
+            <field name="tracker_status">working</field>
+            <field name="insurance_expiry" eval="(DateTime.today() + timedelta(days=200)).strftime('%Y-%m-%d')"/>
+            <field name="road_licence_expiry" eval="(DateTime.today() + timedelta(days=150)).strftime('%Y-%m-%d')"/>
+            <field name="fitness_expiry" eval="(DateTime.today() + timedelta(days=120)).strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="fleet_vehicle_demio_002" model="fleet.vehicle">
+            <field name="model_id" ref="fleet_model_demio"/>
+            <field name="license_plate">DEMIO-002</field>
+            <field name="vin_sn">TBC</field>
+            <field name="model_year">2023</field>
+            <field name="color">White</field>
+            <field name="fuel_type">gasoline</field>
+            <field name="transmission">automatic</field>
+            <field name="acquisition_date" eval="(DateTime.today() - timedelta(days=365)).strftime('%Y-%m-%d')"/>
+            <field name="rental_fleet_id">DEMIO-002</field>
+            <field name="rental_category_id" ref="rental_category_mazda_demio"/>
+            <field name="rental_status">available</field>
+            <field name="current_mileage">28000</field>
+            <field name="next_service_mileage">35000</field>
+            <field name="tracker_installed">True</field>
+            <field name="tracker_id">TRK-002</field>
+            <field name="tracker_status">working</field>
+            <field name="insurance_expiry" eval="(DateTime.today() + timedelta(days=210)).strftime('%Y-%m-%d')"/>
+            <field name="road_licence_expiry" eval="(DateTime.today() + timedelta(days=160)).strftime('%Y-%m-%d')"/>
+            <field name="fitness_expiry" eval="(DateTime.today() + timedelta(days=130)).strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="fleet_vehicle_demio_003" model="fleet.vehicle">
+            <field name="model_id" ref="fleet_model_demio"/>
+            <field name="license_plate">DEMIO-003</field>
+            <field name="vin_sn">TBC</field>
+            <field name="model_year">2022</field>
+            <field name="color">Blue</field>
+            <field name="fuel_type">gasoline</field>
+            <field name="transmission">automatic</field>
+            <field name="acquisition_date" eval="(DateTime.today() - timedelta(days=730)).strftime('%Y-%m-%d')"/>
+            <field name="rental_fleet_id">DEMIO-003</field>
+            <field name="rental_category_id" ref="rental_category_mazda_demio"/>
+            <field name="rental_status">available</field>
+            <field name="current_mileage">52000</field>
+            <field name="next_service_mileage">55000</field>
+            <field name="tracker_installed">True</field>
+            <field name="tracker_id">TRK-003</field>
+            <field name="tracker_status">working</field>
+            <field name="insurance_expiry" eval="(DateTime.today() + timedelta(days=190)).strftime('%Y-%m-%d')"/>
+            <field name="road_licence_expiry" eval="(DateTime.today() + timedelta(days=140)).strftime('%Y-%m-%d')"/>
+            <field name="fitness_expiry" eval="(DateTime.today() + timedelta(days=110)).strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="fleet_vehicle_demio_004" model="fleet.vehicle">
+            <field name="model_id" ref="fleet_model_demio"/>
+            <field name="license_plate">DEMIO-004</field>
+            <field name="vin_sn">TBC</field>
+            <field name="model_year">2022</field>
+            <field name="color">Red</field>
+            <field name="fuel_type">gasoline</field>
+            <field name="transmission">automatic</field>
+            <field name="acquisition_date" eval="(DateTime.today() - timedelta(days=730)).strftime('%Y-%m-%d')"/>
+            <field name="rental_fleet_id">DEMIO-004</field>
+            <field name="rental_category_id" ref="rental_category_mazda_demio"/>
+            <field name="rental_status">available</field>
+            <field name="current_mileage">61000</field>
+            <field name="next_service_mileage">62000</field>
+            <field name="tracker_installed">True</field>
+            <field name="tracker_id">TRK-004</field>
+            <field name="tracker_status">working</field>
+            <field name="insurance_expiry" eval="(DateTime.today() + timedelta(days=180)).strftime('%Y-%m-%d')"/>
+            <field name="road_licence_expiry" eval="(DateTime.today() + timedelta(days=130)).strftime('%Y-%m-%d')"/>
+            <field name="fitness_expiry" eval="(DateTime.today() + timedelta(days=100)).strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="fleet_vehicle_demio_005" model="fleet.vehicle">
+            <field name="model_id" ref="fleet_model_demio"/>
+            <field name="license_plate">DEMIO-005</field>
+            <field name="vin_sn">TBC</field>
+            <field name="model_year">2023</field>
+            <field name="color">Grey</field>
+            <field name="fuel_type">gasoline</field>
+            <field name="transmission">automatic</field>
+            <field name="acquisition_date" eval="(DateTime.today() - timedelta(days=365)).strftime('%Y-%m-%d')"/>
+            <field name="rental_fleet_id">DEMIO-005</field>
+            <field name="rental_category_id" ref="rental_category_mazda_demio"/>
+            <field name="rental_status">available</field>
+            <field name="current_mileage">21000</field>
+            <field name="next_service_mileage">30000</field>
+            <field name="tracker_installed">True</field>
+            <field name="tracker_id">TRK-005</field>
+            <field name="tracker_status">working</field>
+            <field name="insurance_expiry" eval="(DateTime.today() + timedelta(days=220)).strftime('%Y-%m-%d')"/>
+            <field name="road_licence_expiry" eval="(DateTime.today() + timedelta(days=170)).strftime('%Y-%m-%d')"/>
+            <field name="fitness_expiry" eval="(DateTime.today() + timedelta(days=140)).strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="fleet_vehicle_demio_006" model="fleet.vehicle">
+            <field name="model_id" ref="fleet_model_demio"/>
+            <field name="license_plate">DEMIO-006</field>
+            <field name="vin_sn">TBC</field>
+            <field name="model_year">2021</field>
+            <field name="color">Silver</field>
+            <field name="fuel_type">gasoline</field>
+            <field name="transmission">manual</field>
+            <field name="acquisition_date" eval="(DateTime.today() - timedelta(days=1095)).strftime('%Y-%m-%d')"/>
+            <field name="rental_fleet_id">DEMIO-006</field>
+            <field name="rental_category_id" ref="rental_category_mazda_demio"/>
+            <field name="rental_status">available</field>
+            <field name="current_mileage">78000</field>
+            <field name="next_service_mileage">80000</field>
+            <field name="tracker_installed">True</field>
+            <field name="tracker_id">TRK-006</field>
+            <field name="tracker_status">working</field>
+            <field name="insurance_expiry" eval="(DateTime.today() + timedelta(days=170)).strftime('%Y-%m-%d')"/>
+            <field name="road_licence_expiry" eval="(DateTime.today() + timedelta(days=120)).strftime('%Y-%m-%d')"/>
+            <field name="fitness_expiry" eval="(DateTime.today() + timedelta(days=90)).strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="fleet_vehicle_demio_007" model="fleet.vehicle">
+            <field name="model_id" ref="fleet_model_demio"/>
+            <field name="license_plate">DEMIO-007</field>
+            <field name="vin_sn">TBC</field>
+            <field name="model_year">2021</field>
+            <field name="color">White</field>
+            <field name="fuel_type">gasoline</field>
+            <field name="transmission">manual</field>
+            <field name="acquisition_date" eval="(DateTime.today() - timedelta(days=1095)).strftime('%Y-%m-%d')"/>
+            <field name="rental_fleet_id">DEMIO-007</field>
+            <field name="rental_category_id" ref="rental_category_mazda_demio"/>
+            <field name="rental_status">available</field>
+            <field name="current_mileage">84000</field>
+            <field name="next_service_mileage">85000</field>
+            <field name="tracker_installed">True</field>
+            <field name="tracker_id">TRK-007</field>
+            <field name="tracker_status">working</field>
+            <field name="insurance_expiry" eval="(DateTime.today() + timedelta(days=160)).strftime('%Y-%m-%d')"/>
+            <field name="road_licence_expiry" eval="(DateTime.today() + timedelta(days=110)).strftime('%Y-%m-%d')"/>
+            <field name="fitness_expiry" eval="(DateTime.today() + timedelta(days=80)).strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="fleet_vehicle_demio_008" model="fleet.vehicle">
+            <field name="model_id" ref="fleet_model_demio"/>
+            <field name="license_plate">DEMIO-008</field>
+            <field name="vin_sn">TBC</field>
+            <field name="model_year">2024</field>
+            <field name="color">Blue</field>
+            <field name="fuel_type">gasoline</field>
+            <field name="transmission">automatic</field>
+            <field name="acquisition_date" eval="(DateTime.today() - timedelta(days=180)).strftime('%Y-%m-%d')"/>
+            <field name="rental_fleet_id">DEMIO-008</field>
+            <field name="rental_category_id" ref="rental_category_mazda_demio"/>
+            <field name="rental_status">available</field>
+            <field name="current_mileage">9000</field>
+            <field name="next_service_mileage">15000</field>
+            <field name="tracker_installed">True</field>
+            <field name="tracker_id">TRK-008</field>
+            <field name="tracker_status">working</field>
+            <field name="insurance_expiry" eval="(DateTime.today() + timedelta(days=240)).strftime('%Y-%m-%d')"/>
+            <field name="road_licence_expiry" eval="(DateTime.today() + timedelta(days=190)).strftime('%Y-%m-%d')"/>
+            <field name="fitness_expiry" eval="(DateTime.today() + timedelta(days=160)).strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="fleet_vehicle_demio_009" model="fleet.vehicle">
+            <field name="model_id" ref="fleet_model_demio"/>
+            <field name="license_plate">DEMIO-009</field>
+            <field name="vin_sn">TBC</field>
+            <field name="model_year">2024</field>
+            <field name="color">Grey</field>
+            <field name="fuel_type">gasoline</field>
+            <field name="transmission">automatic</field>
+            <field name="acquisition_date" eval="(DateTime.today() - timedelta(days=180)).strftime('%Y-%m-%d')"/>
+            <field name="rental_fleet_id">DEMIO-009</field>
+            <field name="rental_category_id" ref="rental_category_mazda_demio"/>
+            <field name="rental_status">available</field>
+            <field name="current_mileage">7500</field>
+            <field name="next_service_mileage">15000</field>
+            <field name="tracker_installed">True</field>
+            <field name="tracker_id">TRK-009</field>
+            <field name="tracker_status">working</field>
+            <field name="insurance_expiry" eval="(DateTime.today() + timedelta(days=250)).strftime('%Y-%m-%d')"/>
+            <field name="road_licence_expiry" eval="(DateTime.today() + timedelta(days=200)).strftime('%Y-%m-%d')"/>
+            <field name="fitness_expiry" eval="(DateTime.today() + timedelta(days=170)).strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="fleet_vehicle_demio_010" model="fleet.vehicle">
+            <field name="model_id" ref="fleet_model_demio"/>
+            <field name="license_plate">DEMIO-010</field>
+            <field name="vin_sn">TBC</field>
+            <field name="model_year">2022</field>
+            <field name="color">Black</field>
+            <field name="fuel_type">gasoline</field>
+            <field name="transmission">automatic</field>
+            <field name="acquisition_date" eval="(DateTime.today() - timedelta(days=730)).strftime('%Y-%m-%d')"/>
+            <field name="rental_fleet_id">DEMIO-010</field>
+            <field name="rental_category_id" ref="rental_category_mazda_demio"/>
+            <field name="rental_status">available</field>
+            <field name="current_mileage">46000</field>
+            <field name="next_service_mileage">50000</field>
+            <field name="tracker_installed">True</field>
+            <field name="tracker_id">TRK-010</field>
+            <field name="tracker_status">working</field>
+            <field name="insurance_expiry" eval="(DateTime.today() + timedelta(days=185)).strftime('%Y-%m-%d')"/>
+            <field name="road_licence_expiry" eval="(DateTime.today() + timedelta(days=135)).strftime('%Y-%m-%d')"/>
+            <field name="fitness_expiry" eval="(DateTime.today() + timedelta(days=105)).strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Destinations (example rates - replace with approved rates) -->
+        <record id="destination_gaborone" model="car.rental.destination">
+            <field name="name">Gaborone</field>
+            <field name="code">GBE</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="destination_mochudi" model="car.rental.destination">
+            <field name="name">Mochudi</field>
+            <field name="code">MCD</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="destination_mahalapye" model="car.rental.destination">
+            <field name="name">Mahalapye</field>
+            <field name="code">MHP</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="destination_palapye" model="car.rental.destination">
+            <field name="name">Palapye</field>
+            <field name="code">PLP</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="destination_francistown" model="car.rental.destination">
+            <field name="name">Francistown</field>
+            <field name="code">FRA</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="destination_maun" model="car.rental.destination">
+            <field name="name">Maun</field>
+            <field name="code">MAUN</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="destination_kasane" model="car.rental.destination">
+            <field name="name">Kasane</field>
+            <field name="code">KAS</field>
+            <field name="is_cross_border">False</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Pricing rules: Mazda Demio rate matrix (example rates) -->
+        <record id="pricing_gaborone" model="car.rental.pricing.rule">
+            <field name="name">Gaborone - Mazda Demio (all durations)</field>
+            <field name="destination_id" ref="destination_gaborone"/>
+            <field name="vehicle_category_id" ref="rental_category_mazda_demio"/>
+            <field name="min_days">1</field>
+            <field name="daily_rate">350</field>
+            <field name="currency_id" ref="base.BWP"/>
+            <field name="effective_from" eval="DateTime.today().strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="pricing_mochudi" model="car.rental.pricing.rule">
+            <field name="name">Mochudi - Mazda Demio (all durations)</field>
+            <field name="destination_id" ref="destination_mochudi"/>
+            <field name="vehicle_category_id" ref="rental_category_mazda_demio"/>
+            <field name="min_days">1</field>
+            <field name="daily_rate">375</field>
+            <field name="currency_id" ref="base.BWP"/>
+            <field name="effective_from" eval="DateTime.today().strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="pricing_mahalapye" model="car.rental.pricing.rule">
+            <field name="name">Mahalapye - Mazda Demio (all durations)</field>
+            <field name="destination_id" ref="destination_mahalapye"/>
+            <field name="vehicle_category_id" ref="rental_category_mazda_demio"/>
+            <field name="min_days">1</field>
+            <field name="daily_rate">400</field>
+            <field name="currency_id" ref="base.BWP"/>
+            <field name="effective_from" eval="DateTime.today().strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="pricing_palapye" model="car.rental.pricing.rule">
+            <field name="name">Palapye - Mazda Demio (all durations)</field>
+            <field name="destination_id" ref="destination_palapye"/>
+            <field name="vehicle_category_id" ref="rental_category_mazda_demio"/>
+            <field name="min_days">1</field>
+            <field name="daily_rate">425</field>
+            <field name="currency_id" ref="base.BWP"/>
+            <field name="effective_from" eval="DateTime.today().strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="pricing_francistown" model="car.rental.pricing.rule">
+            <field name="name">Francistown - Mazda Demio (all durations)</field>
+            <field name="destination_id" ref="destination_francistown"/>
+            <field name="vehicle_category_id" ref="rental_category_mazda_demio"/>
+            <field name="min_days">1</field>
+            <field name="daily_rate">450</field>
+            <field name="currency_id" ref="base.BWP"/>
+            <field name="effective_from" eval="DateTime.today().strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="pricing_maun_1_3" model="car.rental.pricing.rule">
+            <field name="name">Maun - Mazda Demio (1-3 days)</field>
+            <field name="destination_id" ref="destination_maun"/>
+            <field name="vehicle_category_id" ref="rental_category_mazda_demio"/>
+            <field name="min_days">1</field>
+            <field name="max_days">3</field>
+            <field name="daily_rate">550</field>
+            <field name="currency_id" ref="base.BWP"/>
+            <field name="effective_from" eval="DateTime.today().strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="pricing_maun_4_7" model="car.rental.pricing.rule">
+            <field name="name">Maun - Mazda Demio (4-7 days)</field>
+            <field name="destination_id" ref="destination_maun"/>
+            <field name="vehicle_category_id" ref="rental_category_mazda_demio"/>
+            <field name="min_days">4</field>
+            <field name="max_days">7</field>
+            <field name="daily_rate">500</field>
+            <field name="currency_id" ref="base.BWP"/>
+            <field name="effective_from" eval="DateTime.today().strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="pricing_maun_8_14" model="car.rental.pricing.rule">
+            <field name="name">Maun - Mazda Demio (8-14 days)</field>
+            <field name="destination_id" ref="destination_maun"/>
+            <field name="vehicle_category_id" ref="rental_category_mazda_demio"/>
+            <field name="min_days">8</field>
+            <field name="max_days">14</field>
+            <field name="daily_rate">475</field>
+            <field name="currency_id" ref="base.BWP"/>
+            <field name="effective_from" eval="DateTime.today().strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="pricing_maun_15_30" model="car.rental.pricing.rule">
+            <field name="name">Maun - Mazda Demio (15-30 days)</field>
+            <field name="destination_id" ref="destination_maun"/>
+            <field name="vehicle_category_id" ref="rental_category_mazda_demio"/>
+            <field name="min_days">15</field>
+            <field name="max_days">30</field>
+            <field name="daily_rate">450</field>
+            <field name="currency_id" ref="base.BWP"/>
+            <field name="effective_from" eval="DateTime.today().strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+        <record id="pricing_kasane" model="car.rental.pricing.rule">
+            <field name="name">Kasane - Mazda Demio (all durations)</field>
+            <field name="destination_id" ref="destination_kasane"/>
+            <field name="vehicle_category_id" ref="rental_category_mazda_demio"/>
+            <field name="min_days">1</field>
+            <field name="daily_rate">550</field>
+            <field name="currency_id" ref="base.BWP"/>
+            <field name="effective_from" eval="DateTime.today().strftime('%Y-%m-%d')"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Demo customer -->
+        <record id="partner_demo_customer" model="res.partner">
+            <field name="name">John Sample</field>
+            <field name="phone">+267 71 000 000</field>
+            <field name="email">john.sample@example.com</field>
+            <field name="street">Plot 123, Main Mall</field>
+            <field name="city">Gaborone</field>
+            <field name="driver_license_number">BW-DL-000123</field>
+            <field name="driver_license_expiry" eval="(DateTime.today() + timedelta(days=730)).strftime('%Y-%m-%d')"/>
+            <field name="id_number">ID-000123</field>
+        </record>
+    </data>
+</odoo>

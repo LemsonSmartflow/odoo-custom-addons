@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_rental_revenue_pivot" model="ir.ui.view">
+        <field name="name">sale.order.pivot.revenue</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <pivot string="Rental Revenue">
+                <field name="rental_destination_id" type="row"/>
+                <field name="rental_pickup_date" interval="month" type="col"/>
+                <field name="amount_total" type="measure"/>
+                <field name="rental_days" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_rental_utilization_pivot" model="ir.ui.view">
+        <field name="name">sale.order.pivot.utilization</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <pivot string="Fleet Utilization">
+                <field name="allocated_vehicle_id" type="row"/>
+                <field name="rental_pickup_date" interval="month" type="col"/>
+                <field name="rental_days" type="measure"/>
+                <field name="amount_total" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_rental_overdue_list" model="ir.ui.view">
+        <field name="name">sale.order.list.overdue</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <list string="Overdue Rentals" decoration-danger="1">
+                <field name="name" string="Rental Order"/>
+                <field name="partner_id"/>
+                <field name="allocated_vehicle_id"/>
+                <field name="rental_destination_id" optional="show"/>
+                <field name="rental_pickup_date" optional="hide"/>
+                <field name="rental_return_date"/>
+                <field name="rental_state"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_rental_revenue_report" model="ir.actions.act_window">
+        <field name="name">Rental Revenue</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">pivot,graph</field>
+        <field name="view_id" ref="view_rental_revenue_pivot"/>
+        <field name="domain">[('rental_state', 'in', ('confirmed', 'active', 'returned', 'settled', 'closed'))]</field>
+        <field name="context">{'search_default_group_destination': 0}</field>
+    </record>
+
+    <record id="action_rental_utilization_report" model="ir.actions.act_window">
+        <field name="name">Utilization</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">pivot,graph</field>
+        <field name="view_id" ref="view_rental_utilization_pivot"/>
+        <field name="domain">[('rental_state', 'in', ('confirmed', 'active', 'returned', 'settled', 'closed'))]</field>
+    </record>
+
+    <record id="action_rental_overdue_report" model="ir.actions.act_window">
+        <field name="name">Overdue Rentals</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_rental_overdue_list"/>
+        <field name="domain">[
+            ('rental_state', 'in', ('confirmed', 'active')),
+            ('rental_return_date', '!=', False),
+            ('rental_return_date', '&lt;', (context_today()).strftime('%Y-%m-%d')),
+        ]</field>
+    </record>
+
+    <record id="action_rental_settings" model="ir.actions.act_window">
+        <field name="name">Rental Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'module' : 'car_rental_management'}</field>
+    </record>
+</odoo>

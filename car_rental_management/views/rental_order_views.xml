@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Inherited Sale Order form: rental fields, workflow buttons, smart buttons -->
+    <record id="sale_order_view_form_inherit_rental" model="ir.ui.view">
+        <field name="name">sale.order.form.rental</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <header position="inside">
+                <field name="rental_state" widget="statusbar" statusbar_visible="quotation,confirmed,active,settled" options="{'clickable': 1}"/>
+                <button string="Create Quotation" name="action_create_quotation" type="object" class="btn-primary" invisible="rental_state != 'draft'"/>
+                <button string="Allocate Vehicle" name="action_allocate_vehicle" type="object" invisible="rental_state not in ('draft', 'quotation')"/>
+                <button string="Confirm Rental" name="action_confirm_rental" type="object" class="btn-primary" invisible="rental_state not in ('draft', 'quotation')"/>
+                <button string="Pickup" name="action_pickup" type="object" class="btn-primary" invisible="rental_state != 'confirmed'"/>
+                <button string="Return" name="action_return" type="object" class="btn-primary" invisible="rental_state != 'active'"/>
+                <button string="Settle" name="action_settle" type="object" class="btn-primary" invisible="rental_state != 'returned'"/>
+                <button string="Close" name="action_close" type="object" class="btn-primary" invisible="rental_state != 'settled'"/>
+                <button string="Cancel Rental" name="action_cancel_rental" type="object" confirm="Cancel this rental?" invisible="rental_state not in ('draft', 'quotation', 'confirmed')"/>
+                <button string="Recalculate Pricing" name="action_recalculate_pricing" type="object" invisible="rental_state not in ('draft', 'quotation')"/>
+            </header>
+            <div class="oe_button_box" name="button_box" position="inside">
+                <button name="action_view_inspections" type="object" class="oe_stat_button" icon="fa-check-square-o" invisible="inspection_count == 0">
+                    <field name="inspection_count" widget="statinfo" string="Inspections"/>
+                </button>
+                <button name="action_view_damages" type="object" class="oe_stat_button text-danger" icon="fa-exclamation-triangle" invisible="damage_count == 0">
+                    <field name="damage_count" widget="statinfo" string="Damages"/>
+                </button>
+                <button name="action_view_deposits" type="object" class="oe_stat_button" icon="fa-money" invisible="deposit_count == 0">
+                    <field name="deposit_count" widget="statinfo" string="Deposits"/>
+                </button>
+                <button name="action_view_charges" type="object" class="oe_stat_button text-warning" icon="fa-plus-square-o" invisible="charge_count == 0">
+                    <field name="charge_count" widget="statinfo" string="Charges"/>
+                </button>
+            </div>
+            <notebook position="before">
+                <group name="rental_info" string="Rental">
+                    <group name="rental_booking">
+                        <field name="rental_state" invisible="1"/>
+                        <field name="rental_vehicle_category_id" readonly="rental_state in ('confirmed', 'active', 'returned', 'settled', 'closed')"/>
+                        <field name="rental_destination_id" readonly="rental_state in ('confirmed', 'active', 'returned', 'settled', 'closed')"/>
+                        <field name="rental_pickup_date" readonly="rental_state in ('confirmed', 'active', 'returned', 'settled', 'closed')"/>
+                        <field name="rental_return_date" readonly="rental_state in ('confirmed', 'active', 'returned', 'settled', 'closed')"/>
+                        <field name="rental_days"/>
+                        <field name="pickup_location_id"/>
+                        <field name="return_location_id"/>
+                    </group>
+                    <group name="rental_pricing">
+                        <field name="allocated_vehicle_id" readonly="rental_state not in ('draft', 'quotation')"/>
+                        <field name="pricing_rule_id"/>
+                        <field name="rental_daily_rate" readonly="rental_state not in ('draft', 'quotation')"/>
+                        <field name="security_deposit_amount" readonly="rental_state not in ('draft', 'quotation')"/>
+                        <field name="deposit_status"/>
+                        <field name="cross_border_approved" invisible="not rental_destination_id.is_cross_border"/>
+                        <field name="pricing_override" groups="car_rental_management.car_rental_group_manager" readonly="rental_state not in ('draft', 'quotation')"/>
+                        <field name="pricing_override_reason" invisible="not pricing_override" groups="car_rental_management.car_rental_group_manager" readonly="rental_state not in ('draft', 'quotation')"/>
+                        <field name="pricing_override_user_id" invisible="not pricing_override"/>
+                    </group>
+                </group>
+            </notebook>
+            <page name="other_information" position="inside">
+                <group string="Rental Operations">
+                    <group>
+                        <field name="actual_pickup_datetime"/>
+                        <field name="actual_return_datetime"/>
+                        <field name="pickup_mileage"/>
+                        <field name="return_mileage"/>
+                        <field name="inspection_status"/>
+                        <field name="damage_detected"/>
+                        <field name="is_late_return"/>
+                    </group>
+                </group>
+            </page>
+        </field>
+    </record>
+
+    <record id="view_rental_order_list" model="ir.ui.view">
+        <field name="name">sale.order.list.rental</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <list string="Rental Orders" decoration-warning="rental_state in ('returned',)" decoration-danger="is_late_return" decoration-success="rental_state == 'closed'">
+                <field name="name" string="Rental Order"/>
+                <field name="partner_id"/>
+                <field name="allocated_vehicle_id"/>
+                <field name="rental_vehicle_category_id" optional="show"/>
+                <field name="rental_destination_id" optional="show"/>
+                <field name="rental_pickup_date" optional="show"/>
+                <field name="rental_return_date" optional="show"/>
+                <field name="rental_daily_rate" optional="hide"/>
+                <field name="rental_days" optional="hide"/>
+                <field name="amount_total" sum="Total" optional="show"/>
+                <field name="rental_state"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="is_late_return" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rental_order_search" model="ir.ui.view">
+        <field name="name">sale.order.search.rental</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <search string="Search Rental Orders">
+                <field name="name" string="Rental Order"/>
+                <field name="partner_id"/>
+                <field name="allocated_vehicle_id"/>
+                <field name="rental_destination_id"/>
+                <field name="rental_vehicle_category_id"/>
+                <filter string="Reservations" name="reservations" domain="[('rental_state', '=', 'confirmed')]"/>
+                <filter string="Active Rentals" name="active_rentals" domain="[('rental_state', '=', 'active')]"/>
+                <filter string="Overdue" name="overdue" domain="[('rental_state', 'in', ('confirmed', 'active')), ('rental_return_date', '&lt;', (context_today()).strftime('%Y-%m-%d'))]"/>
+                <filter string="Awaiting Settlement" name="awaiting_settlement" domain="[('rental_state', '=', 'returned')]"/>
+                <filter string="Closed" name="closed" domain="[('rental_state', '=', 'closed')]"/>
+                <separator/>
+                <filter string="Cross Border" name="cross_border" domain="[('rental_destination_id.is_cross_border', '=', True)]"/>
+                <group>
+                    <filter string="Rental Status" name="group_rental_state" context="{'group_by': 'rental_state'}"/>
+                    <filter string="Destination" name="group_destination" context="{'group_by': 'rental_destination_id'}"/>
+                    <filter string="Vehicle" name="group_vehicle" context="{'group_by': 'allocated_vehicle_id'}"/>
+                    <filter string="Customer" name="group_customer" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Pickup Month" name="group_pickup_month" context="{'group_by': 'rental_pickup_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_rental_order_calendar" model="ir.ui.view">
+        <field name="name">sale.order.calendar.rental</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <calendar string="Reservations" date_start="rental_pickup_date" date_stop="rental_return_date" color="allocated_vehicle_id" mode="month">
+                <field name="partner_id"/>
+                <field name="allocated_vehicle_id"/>
+                <field name="rental_state"/>
+            </calendar>
+        </field>
+    </record>
+
+    <record id="action_car_rental_order" model="ir.actions.act_window">
+        <field name="name">Rental Orders</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form,calendar</field>
+        <field name="search_view_id" ref="view_rental_order_search"/>
+        <field name="domain">[('rental_state', '!=', False)]</field>
+        <field name="context">{'search_default_rental_state_group_by': 0}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create a rental order</p>
+            <p>Select the customer, vehicle category and destination, enter the dates, and the pricing engine calculates the rate.</p>
+        </field>
+    </record>
+
+    <record id="action_rental_reservation" model="ir.actions.act_window">
+        <field name="name">Reservations</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">calendar,list,form</field>
+        <field name="search_view_id" ref="view_rental_order_search"/>
+        <field name="domain">[('rental_state', 'in', ('confirmed', 'quotation', 'draft'))]</field>
+        <field name="context">{'search_default_reservations': 1}</field>
+    </record>
+</odoo>

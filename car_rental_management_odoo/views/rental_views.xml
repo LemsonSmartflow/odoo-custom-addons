@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================= -->
+    <!-- RENTAL LIST VIEW -->
+    <!-- ========================= -->
+
+    <record id="view_car_rental_rental_list" model="ir.ui.view">
+        <field name="name">car.rental.rental.list</field>
+        <field name="model">car.rental.rental</field>
+
+        <field name="arch" type="xml">
+            <list string="Rentals">
+
+                <field name="reference"/>
+                <field name="reservation_id"/>
+                <field name="customer_id"/>
+                <field name="vehicle_id"/>
+                <field name="start_date"/>
+                <field name="return_date"/>
+                <field name="initial_mileage"/>
+                <field name="final_mileage"/>
+                <field name="amount"/>
+                <field name="status"/>
+
+            </list>
+        </field>
+    </record>
+
+
+    <!-- ========================= -->
+    <!-- RENTAL FORM VIEW -->
+    <!-- ========================= -->
+
+    <record id="view_car_rental_rental_form" model="ir.ui.view">
+        <field name="name">car.rental.rental.form</field>
+        <field name="model">car.rental.rental</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Rental">
+
+                <!-- WORKFLOW -->
+                <header>
+
+                    <button
+                        name="action_start_rental"
+                        string="Start Rental"
+                        type="object"
+                        class="btn-primary"
+                        invisible="status != 'draft'"
+                    />
+
+                    <button
+                        name="action_return_vehicle"
+                        string="Return Vehicle"
+                        type="object"
+                        class="btn-primary"
+                        invisible="status != 'ongoing'"
+                    />
+
+                    <field
+                        name="status"
+                        widget="statusbar"
+                        statusbar_visible="draft,ongoing,returned"
+                    />
+
+                </header>
+
+
+                <sheet>
+
+                    <!-- MAIN INFORMATION -->
+                    <group>
+
+                        <group string="Rental Information">
+
+                            <field name="reference"/>
+
+                            <field name="reservation_id"/>
+
+                            <field name="customer_id"
+                                   readonly="1"/>
+
+                            <field name="vehicle_id"
+                                   readonly="1"/>
+
+                        </group>
+
+
+                        <group string="Dates">
+
+                            <field name="start_date"
+                                   readonly="1"/>
+
+                            <field name="return_date"
+                                   readonly="1"/>
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- MILEAGE -->
+                    <group string="Mileage">
+
+                        <group>
+
+                            <field name="initial_mileage"/>
+
+                        </group>
+
+                        <group>
+
+                            <field name="final_mileage"
+                                   invisible="status == 'draft'"/>
+
+                        </group>
+
+                    </group>
+
+
+                    <!-- AMOUNT -->
+                    <group string="Rental Amount">
+
+                        <field name="amount"
+                               readonly="1"/>
+
+                    </group>
+
+                </sheet>
+
+            </form>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================= -->
+    <!-- RENTAL SEARCH VIEW -->
+    <!-- ========================= -->
+
+    <record id="view_car_rental_rental_search" model="ir.ui.view">
+
+        <field name="name">car.rental.rental.search</field>
+        <field name="model">car.rental.rental</field>
+
+        <field name="arch" type="xml">
+
+            <search string="Search Rentals">
+
+                <field name="reference"/>
+                <field name="reservation_id"/>
+                <field name="customer_id"/>
+                <field name="vehicle_id"/>
+
+                <filter
+                    name="draft"
+                    string="Draft"
+                    domain="[('status', '=', 'draft')]"
+                />
+
+                <filter
+                    name="ongoing"
+                    string="Ongoing"
+                    domain="[('status', '=', 'ongoing')]"
+                />
+
+                <filter
+                    name="returned"
+                    string="Returned"
+                    domain="[('status', '=', 'returned')]"
+                />
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================= -->
+    <!-- RENTAL ACTION -->
+    <!-- ========================= -->
+
+    <record id="action_car_rental_rental" model="ir.actions.act_window">
+
+        <field name="name">Rentals</field>
+        <field name="res_model">car.rental.rental</field>
+        <field name="view_mode">list,form</field>
+
+    </record>
+
+
+    <!-- ========================= -->
+    <!-- RENTAL MENU -->
+    <!-- ========================= -->
+
+    <menuitem
+        id="menu_car_rental_rental"
+        name="Rentals"
+        parent="menu_car_rental_root"
+        action="action_car_rental_rental"
+        sequence="40"
+    />
+
+</odoo>

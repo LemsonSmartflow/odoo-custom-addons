@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_rental_charge_form" model="ir.ui.view">
+        <field name="name">car.rental.charge.form</field>
+        <field name="model">car.rental.charge</field>
+        <field name="arch" type="xml">
+            <form string="Additional Rental Charge">
+                <header>
+                    <button string="Create Invoice" name="action_create_invoice" type="object" class="btn-primary" invisible="is_invoiced"/>
+                    <field name="is_invoiced" invisible="1"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Invoiced" bg_color="text-bg-info" invisible="not is_invoiced"/>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="rental_order_id"/>
+                            <field name="vehicle_id"/>
+                            <field name="charge_type"/>
+                            <field name="description"/>
+                            <field name="invoice_id"/>
+                        </group>
+                        <group>
+                            <field name="quantity"/>
+                            <field name="unit_amount"/>
+                            <field name="amount"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_rental_charge_list" model="ir.ui.view">
+        <field name="name">car.rental.charge.list</field>
+        <field name="model">car.rental.charge</field>
+        <field name="arch" type="xml">
+            <list string="Additional Charges" decoration-muted="is_invoiced">
+                <field name="name" optional="show"/>
+                <field name="rental_order_id"/>
+                <field name="vehicle_id" optional="show"/>
+                <field name="charge_type"/>
+                <field name="description" optional="show"/>
+                <field name="quantity" optional="hide"/>
+                <field name="unit_amount" optional="hide"/>
+                <field name="amount" sum="Total"/>
+                <field name="is_invoiced" widget="boolean"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_rental_charge_search" model="ir.ui.view">
+        <field name="name">car.rental.charge.search</field>
+        <field name="model">car.rental.charge</field>
+        <field name="arch" type="xml">
+            <search string="Search Additional Charges">
+                <field name="name"/>
+                <field name="rental_order_id"/>
+                <field name="description"/>
+                <filter string="Not Invoiced" name="not_invoiced" domain="[('is_invoiced', '=', False)]"/>
+                <filter string="Late Return" name="late_return" domain="[('charge_type', '=', 'late_return')]"/>
+                <group>
+                    <filter string="Charge Type" name="group_type" context="{'group_by': 'charge_type'}"/>
+                    <filter string="Rental Order" name="group_order" context="{'group_by': 'rental_order_id'}"/>
+                    <filter string="Vehicle" name="group_vehicle" context="{'group_by': 'vehicle_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rental_charge" model="ir.actions.act_window">
+        <field name="name">Additional Charges</field>
+        <field name="res_model">car.rental.charge</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Record an additional charge</p>
+            <p>Late returns, fuel recovery, cleaning, delivery, after-hours and other approved charges.</p>
+        </field>
+    </record>
+</odoo>

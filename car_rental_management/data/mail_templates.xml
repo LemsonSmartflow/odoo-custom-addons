@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Mail templates are declared in a NOUPDATE block so users can freely customize them -->
+    <data noupdate="1">
+        <record id="mail_template_rental_quotation" model="mail.template">
+            <field name="name">Car Rental: Quotation / Booking Confirmation</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="email_from">{{ (object.user_id.email_formatted or object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="partner_to" eval="False"/>
+            <field name="use_default_to" eval="True"/>
+            <field name="subject">{{ object.company_id.name }}: Rental Quotation {{ object.name }}</field>
+            <field name="description">Sent to customers with their rental quotation</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Dear <t t-out="object.partner_id.name or ''"/>,
+        <br/><br/>
+        Here is your rental quotation <span style="font-weight: bold;" t-out="object.name or ''"/>.
+        <br/><br/>
+        <t t-if="object.allocated_vehicle_id">
+            Vehicle: <span style="font-weight: bold;" t-out="object.allocated_vehicle_id.rental_fleet_id or ''"/><br/>
+        </t>
+        <t t-if="object.rental_pickup_date">
+            Pickup: <span style="font-weight: bold;" t-out="object.rental_pickup_date or ''"/> -
+            Return: <span style="font-weight: bold;" t-out="object.rental_return_date or ''"/>
+            (<t t-out="object.rental_days or ''"/> day(s))<br/>
+        </t>
+        <t t-if="object.rental_destination_id">
+            Destination: <span style="font-weight: bold;" t-out="object.rental_destination_id.name or ''"/><br/>
+        </t>
+        <t t-if="object.rental_daily_rate">
+            Daily rate: <span style="font-weight: bold;" t-out="'%.2f' % object.rental_daily_rate"/> <t t-out="object.currency_id.name or ''"/><br/>
+        </t>
+        <t t-if="object.security_deposit_amount">
+            Refundable security deposit: <span style="font-weight: bold;" t-out="'%.2f' % object.security_deposit_amount"/> <t t-out="object.currency_id.name or ''"/><br/>
+        </t>
+        <br/>
+        Total: <span style="font-weight: bold;" t-out="format_amount(object.amount_total, object.currency_id) or ''"/>
+        <br/><br/>
+        We look forward to welcoming you.
+    </p>
+</div>
+            </field>
+        </record>
+
+        <record id="mail_template_rental_pickup" model="mail.template">
+            <field name="name">Car Rental: Pickup Confirmation</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="use_default_to" eval="True"/>
+            <field name="subject">{{ object.company_id.name }}: Rental {{ object.name }} picked up</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Dear <t t-out="object.partner_id.name or ''"/>,
+        <br/><br/>
+        Your rental <t t-out="object.name or ''"/> is now active.
+        <t t-if="object.allocated_vehicle_id"> Vehicle <t t-out="object.allocated_vehicle_id.rental_fleet_id or ''"/> has been handed over to you.</t>
+        <br/><br/>
+        Please return the vehicle on or before <t t-out="object.rental_return_date or ''"/>.
+    </p>
+</div>
+            </field>
+        </record>
+
+        <record id="mail_template_rental_return" model="mail.template">
+            <field name="name">Car Rental: Return Confirmation</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="use_default_to" eval="True"/>
+            <field name="subject">{{ object.company_id.name }}: Rental {{ object.name }} returned</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Dear <t t-out="object.partner_id.name or ''"/>,
+        <br/><br/>
+        We have received the vehicle for rental <t t-out="object.name or ''"/>. The return inspection is in progress
+        and your security deposit settlement will follow.
+    </p>
+</div>
+            </field>
+        </record>
+
+        <record id="mail_template_rental_overdue" model="mail.template">
+            <field name="name">Car Rental: Overdue Rental</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="use_default_to" eval="True"/>
+            <field name="subject">{{ object.company_id.name }}: Rental {{ object.name }} is overdue</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Dear <t t-out="object.partner_id.name or ''"/>,
+        <br/><br/>
+        Rental <t t-out="object.name or ''"/> was due back on
+        <span style="font-weight: bold;" t-out="object.rental_return_date or ''"/> and has not been returned yet.
+        Late charges apply per the rental agreement. Please contact us as soon as possible.
+    </p>
+</div>
+            </field>
+        </record>
+
+        <record id="mail_template_deposit_settlement" model="mail.template">
+            <field name="name">Car Rental: Deposit Settlement</field>
+            <field name="model_id" ref="car_rental_management.model_car_rental_deposit"/>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="use_default_to" eval="True"/>
+            <field name="subject">{{ object.company_id.name }}: Security deposit {{ object.name }} ({{ object.rental_order_id.name or '' }})</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Dear <t t-out="object.customer_id.name or ''"/>,
+        <br/><br/>
+        Your refundable security deposit for rental <t t-out="object.rental_order_id.name or ''"/> is
+        <span style="font-weight: bold;" t-out="'%.2f' % object.amount or ''"/> <t t-out="object.currency_id.name or ''"/>
+        (status: <t t-out="object.status or ''"/>).
+        <br/>
+        Applied: <t t-out="'%.2f' % object.applied_amount or ''"/> -
+        Refunded: <t t-out="'%.2f' % object.refunded_amount or ''"/> -
+        Remaining: <t t-out="'%.2f' % object.remaining_amount or ''"/>
+    </p>
+</div>
+            </field>
+        </record>
+
+        <record id="mail_template_damage_charge" model="mail.template">
+            <field name="name">Car Rental: Damage Charge</field>
+            <field name="model_id" ref="car_rental_management.model_car_rental_damage"/>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="use_default_to" eval="True"/>
+            <field name="subject">{{ object.company_id.name }}: Damage assessment {{ object.name }} ({{ object.rental_order_id.name or '' }})</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Dear <t t-out="object.customer_id.name or ''"/>,
+        <br/><br/>
+        Following the return of the vehicle for rental <t t-out="object.rental_order_id.name or ''"/>, a damage
+        assessment <t t-out="object.name or ''"/> was recorded
+        (type: <t t-out="object.damage_type or ''"/>, severity: <t t-out="object.severity or ''"/>).
+        <br/><br/>
+        Customer charge: <span style="font-weight: bold;" t-out="'%.2f' % object.customer_charge or ''"/> <t t-out="object.currency_id.name or ''"/>
+        <br/>
+        Applied from deposit: <t t-out="'%.2f' % object.deposit_applied or ''"/>
+        <t t-if="object.additional_invoice_id">
+            <br/>Balance invoice: <t t-out="object.additional_invoice_id.name or ''"/>
+        </t>
+    </p>
+</div>
+            </field>
+        </record>
+
+        <record id="mail_template_rental_maintenance" model="mail.template">
+            <field name="name">Car Rental: Maintenance Due</field>
+            <field name="model_id" ref="maintenance.model_maintenance_request"/>
+            <field name="email_from">{{ (object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="use_default_to" eval="True"/>
+            <field name="subject">{{ object.company_id.name }}: Maintenance request {{ object.name }}</field>
+            <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px;">
+    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+        Maintenance request <t t-out="object.name or ''"/>
+        <t t-if="object.rental_vehicle_id"> for vehicle <t t-out="object.rental_vehicle_id.rental_fleet_id or ''"/></t>
+        is due (type: <t t-out="object.maintenance_type or ''"/>).
+    </p>
+</div>
+            </field>
+        </record>
+    </data>
+</odoo>

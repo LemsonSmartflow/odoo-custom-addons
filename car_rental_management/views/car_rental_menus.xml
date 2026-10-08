@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <menuitem id="menu_car_rental_root"
+              name="Car Rental"
+              web_icon="car_rental_management,static/description/icon.png"
+              sequence="90"
+              groups="car_rental_management.car_rental_group_staff,car_rental_management.car_rental_group_fleet"/>
+
+    <menuitem id="menu_car_rental_dashboard"
+              name="Dashboard"
+              parent="menu_car_rental_root"
+              sequence="10"
+              action="action_rental_fleet_vehicle"/>
+
+    <menuitem id="menu_car_rental_orders"
+              name="Rental Orders"
+              parent="menu_car_rental_root"
+              sequence="20"
+              action="car_rental_management.action_car_rental_order"/>
+
+    <menuitem id="menu_car_rental_reservations"
+              name="Reservations"
+              parent="menu_car_rental_root"
+              sequence="30"
+              action="car_rental_management.action_rental_reservation"/>
+
+    <menuitem id="menu_car_rental_vehicles"
+              name="Vehicles"
+              parent="menu_car_rental_root"
+              sequence="40"
+              action="car_rental_management.action_rental_fleet_vehicle"/>
+
+    <menuitem id="menu_car_rental_operations"
+              name="Operations"
+              parent="menu_car_rental_root"
+              sequence="50"/>
+
+    <menuitem id="menu_car_rental_inspections"
+              name="Inspections"
+              parent="menu_car_rental_operations"
+              sequence="10"
+              action="car_rental_management.action_rental_inspection"/>
+
+    <menuitem id="menu_car_rental_damage"
+              name="Damage Assessments"
+              parent="menu_car_rental_operations"
+              sequence="20"
+              action="car_rental_management.action_rental_damage"/>
+
+    <menuitem id="menu_car_rental_deposits"
+              name="Deposits"
+              parent="menu_car_rental_operations"
+              sequence="30"
+              action="car_rental_management.action_rental_deposit"/>
+
+    <menuitem id="menu_car_rental_charges"
+              name="Additional Charges"
+              parent="menu_car_rental_operations"
+              sequence="40"
+              action="car_rental_management.action_rental_charge"/>
+
+    <menuitem id="menu_car_rental_maintenance"
+              name="Maintenance"
+              parent="menu_car_rental_operations"
+              sequence="50"
+              action="maintenance.hr_equipment_request_action"/>
+
+    <menuitem id="menu_car_rental_reporting"
+              name="Reporting"
+              parent="menu_car_rental_root"
+              sequence="60"/>
+
+    <menuitem id="menu_car_rental_report_revenue"
+              name="Rental Revenue"
+              parent="menu_car_rental_reporting"
+              sequence="10"
+              action="action_rental_revenue_report"/>
+
+    <menuitem id="menu_car_rental_report_utilization"
+              name="Utilization"
+              parent="menu_car_rental_reporting"
+              sequence="20"
+              action="action_rental_utilization_report"/>
+
+    <menuitem id="menu_car_rental_report_deposits"
+              name="Deposits"
+              parent="menu_car_rental_reporting"
+              sequence="30"
+              action="car_rental_management.action_rental_deposit"/>
+
+    <menuitem id="menu_car_rental_report_damage"
+              name="Damages"
+              parent="menu_car_rental_reporting"
+              sequence="40"
+              action="car_rental_management.action_rental_damage"/>
+
+    <menuitem id="menu_car_rental_report_maintenance"
+              name="Maintenance"
+              parent="menu_car_rental_reporting"
+              sequence="50"
+              action="maintenance.hr_equipment_request_action"/>
+
+    <menuitem id="menu_car_rental_report_overdue"
+              name="Overdue Rentals"
+              parent="menu_car_rental_reporting"
+              sequence="60"
+              action="action_rental_overdue_report"/>
+
+    <menuitem id="menu_car_rental_configuration"
+              name="Configuration"
+              parent="menu_car_rental_root"
+              sequence="100"
+              groups="car_rental_management.car_rental_group_manager"/>
+
+    <menuitem id="menu_car_rental_config_destinations"
+              name="Destinations"
+              parent="menu_car_rental_configuration"
+              sequence="10"
+              action="car_rental_management.action_rental_destination"/>
+
+    <menuitem id="menu_car_rental_config_categories"
+              name="Vehicle Categories"
+              parent="menu_car_rental_configuration"
+              sequence="20"
+              action="car_rental_management.action_rental_vehicle_category"/>
+
+    <menuitem id="menu_car_rental_config_pricing"
+              name="Pricing Rules"
+              parent="menu_car_rental_configuration"
+              sequence="30"
+              action="car_rental_management.action_rental_pricing_rule"/>
+
+    <menuitem id="menu_car_rental_config_settings"
+              name="Rental Settings"
+              parent="menu_car_rental_configuration"
+              sequence="40"
+              action="action_rental_settings"/>
+</odoo>

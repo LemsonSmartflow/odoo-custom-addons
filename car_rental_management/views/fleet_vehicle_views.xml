@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="fleet_vehicle_view_form_inherit_rental" model="ir.ui.view">
+        <field name="name">fleet.vehicle.form.rental</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+        <field name="arch" type="xml">
+            <div class="oe_title" position="before">
+                <widget name="web_ribbon" title="Decommissioned" bg_color="text-bg-danger" invisible="rental_status != 'decommissioned'"/>
+            </div>
+            <xpath expr="//group[1]" position="inside">
+                <group string="Rental" name="rental_group">
+                    <field name="rental_fleet_id"/>
+                    <field name="rental_status"/>
+                    <field name="rental_category_id"/>
+                    <field name="current_rental_customer_id" widget="many2one_avatar"/>
+                    <field name="current_rental_order_id"/>
+                    <field name="current_destination_id"/>
+                </group>
+            </xpath>
+            <xpath expr="//page[@name='page_tax_info']" position="before">
+                <page string="Rental &amp; Compliance" name="page_rental_compliance">
+                    <group>
+                        <group string="Compliance">
+                            <field name="insurance_expiry"/>
+                            <field name="road_licence_expiry"/>
+                            <field name="fitness_expiry"/>
+                        </group>
+                        <group string="Tracker">
+                            <field name="tracker_installed"/>
+                            <field name="tracker_id"/>
+                            <field name="tracker_status"/>
+                        </group>
+                        <group string="Mileage">
+                            <field name="current_mileage"/>
+                            <field name="next_service_mileage"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            <div class="oe_button_box" name="button_box" position="inside">
+                <button name="action_view_rental_orders"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-car"
+                        invisible="rental_order_count == 0">
+                    <field name="rental_order_count" widget="statinfo" string="Rental Orders"/>
+                </button>
+            </div>
+        </field>
+    </record>
+
+    <record id="fleet_vehicle_view_kanban_rental" model="ir.ui.view">
+        <field name="name">fleet.vehicle.kanban.rental</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="rental_status" class="o_kanban_small_column">
+                <field name="rental_status"/>
+                <field name="rental_fleet_id"/>
+                <field name="license_plate"/>
+                <field name="rental_category_id"/>
+                <field name="current_rental_customer_id"/>
+                <field name="current_destination_id"/>
+                <field name="insurance_expiry"/>
+                <field name="currency_id"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex flex-column h-100">
+                            <div class="mb-2">
+                                <strong><field name="rental_fleet_id"/></strong>
+                                <span class="text-muted ms-1" t-if="record.license_plate.raw_value">(<field name="license_plate"/>)</span>
+                            </div>
+                            <field name="rental_category_id"/>
+                            <div class="mt-auto small text-muted">
+                                <div t-if="record.current_rental_customer_id.raw_value">
+                                    <field name="current_rental_customer_id"/> to <field name="current_destination_id"/>
+                                </div>
+                                <div t-else="">Available for allocation</div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="fleet_vehicle_view_list_rental" model="ir.ui.view">
+        <field name="name">fleet.vehicle.list.rental</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="arch" type="xml">
+            <list string="Rental Vehicles" decoration-danger="rental_status in ('damaged', 'decommissioned')" decoration-warning="rental_status in ('maintenance', 'inspection_pending')">
+                <field name="rental_fleet_id"/>
+                <field name="license_plate" optional="show"/>
+                <field name="rental_category_id"/>
+                <field name="rental_status"/>
+                <field name="current_rental_customer_id" optional="show" widget="many2one_avatar"/>
+                <field name="current_destination_id" optional="hide"/>
+                <field name="current_mileage" optional="show"/>
+                <field name="tracker_status" optional="hide"/>
+                <field name="insurance_expiry" optional="show"/>
+                <field name="road_licence_expiry" optional="hide"/>
+                <field name="fitness_expiry" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="fleet_vehicle_view_search_rental" model="ir.ui.view">
+        <field name="name">fleet.vehicle.search.rental</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="arch" type="xml">
+            <search string="Search Rental Vehicles">
+                <field name="rental_fleet_id"/>
+                <field name="license_plate"/>
+                <field name="rental_category_id"/>
+                <filter string="Available" name="available" domain="[('rental_status', '=', 'available')]"/>
+                <filter string="Reserved" name="reserved" domain="[('rental_status', '=', 'reserved')]"/>
+                <filter string="Rented" name="rented" domain="[('rental_status', '=', 'rented')]"/>
+                <filter string="Maintenance" name="maintenance" domain="[('rental_status', '=', 'maintenance')]"/>
+                <filter string="Damaged" name="damaged" domain="[('rental_status', '=', 'damaged')]"/>
+                <separator/>
+                <filter string="Expiring Insurance" name="expiring_insurance" domain="[('insurance_expiry', '&lt;=', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                <group>
+                    <filter string="Rental Status" name="group_rental_status" context="{'group_by': 'rental_status'}"/>
+                    <filter string="Rental Category" name="group_rental_category" context="{'group_by': 'rental_category_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_rental_fleet_vehicle" model="ir.actions.act_window">
+        <field name="name">Rental Vehicles</field>
+        <field name="res_model">fleet.vehicle</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="fleet_vehicle_view_search_rental"/>
+        <field name="context">{'search_default_available': 0}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add a vehicle to the rental fleet</p>
+            <p>Each physical vehicle is a separate Fleet record with a unique Fleet ID (e.g. DEMIO-003).</p>
+        </field>
+    </record>
+</odoo>

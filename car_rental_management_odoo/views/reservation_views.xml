@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+
+    <!-- ========================= -->
+    <!-- RESERVATION LIST VIEW -->
+    <!-- ========================= -->
+
+    <record id="view_car_rental_reservation_list" model="ir.ui.view">
+        <field name="name">car.rental.reservation.list</field>
+        <field name="model">car.rental.reservation</field>
+
+        <field name="arch" type="xml">
+            <list string="Reservations">
+
+                <field name="reference"/>
+                <field name="customer_id"/>
+                <field name="vehicle_id"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="number_of_days"/>
+                <field name="amount"/>
+                <field name="status"/>
+
+            </list>
+        </field>
+    </record>
+
+
+    <!-- ========================= -->
+    <!-- RESERVATION FORM VIEW -->
+    <!-- ========================= -->
+
+    <record id="view_car_rental_reservation_form" model="ir.ui.view">
+        <field name="name">car.rental.reservation.form</field>
+        <field name="model">car.rental.reservation</field>
+
+        <field name="arch" type="xml">
+
+            <form string="Reservation">
+                <header>
+
+    <button
+        name="action_confirm"
+        string="Confirm"
+        type="object"
+        invisible="status != 'draft'"
+        class="btn-primary"
+    />
+
+    <button
+        name="action_cancel"
+        string="Cancel"
+        type="object"
+        invisible="status == 'cancelled'"
+    />
+
+    <button
+        name="action_reset_draft"
+        string="Reset to Draft"
+        type="object"
+        invisible="status == 'draft'"
+    />
+
+</header>
+
+
+                <sheet>
+
+                    <group>
+
+                        <group string="Reservation Information">
+
+                            <field name="reference"/>
+                            <field name="customer_id"/>
+                            <field name="vehicle_id"/>
+
+                        </group>
+
+                        <group string="Dates">
+
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                            <field name="number_of_days" readonly="1"/>
+
+                        </group>
+
+                    </group>
+
+
+                    <group string="Payment Information">
+
+                        <field name="amount" readonly="1"/>
+
+                    </group>
+
+
+                    <group string="Status">
+
+                        <field name="status"
+                               widget="statusbar"
+                               statusbar_visible="draft,confirmed,cancelled"/>
+
+                    </group>
+
+                </sheet>
+
+            </form>
+
+        </field>
+    </record>
+
+
+    <!-- ========================= -->
+    <!-- RESERVATION SEARCH VIEW -->
+    <!-- ========================= -->
+
+    <record id="view_car_rental_reservation_search" model="ir.ui.view">
+
+        <field name="name">car.rental.reservation.search</field>
+        <field name="model">car.rental.reservation</field>
+
+        <field name="arch" type="xml">
+
+            <search string="Search Reservations">
+
+                <field name="reference"/>
+                <field name="customer_id"/>
+                <field name="vehicle_id"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+
+                <filter
+                    name="draft"
+                    string="Draft"
+                    domain="[('status', '=', 'draft')]"
+                />
+
+                <filter
+                    name="confirmed"
+                    string="Confirmed"
+                    domain="[('status', '=', 'confirmed')]"
+                />
+
+                <filter
+                    name="cancelled"
+                    string="Cancelled"
+                    domain="[('status', '=', 'cancelled')]"
+                />
+
+            </search>
+
+        </field>
+
+    </record>
+
+
+    <!-- ========================= -->
+    <!-- RESERVATION ACTION -->
+    <!-- ========================= -->
+
+    <record id="action_car_rental_reservation" model="ir.actions.act_window">
+
+        <field name="name">Reservations</field>
+        <field name="res_model">car.rental.reservation</field>
+        <field name="view_mode">list,form</field>
+
+    </record>
+
+
+    <!-- ========================= -->
+    <!-- RESERVATION MENU -->
+    <!-- ========================= -->
+
+    <menuitem
+        id="menu_car_rental_reservation"
+        name="Reservations"
+        parent="menu_car_rental_root"
+        action="action_car_rental_reservation"
+        sequence="30"
+    />
+
+</odoo>
