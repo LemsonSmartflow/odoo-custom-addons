@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+  <record id="action_car_rental_customer" model="ir.actions.act_window">
+    <field name="domain">[('company_id', '=', allowed_company_ids[0])] + ([])</field>
+  </record>
+  <record id="action_rental_billing" model="ir.actions.act_window">
+    <field name="domain">[('company_id', '=', allowed_company_ids[0])] + ([('car_rental_id', '!=', False), ('move_type', 'in', ['out_invoice', 'out_refund'])])</field>
+  </record>
+  <record id="action_rental_outstanding" model="ir.actions.act_window">
+    <field name="domain">[('company_id', '=', allowed_company_ids[0])] + ([('car_rental_id', '!=', False), ('move_type', '=', 'out_invoice'), ('state', '=', 'posted'), ('amount_residual', '&gt;', 0)])</field>
+  </record>
+  <record id="action_car_rental_payment" model="ir.actions.act_window">
+    <field name="domain">[('company_id', '=', allowed_company_ids[0])] + ([])</field>
+  </record>
+  <record id="action_rates" model="ir.actions.act_window">
+    <field name="domain">[('company_id', '=', allowed_company_ids[0])] + ([])</field>
+  </record>
+  <record id="action_zones" model="ir.actions.act_window">
+    <field name="domain">[('company_id', '=', allowed_company_ids[0])] + ([])</field>
+  </record>
+  <record id="action_categories" model="ir.actions.act_window">
+    <field name="domain">[('company_id', '=', allowed_company_ids[0])] + ([])</field>
+  </record>
+  <record id="action_inspections" model="ir.actions.act_window">
+    <field name="domain">[('company_id', '=', allowed_company_ids[0])] + ([])</field>
+  </record>
+  <record id="action_damage" model="ir.actions.act_window">
+    <field name="domain">[('company_id', '=', allowed_company_ids[0])] + ([])</field>
+  </record>
+  <record id="action_deposits" model="ir.actions.act_window">
+    <field name="domain">[('company_id', '=', allowed_company_ids[0])] + ([])</field>
+  </record>
+  <record id="action_car_rental_rental" model="ir.actions.act_window">
+    <field name="domain">[('company_id', '=', allowed_company_ids[0])] + ([])</field>
+  </record>
+  <record id="action_car_rental_reservation" model="ir.actions.act_window">
+    <field name="domain">[('company_id', '=', allowed_company_ids[0])] + ([])</field>
+  </record>
+  <record id="action_car_rental_vehicle" model="ir.actions.act_window">
+    <field name="domain">[('company_id', '=', allowed_company_ids[0])] + ([])</field>
+  </record>
+</odoo>

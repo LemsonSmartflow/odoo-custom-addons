@@ -83,7 +83,7 @@ class Reservation(models.Model):
     _inherit = 'car.rental.reservation'
 
     vehicle_image = fields.Image(related='vehicle_id.image_1920', readonly=True)
-    daily_price = fields.Float(related='vehicle_id.daily_price', readonly=True)
+    daily_price = fields.Float(related='quoted_daily_rate', readonly=True)
     rental_ids = fields.One2many('car.rental.rental', 'reservation_id')
     rental_count = fields.Integer(compute='_compute_rental_count')
 
@@ -136,13 +136,20 @@ class Rental(models.Model):
         ('unpaid', 'Unpaid'), ('partial', 'Partially Paid'), ('paid', 'Paid'),
     ], compute='_compute_payment_totals', store=True, string='Payment Status')
 
-    @api.depends('amount', 'payment_ids.paid_amount')
+    @api.depends('amount', 'currency_id', 'payment_ids.paid_amount', 'payment_ids.ledger_state', 'payment_ids.account_move_id.state', 'payment_ids.account_move_id.reversal_move_ids.state',
+                 'invoice_ids.state', 'invoice_ids.rental_invoice_kind', 'invoice_ids.move_type', 'invoice_ids.amount_total', 'invoice_ids.amount_residual')
     def _compute_payment_totals(self):
         for record in self:
-            paid = sum(record.payment_ids.mapped('paid_amount'))
+            paid = sum(record.payment_ids.filtered(lambda p: p.ledger_state == 'legacy' or (p.ledger_state == 'posted' and p.account_move_id.state == 'posted' and not p.account_move_id.reversal_move_ids.filtered(lambda m: m.state == 'posted'))).mapped('paid_amount'))
+            invoices = record.invoice_ids.filtered(lambda m: m.state == 'posted' and m.move_type == 'out_invoice' and m.rental_invoice_kind == 'rental')
+            if invoices:
+                # Both rental receipts and standard invoice payments reconcile the
+                # same receivable: use its settlement once, without double counting.
+                paid = sum(m.amount_total - m.amount_residual for m in invoices)
             record.payment_count = len(record.payment_ids)
             record.paid_total = paid
-            record.balance_due = max(record.amount - paid, 0.0)
+            currency = record.currency_id or self.env.company.currency_id
+            record.balance_due = currency.round(max(record.amount - paid, 0.0))
             record.payment_status = (
                 'paid' if float_compare(paid, record.amount, precision_digits=2) >= 0
                 else 'unpaid' if float_is_zero(paid, precision_digits=2) else 'partial'

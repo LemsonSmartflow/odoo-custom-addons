@@ -14,7 +14,7 @@
             <list string="Vehicles">
 
                 <field name="registration_number"/>
-                <field name="brand"/>
+                <field name="brand" string="Make"/>
                 <field name="model"/>
                 <field name="year"/>
                 <field name="category"/>
@@ -53,7 +53,7 @@
                         <group string="Vehicle Information">
 
                             <field name="registration_number"/>
-                            <field name="brand"/>
+                            <field name="brand" string="Make"/>
                             <field name="model"/>
                             <field name="year"/>
                             <field name="color"/>

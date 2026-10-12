@@ -5,3 +5,7 @@ from . import rental
 from . import payment
 from . import dashboard
 from . import workflow
+from . import pricing
+from . import operations
+from . import finance
+from . import reporting

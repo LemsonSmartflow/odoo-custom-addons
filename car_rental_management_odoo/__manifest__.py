@@ -1,13 +1,19 @@
 {
     'name': 'Car Rental Management',
-    'version': '19.0.2.0.0',
+    'version': '19.0.3.0.3',
     'summary': 'Car Rental Management Application',
     'category': 'Services',
-    'author': 'Oumaima',
+    'author': 'Clinton Giri',
     'license': 'LGPL-3',
 
     'depends': [
         'base',
+        'mail',
+        'fleet',
+        'maintenance',
+        'sale_management',
+        'account',
+        'stock',
     ],
 
     'data': [
@@ -21,11 +27,20 @@
         'views/payment_views.xml',
         'views/dashboard_views.xml',
         'views/connected_views.xml',
+        'views/proposal_views.xml',
+        'views/navigation_views.xml',
+        'views/how_it_works_views.xml',
+        'views/company_scope_views.xml',
+        'reports/agreement.xml',
+        'data/proposal_setup.xml',
+        'data/reminders.xml',
     ],
 
     'application': True,
     'assets': {
-        'web.assets_backend': ['car_rental_management_odoo/static/src/scss/rental.scss'],
+        'web.assets_backend': [
+            'car_rental_management_odoo/static/src/scss/rental.scss',
+        ],
     },
     'installable': True,
 }

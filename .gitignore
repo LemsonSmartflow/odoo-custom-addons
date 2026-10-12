@@ -24,6 +24,7 @@ data/readiness-postgres/
 *.sql
 *.dump
 *.backup
+/backups/
 .aws/
 .codex/
 .agents/
@@ -35,3 +36,6 @@ data/readiness-postgres/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Unrelated local addon, excluded from this repository
+/car_rental_management/

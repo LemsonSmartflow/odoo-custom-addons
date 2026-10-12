@@ -61,7 +61,8 @@ class RentalVehicle(models.Model):
 
     daily_price = fields.Float(
         string='Daily Price',
-        required=True
+        default=0,
+        help='Legacy vehicle rate. New reservations use approved destination pricing rules.'
     )
 
     status = fields.Selection([
