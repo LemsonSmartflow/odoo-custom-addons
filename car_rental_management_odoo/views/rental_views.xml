@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
+<?xml version='1.0' encoding='utf-8'?>
 <odoo>
 
     <!-- ========================= -->
@@ -13,7 +12,7 @@
         <field name="arch" type="xml">
             <list string="Rentals">
 
-                <field name="reference"/>
+                <field name="reference" readonly="0" required="0" placeholder="Generated on save, or enter your reference"/>
                 <field name="reservation_id"/>
                 <field name="customer_id"/>
                 <field name="vehicle_id"/>
@@ -39,32 +38,16 @@
 
         <field name="arch" type="xml">
 
-            <form string="Rental">
+            <form string="Rental" class="o_car_rental_form">
 
                 <!-- WORKFLOW -->
                 <header>
 
-                    <button
-                        name="action_start_rental"
-                        string="Start Rental"
-                        type="object"
-                        class="btn-primary"
-                        invisible="status != 'draft'"
-                    />
+                    <button name="action_start_rental" string="Start Rental" type="object" class="btn-primary" invisible="status != 'draft'"/>
 
-                    <button
-                        name="action_return_vehicle"
-                        string="Return Vehicle"
-                        type="object"
-                        class="btn-primary"
-                        invisible="status != 'ongoing'"
-                    />
+                    <button name="action_return_vehicle" string="Return Vehicle" type="object" class="btn-primary" invisible="status != 'ongoing'"/>
 
-                    <field
-                        name="status"
-                        widget="statusbar"
-                        statusbar_visible="draft,ongoing,returned"
-                    />
+                    <field name="status" widget="statusbar" statusbar_visible="draft,ongoing,returned"/>
 
                 </header>
 
@@ -72,30 +55,26 @@
                 <sheet>
 
                     <!-- MAIN INFORMATION -->
-                    <group>
+                    <group col="1">
 
                         <group string="Rental Information">
 
-                            <field name="reference"/>
+                            <field name="reference" readonly="0" required="0" placeholder="Generated on save, or enter your reference"/>
 
                             <field name="reservation_id"/>
 
-                            <field name="customer_id"
-                                   readonly="1"/>
+                            <field name="customer_id" readonly="1"/>
 
-                            <field name="vehicle_id"
-                                   readonly="1"/>
+                            <field name="vehicle_id" readonly="1"/>
 
                         </group>
 
 
                         <group string="Dates">
 
-                            <field name="start_date"
-                                   readonly="1"/>
+                            <field name="start_date" readonly="1"/>
 
-                            <field name="return_date"
-                                   readonly="1"/>
+                            <field name="return_date" readonly="1"/>
 
                         </group>
 
@@ -103,7 +82,7 @@
 
 
                     <!-- MILEAGE -->
-                    <group string="Mileage">
+                    <group string="Mileage" col="1">
 
                         <group>
 
@@ -113,8 +92,7 @@
 
                         <group>
 
-                            <field name="final_mileage"
-                                   invisible="status == 'draft'"/>
+                            <field name="final_mileage" invisible="status == 'draft'"/>
 
                         </group>
 
@@ -124,8 +102,7 @@
                     <!-- AMOUNT -->
                     <group string="Rental Amount">
 
-                        <field name="amount"
-                               readonly="1"/>
+                        <field name="amount" readonly="1"/>
 
                     </group>
 
@@ -151,28 +128,16 @@
 
             <search string="Search Rentals">
 
-                <field name="reference"/>
+                <field name="reference" readonly="0" required="0" placeholder="Generated on save, or enter your reference"/>
                 <field name="reservation_id"/>
                 <field name="customer_id"/>
                 <field name="vehicle_id"/>
 
-                <filter
-                    name="draft"
-                    string="Draft"
-                    domain="[('status', '=', 'draft')]"
-                />
+                <filter name="draft" string="Draft" domain="[('status', '=', 'draft')]"/>
 
-                <filter
-                    name="ongoing"
-                    string="Ongoing"
-                    domain="[('status', '=', 'ongoing')]"
-                />
+                <filter name="ongoing" string="Ongoing" domain="[('status', '=', 'ongoing')]"/>
 
-                <filter
-                    name="returned"
-                    string="Returned"
-                    domain="[('status', '=', 'returned')]"
-                />
+                <filter name="returned" string="Returned" domain="[('status', '=', 'returned')]"/>
 
             </search>
 
@@ -198,12 +163,6 @@
     <!-- RENTAL MENU -->
     <!-- ========================= -->
 
-    <menuitem
-        id="menu_car_rental_rental"
-        name="Rentals"
-        parent="menu_car_rental_root"
-        action="action_car_rental_rental"
-        sequence="40"
-    />
+    <menuitem id="menu_car_rental_rental" name="Rentals" parent="menu_car_rental_root" action="action_car_rental_rental" sequence="40"/>
 
 </odoo>

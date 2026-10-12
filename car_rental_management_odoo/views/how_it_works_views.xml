@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <odoo>
     <record id="view_rental_how_it_works" model="ir.ui.view">
         <field name="name">car.rental.how.it.works</field>
         <field name="model">car.rental.dashboard</field>
         <field name="priority">99</field>
         <field name="arch" type="xml">
-            <form string="How It Works" create="0" edit="0" delete="0" duplicate="0">
+            <form string="How It Works" create="0" edit="0" delete="0" duplicate="0" class="o_car_rental_form">
                 <sheet>
                     <h1>How It Works</h1>
                     <p>A practical guide from the customer's first enquiry to final payment and the vehicle's next booking. Use the same customer, reservation and rental records throughout the cycle.</p>
@@ -35,20 +35,20 @@
                             <h2>Prepare the business once</h2>
                             <ol>
                                 <li>In <strong>Configuration → Vehicle Categories and Destinations</strong>, create the categories and destinations you actually serve.</li>
-                                <li>In <strong>Configuration → Pricing Rules</strong>, enter daily rates, duration bands, validity dates and the deposit ratio. A manager must click <strong>Approve Rate</strong>. Draft example rates cannot confirm bookings.</li>
-                                <li>In <strong>Fleet → Vehicles</strong>, add the registration, category, photo, odometer and compliance documents/expiry dates. Complete each setup vehicle and click <strong>Activate Vehicle</strong>. Setup records are placeholders, not ready-to-rent cars.</li>
+                                <li>In <strong>Configuration → Pricing Rules</strong>, enter daily rates, duration bands, validity dates and the deposit ratio and dirty-return cleaning fee. A manager must click <strong>Approve Rate</strong>. Draft example rates cannot confirm bookings.</li>
+                                <li>In <strong>Fleet → Vehicles</strong>, add the registration, category, photo, odometer and compliance documents/expiry dates. Use the number plate as Fleet ID; registration fills automatically. Activate the completed vehicle. Only real registered vehicles appear in dashboard totals.</li>
                                 <li>In <strong>Configuration → Settings</strong>, configure rental/damage income accounts, the deposit liability account, maintenance expense account, sales journal, bank/cash journal and rental service product. Configure sales tax if applicable and check the company's accounting currency and customer receivable account.</li>
                                 <li>Add approved agreement terms. Decide whether full rental payment, valid compliance documents and a working tracker are required at pickup, and set the late-return grace period.</li>
                                 <li>Assign users the appropriate rental roles. Buttons and financial menus depend on permissions.</li>
                             </ol>
-                            <p><strong>Deposit calculation:</strong> agreed daily rate × deposit ratio. It is calculated from one daily rate, separately from the rental total. For example, a daily rate of 500 and a ratio of 1 require a 500 deposit, even for a three-day rental. These numbers are illustrative.</p>
+                            <p><strong>Deposit calculation:</strong> agreed daily rate × deposit ratio. It is calculated from one daily rate, separately from the rental total. The pricing screen shows the Pula deposit amount, defaulting to the full daily rate, with a 50% minimum. For example, a daily rate of 500 and a ratio of 1 require a 500 deposit, even for a three-day rental. These numbers are illustrative.</p>
                         </page>
                         <page string="1. Welcome and Book" name="guide_booking">
                             <h2>1. Register or find the customer</h2>
-                            <p>Open <strong>Customers</strong> and search before creating a duplicate. Enter the name, identification number, contact details, driving licence and expiry date. Attach supporting documents. Confirm that the licence covers the rental dates.</p>
+                            <p>Open <strong>Customers</strong> and search before creating a duplicate. Enter the name, Omang/passport number, date of birth, physical and postal addresses, licence number, issue date and expiry. Upload either Omang or passport in its document section, plus the driving licence. The customer must be at least 21 on pickup and the licence must cover the full hire.</p>
                             <button name="%(action_car_rental_customer)d" type="action" string="Open Customers" class="btn-secondary"/>
                             <h2>2. Prepare the reservation and quote</h2>
-                            <p>Open <strong>Bookings → Reservations → New</strong>. Select the customer, destination, vehicle category, start/end dates and scheduled pickup/return times. Click <strong>Calculate Price</strong>. Review the number of days, daily rate, tax, total and required deposit with the customer.</p>
+                            <p>Open <strong>Bookings → Reservations → New</strong>. Select the customer, destination, vehicle category, pickup and return date/time. Click <strong>Calculate Price</strong>. Each started 24-hour period is one rental day. Review the rental days, daily rate, tax, total, dirty-return fee and required deposit with the customer.</p>
                             <p>Select an available vehicle or click <strong>Allocate Vehicle</strong>. You can also start from a vehicle's preview using its booking button. Allocation checks for overlapping bookings; a car currently rented may be booked for a future free period, but cannot be handed over until it is returned and cleared.</p>
                             <p>For a special rate, use <strong>Price Override</strong>: enter the proposed rate and reason, request approval and have a manager approve it before confirmation. Do not change a sales quotation to bypass the agreed booking price.</p>
                             <h2>3. Confirm, then create the rental</h2>
@@ -63,8 +63,8 @@
                             <h2>5. Collect the security deposit</h2>
                             <p>In the rental's <strong>Payments</strong> tab, click <strong>Collect Deposit</strong>, check the amount and click <strong>Post Deposit Transaction</strong>. The deposit is held separately from rental revenue. A rental receipt does not satisfy the deposit requirement.</p>
                             <h2>6. Sign and inspect before giving out the keys</h2>
-                            <p>In <strong>Agreement</strong>, review the terms, enter the customer's name, capture the signature and click <strong>Acknowledge Agreement</strong>. Use <strong>Print Agreement</strong> for the agreement document.</p>
-                            <p>Click <strong>Pickup Inspection</strong>. Record the actual inspection time, inspector, odometer, fuel, exterior/interior/tyres/accessories and existing damage. Attach photos, enter the customer's acknowledgement/name and capture the signature. Save and click <strong>Complete Inspection</strong>.</p>
+                            <p>In <strong>Agreement</strong>, review the terms, verify the automatically filled customer name, capture the signature and click <strong>Acknowledge Agreement</strong>. Use <strong>Print Agreement</strong> for the agreement document.</p>
+                            <p>Click <strong>Pickup Inspection</strong>. Record the actual inspection time, inspector, odometer, fuel, exterior/interior/tyres/accessories and existing damage. Attach photos, verify the automatically filled customer name and capture the signature. Save and click <strong>Complete Inspection</strong>.</p>
                             <h2>7. Start the rental</h2>
                             <p>Return to the rental and click <strong>Start Rental</strong>. Pickup requires a confirmed reservation, completed pickup inspection, acknowledged agreement, the required posted deposit, a ready vehicle and any compliance/tracker checks enabled in settings. If full payment is required, posted rental receipts must cover the rental total. The rental becomes <strong>Ongoing</strong> and the car becomes <strong>Rented</strong>.</p>
                             <button name="%(action_car_rental_rental)d" type="action" string="Open Rentals" class="btn-secondary"/>
@@ -75,9 +75,9 @@
                             <p>Click <strong>Return Vehicle</strong> on the rental. Return mileage cannot be lower than pickup mileage. The rental becomes <strong>Returned</strong>; the vehicle moves into inspection or damage handling. Late charges are calculated using the actual return time and the configured grace period.</p>
                             <h2>9. Assess and bill additional charges</h2>
                             <p>For a late return, use <strong>Create / Open Late Return Invoice</strong> in the rental's Payments tab and post the invoice. New damage creates an assessment under <strong>Fleet → Damage Assessments</strong>. A manager reviews the evidence/cost and clicks <strong>Approve Charge</strong>. Finance creates and posts the <strong>Damage Invoice</strong>.</p>
-                            <p>Finance can use <strong>Apply Deposit</strong> on the approved damage case to settle its posted invoice, up to the deposit held and the invoice's outstanding balance. If damage exceeds the deposit, collect the remaining amount against that damage invoice using its standard accounting payment workflow. Settle late invoices through their standard invoice payment workflow too. <strong>Record Payment</strong> on the rental is for the base rental invoice.</p>
+                            <p>For an existing confirmed booking without a cleaning fee, a manager can configure/approve the linked rule and use Refresh Cleaning Fee before the agreement is signed or the car is handed over. A dirty return automatically creates a draft cleaning invoice using the fee captured from the booking pricing rule. Post it, then use <strong>Apply Deposit to Cleaning</strong> in Payments; any fee above the deposit remains payable. Finance can use <strong>Apply Deposit</strong> on the approved damage case to settle its posted invoice, up to the deposit held and the invoice's outstanding balance. If damage exceeds the deposit, collect the remaining amount against that damage invoice using its standard accounting payment workflow. Settle late invoices through their standard invoice payment workflow too. <strong>Record Payment</strong> on the rental is for the base rental invoice.</p>
                             <h2>10. Refund and reconcile</h2>
-                            <p>After inspecting the return and settling assessed damage invoices, use <strong>Refund Remaining Deposit</strong> in the rental's Payments tab and post the transaction. If there is no damage, refund the full deposit held. Check <strong>Payments → Outstanding Invoices</strong> for any remaining rental, damage or late charges.</p>
+                            <p>After inspecting the return and settling assessed damage and cleaning invoices, use <strong>Refund Remaining Deposit</strong> in the rental's Payments tab and post the transaction. If there is no damage, refund the full deposit held. Check <strong>Payments → Outstanding Invoices</strong> for any remaining rental, damage or late charges.</p>
                             <p>Posting a receipt or refund records the accounting entry. Staff must also collect or return the money through the actual cash, bank or card process; this module does not send bank transfers automatically.</p>
                             <h2>11. Repair, clean and release</h2>
                             <p>Fleet staff request and complete any necessary repairs in Maintenance, record work and costs, and resolve the damage case. On the vehicle, click <strong>Send to Cleaning</strong>. After cleaning, click <strong>Release Vehicle</strong>. The car becomes available for its next hire. Review the completion checklist in Start Here and keep the documents attached to the rental.</p>
@@ -88,7 +88,7 @@
                             <ul>
                                 <li><strong>Rental amount:</strong> the agreed hire charge including configured tax.</li>
                                 <li><strong>Paid total / rental balance:</strong> posted base rental receipts and the remaining base rental charge.</li>
-                                <li><strong>Total Customer Balance:</strong> outstanding posted rental-linked invoices, including damage and late charges; if no posted base rental invoice exists, the rental balance is also included. Check draft invoices separately before closing the cycle.</li>
+                                <li><strong>Total Customer Balance:</strong> outstanding posted rental-linked invoices, including damage and late charges; if no posted base rental invoice exists, the rental balance is also included. Check draft invoices separately before closing the cycle. Cleaning invoices also contribute to the outstanding balance once posted.</li>
                                 <li><strong>Deposit held:</strong> posted collections less posted refunds and damage applications. It is customer money held as a liability, not rental income.</li>
                             </ul>
                             <p><strong>Example:</strong> three days at 500, no tax, and a deposit ratio of 1 means a rental invoice of 1,500 plus a separately collected deposit of 500. With no damage, refund 500 after inspection. With approved damage of 200, post its invoice, apply 200 of the deposit and refund the remaining 300. Settle any late invoice separately.</p>

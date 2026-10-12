@@ -43,7 +43,7 @@ class Vehicle(models.Model):
     @api.depends('fleet_id', 'registration_number', 'brand', 'model')
     def _compute_display_name(self):
         for record in self:
-            record.display_name = ' Â· '.join(filter(None, [record.fleet_id, record.registration_number, ' '.join(filter(None, [record.brand, record.model]))]))
+            record.display_name = ' - '.join(dict.fromkeys(filter(None, [record.fleet_id, record.registration_number, ' '.join(filter(None, [record.brand, record.model]))])))
 
     @api.depends('mileage', 'next_service_mileage', 'next_service_date')
     def _compute_service_due(self):
@@ -75,16 +75,16 @@ class Vehicle(models.Model):
                 raise ValidationError('The vehicle is not available for rental.')
             if vehicle.company_id.rental_block_expired_documents:
                 today = fields.Date.today()
-                for field in ('insurance_expiry', 'road_license_expiry', 'fitness_expiry'):
+                for field in ('insurance_expiry', 'road_license_expiry'):
                     if not vehicle[field] or vehicle[field] < today:
-                        raise ValidationError('Valid insurance, road licence and fitness dates are required before pickup.')
+                        raise ValidationError('Valid insurance and road licence dates are required before pickup.')
             if vehicle.company_id.rental_block_tracker and not vehicle.tracker_working:
                 raise ValidationError('The vehicle tracker must be operational.')
 
     def _refresh_reserved_status(self):
         for vehicle in self:
             if vehicle.status in ('available', 'reserved'):
-                reserved = self.env['car.rental.reservation'].search_count([('vehicle_id', '=', vehicle.id), ('status', '=', 'confirmed'), ('end_date', '>=', fields.Date.today()), ('rental_ids', '=', False)])
+                reserved = self.env['car.rental.reservation'].search_count([('vehicle_id', '=', vehicle.id), ('status', '=', 'confirmed'), ('expected_return_datetime', '>=', fields.Datetime.now()), ('rental_ids', '=', False)])
                 vehicle._operational_update({'status': 'reserved' if reserved else 'available'})
 
     def write(self, vals):
@@ -181,7 +181,7 @@ class Vehicle(models.Model):
             vehicles = self.with_company(company).search([('company_id', '=', company.id), ('status', '!=', 'decommissioned')])
             for vehicle in vehicles:
                 vehicle._refresh_reserved_status()
-                for field, label in [('insurance_expiry', 'Insurance expiry'), ('road_license_expiry', 'Road licence expiry'), ('fitness_expiry', 'Fitness expiry')]:
+                for field, label in [('insurance_expiry', 'Insurance expiry'), ('road_license_expiry', 'Road licence expiry')]:
                     if vehicle[field] and vehicle[field] <= fields.Date.today() + timedelta(days=30):
                         vehicle._schedule_once(activity, label, vehicle.responsible_id, vehicle[field])
                 if vehicle.service_due:

@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record id="reservation_cleaning_policy_business" model="ir.ui.view">
+        <field name="name">rental.reservation.cleaning.policy</field><field name="model">car.rental.reservation</field>
+        <field name="inherit_id" ref="reservation_form_proposal"/>
+        <field name="arch" type="xml"><xpath expr="//header" position="inside"><button name="action_refresh_cleaning_fee" type="object" string="Refresh Cleaning Fee" invisible="status != 'confirmed'" groups="car_rental_management_odoo.group_rental_manager"/></xpath></field>
+    </record>
+    <record id="customer_profile_business" model="ir.ui.view">
+        <field name="name">rental.customer.business.profile</field>
+        <field name="model">car.rental.customer</field>
+        <field name="inherit_id" ref="customer_form_connected"/>
+        <field name="arch" type="xml">
+            <field name="cin" position="after"><field name="date_of_birth" required="1"/></field>
+            <field name="driving_license" position="after"><field name="license_issue_date" required="1"/></field>
+            <field name="address" position="replace"><field name="physical_address" required="1"/><field name="postal_address" required="1"/></field>
+            <xpath expr="//sheet" position="inside"><div class="alert alert-info" role="status">Drivers must be at least 21 on pickup. Upload either Omang or passport, plus the driving licence. The licence must remain valid through return.</div></xpath>
+        </field>
+    </record>
+    <record id="vehicle_identity_business" model="ir.ui.view">
+        <field name="name">rental.vehicle.business.identity</field>
+        <field name="model">car.rental.vehicle</field>
+        <field name="inherit_id" ref="vehicle_form_proposal"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='specifications']//field[@name='registration_number']" position="before"><field name="fleet_id" string="Fleet ID / Number Plate" required="1"/></xpath>
+            <xpath expr="//page[@name='specifications']//field[@name='registration_number']" position="attributes"><attribute name="readonly">1</attribute></xpath>
+            <xpath expr="//h1/field[@name='registration_number']" position="attributes"><attribute name="readonly">1</attribute></xpath>
+            <xpath expr="//div[@class='text-muted']/field[@name='fleet_id']" position="attributes"><attribute name="readonly">1</attribute></xpath>
+        </field>
+    </record>
+    <record id="rental_schedule_business" model="ir.ui.view">
+        <field name="name">rental.schedule.business</field>
+        <field name="model">car.rental.rental</field>
+        <field name="inherit_id" ref="rental_form_proposal"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='rental_summary']/field[@name='start_date']" position="replace"><field name="pickup_datetime"/><field name="expected_return_datetime"/></xpath>
+            <xpath expr="//group[@name='rental_summary']/field[@name='return_date']" position="replace"/>
+        </field>
+    </record>
+    <record id="reservation_month_search" model="ir.ui.view">
+        <field name="name">rental.reservation.month.search</field><field name="model">car.rental.reservation</field>
+        <field name="arch" type="xml"><search><field name="reference"/><field name="customer_id"/><field name="vehicle_id"/><field name="destination_id"/><filter name="pickup_month" string="Pickup Month" context="{'group_by': 'pickup_datetime:month'}"/></search></field>
+    </record>
+    <record id="action_car_rental_reservation" model="ir.actions.act_window">
+        <field name="search_view_id" ref="reservation_month_search"/>
+        <field name="context">{'search_default_pickup_month': 1}</field>
+    </record>
+    <record id="rental_month_search" model="ir.ui.view">
+        <field name="name">rental.month.search</field><field name="model">car.rental.rental</field>
+        <field name="arch" type="xml"><search><field name="reference"/><field name="customer_id"/><field name="vehicle_id"/><filter name="pickup_month" string="Pickup Month" context="{'group_by': 'pickup_datetime:month'}"/></search></field>
+    </record>
+    <record id="action_car_rental_rental" model="ir.actions.act_window">
+        <field name="search_view_id" ref="rental_month_search"/>
+        <field name="context">{'search_default_pickup_month': 1}</field>
+    </record>
+</odoo>

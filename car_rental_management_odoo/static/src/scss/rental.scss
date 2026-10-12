@@ -50,3 +50,25 @@
         img { max-width: 100%; max-height: 260px; border-radius: 12px; object-fit: contain; }
     }
 }
+
+// Keep rental forms readable with the chatter open and on smaller screens.
+.o_car_rental_form {
+    .o_inner_group {
+        grid-template-columns: minmax(120px, 25%) minmax(0, 1fr);
+        .o_wrap_label { white-space: normal; overflow-wrap: anywhere; }
+        .o_wrap_input { min-width: 0; }
+        .o_field_widget:not(.o_field_boolean):not(.o_field_image) { width: 100% !important; }
+    }
+    .o_field_many2one .o_field_many2one_selection,
+    .o_field_many2one .o-autocomplete,
+    .o_field_char .o_input { width: 100%; min-width: 0; }
+    .o_form_uri { white-space: normal !important; overflow: visible; text-overflow: clip; }
+    .o_form_uri > span:first-child,
+    .o_field_char:not(.o_input),
+    .o-autocomplete--dropdown-item { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+    .oe_title { max-width: 100%; width: 100%; }
+    .oe_title .o_field_char { width: 100%; }
+    @media (max-width: 575px) {
+        .o_inner_group { grid-template-columns: minmax(0, 1fr); }
+    }
+}

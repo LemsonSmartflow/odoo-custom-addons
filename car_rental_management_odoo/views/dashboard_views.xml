@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
+<?xml version='1.0' encoding='utf-8'?>
 <odoo>
 
     <!-- ================================================== -->
@@ -22,10 +21,7 @@
 
         <field name="arch" type="xml">
 
-            <form string="Car Rental Dashboard"
-                  create="0"
-                  edit="0"
-                  delete="0">
+            <form string="Car Rental Dashboard" create="0" edit="0" delete="0" class="o_car_rental_form">
 
                 <sheet>
 
@@ -33,19 +29,16 @@
                         Car Rental Dashboard
                     </h1>
 
-                    <group>
+                    <group col="1">
 
                         <!-- VEHICLES -->
                         <group string="Vehicles">
 
-                            <field name="total_vehicles"
-                                   readonly="1"/>
+                            <field name="total_vehicles" readonly="1"/>
 
-                            <field name="available_vehicles"
-                                   readonly="1"/>
+                            <field name="available_vehicles" readonly="1"/>
 
-                            <field name="rented_vehicles"
-                                   readonly="1"/>
+                            <field name="rented_vehicles" readonly="1"/>
 
                         </group>
 
@@ -53,11 +46,9 @@
                         <!-- CUSTOMERS AND RENTALS -->
                         <group string="Customers &amp; Rentals">
 
-                            <field name="total_customers"
-                                   readonly="1"/>
+                            <field name="total_customers" readonly="1"/>
 
-                            <field name="ongoing_rentals"
-                                   readonly="1"/>
+                            <field name="ongoing_rentals" readonly="1"/>
 
                         </group>
 
@@ -67,8 +58,7 @@
                     <!-- FINANCIAL -->
                     <group string="Financial">
 
-                        <field name="revenue"
-                               readonly="1"/>
+                        <field name="revenue" readonly="1"/>
 
                     </group>
 
@@ -85,8 +75,7 @@
     <!-- DASHBOARD ACTION -->
     <!-- ================================================== -->
 
-    <record id="action_car_rental_dashboard"
-            model="ir.actions.act_window">
+    <record id="action_car_rental_dashboard" model="ir.actions.act_window">
 
         <field name="name">Dashboard</field>
         <field name="res_model">car.rental.dashboard</field>
@@ -100,12 +89,6 @@
     <!-- DASHBOARD MENU -->
     <!-- ================================================== -->
 
-    <menuitem
-        id="menu_car_rental_dashboard"
-        name="Dashboard"
-        parent="menu_car_rental_root"
-        action="action_car_rental_dashboard"
-        sequence="1"
-    />
+    <menuitem id="menu_car_rental_dashboard" name="Dashboard" parent="menu_car_rental_root" action="action_car_rental_dashboard" sequence="1"/>
 
 </odoo>

@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
+<?xml version='1.0' encoding='utf-8'?>
 <odoo>
 
     <!-- ========================= -->
@@ -39,16 +38,13 @@
 
         <field name="arch" type="xml">
 
-            <form string="Vehicle">
+            <form string="Vehicle" class="o_car_rental_form">
 
                 <sheet>
 
-                    <field name="image_1920"
-                           widget="image"
-                           class="oe_avatar"
-                           options="{'size': [150, 150]}"/>
+                    <field name="image_1920" widget="image" class="oe_avatar" options="{'size': [150, 150]}"/>
 
-                    <group>
+                    <group col="1">
 
                         <group string="Vehicle Information">
 
@@ -101,23 +97,11 @@
                 <field name="category"/>
                 <field name="status"/>
 
-                <filter
-                    name="available"
-                    string="Available"
-                    domain="[('status', '=', 'available')]"
-                />
+                <filter name="available" string="Available" domain="[('status', '=', 'available')]"/>
 
-                <filter
-                    name="rented"
-                    string="Rented"
-                    domain="[('status', '=', 'rented')]"
-                />
+                <filter name="rented" string="Rented" domain="[('status', '=', 'rented')]"/>
 
-                <filter
-                    name="maintenance"
-                    string="Maintenance"
-                    domain="[('status', '=', 'maintenance')]"
-                />
+                <filter name="maintenance" string="Maintenance" domain="[('status', '=', 'maintenance')]"/>
 
             </search>
 
@@ -143,12 +127,6 @@
     <!-- VEHICLE MENU -->
     <!-- ========================= -->
 
-    <menuitem
-        id="menu_car_rental_vehicle"
-        name="Vehicles"
-        parent="menu_car_rental_root"
-        action="action_car_rental_vehicle"
-        sequence="20"
-    />
+    <menuitem id="menu_car_rental_vehicle" name="Vehicles" parent="menu_car_rental_root" action="action_car_rental_vehicle" sequence="20"/>
 
 </odoo>

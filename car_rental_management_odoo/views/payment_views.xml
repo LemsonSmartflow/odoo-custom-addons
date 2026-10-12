@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
+<?xml version='1.0' encoding='utf-8'?>
 <odoo>
 
     <!-- ========================= -->
@@ -37,11 +36,11 @@
 
         <field name="arch" type="xml">
 
-            <form string="Payment">
+            <form string="Payment" class="o_car_rental_form">
 
                 <sheet>
 
-                    <group>
+                    <group col="1">
 
                         <group string="Payment Information">
 
@@ -58,16 +57,13 @@
 
                         <group string="Amounts">
 
-                            <field name="total_amount"
-                                   readonly="1"/>
+                            <field name="total_amount" readonly="1"/>
 
                             <field name="paid_amount"/>
 
-                            <field name="remaining_amount"
-                                   readonly="1"/>
+                            <field name="remaining_amount" readonly="1"/>
 
-                            <field name="status"
-                                   readonly="1"/>
+                            <field name="status" readonly="1"/>
 
                         </group>
 
@@ -100,23 +96,11 @@
                 <field name="payment_method"/>
                 <field name="status"/>
 
-                <filter
-                    name="unpaid"
-                    string="Unpaid"
-                    domain="[('status', '=', 'unpaid')]"
-                />
+                <filter name="unpaid" string="Unpaid" domain="[('status', '=', 'unpaid')]"/>
 
-                <filter
-                    name="partial"
-                    string="Partially Paid"
-                    domain="[('status', '=', 'partial')]"
-                />
+                <filter name="partial" string="Partially Paid" domain="[('status', '=', 'partial')]"/>
 
-                <filter
-                    name="paid"
-                    string="Paid"
-                    domain="[('status', '=', 'paid')]"
-                />
+                <filter name="paid" string="Paid" domain="[('status', '=', 'paid')]"/>
 
             </search>
 
@@ -142,12 +126,6 @@
     <!-- PAYMENT MENU -->
     <!-- ========================= -->
 
-    <menuitem
-        id="menu_car_rental_payment"
-        name="Payments"
-        parent="menu_car_rental_root"
-        action="action_car_rental_payment"
-        sequence="50"
-    />
+    <menuitem id="menu_car_rental_payment" name="Payments" parent="menu_car_rental_root" action="action_car_rental_payment" sequence="50"/>
 
 </odoo>

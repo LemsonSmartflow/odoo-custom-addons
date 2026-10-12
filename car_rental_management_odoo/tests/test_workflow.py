@@ -32,7 +32,12 @@ class TestConnectedWorkflow(TransactionCase):
             'first_name': 'Workflow', 'last_name': 'Test', 'cin': 'TEST-ID',
             'driving_license': 'TEST-LICENCE',
             'license_expiry': fields.Date.today() + timedelta(days=365),
+            'license_issue_date': fields.Date.today() - timedelta(days=365),
+            'date_of_birth': fields.Date.today().replace(year=fields.Date.today().year - 30),
+            'physical_address': 'Test street', 'postal_address': 'Test PO box',
         })
+        identity = self.env['ir.attachment'].create({'name': 'Test identity.png', 'datas': self.photo, 'res_model': 'car.rental.customer', 'res_id': self.customer.id})
+        self.customer.write({'omang_document_ids': [fields.Command.set(identity.ids)], 'license_document_ids': [fields.Command.set(identity.ids)]})
         self.vehicle = self.env['car.rental.vehicle'].create({
             'registration_number': 'WORKFLOW-TEST', 'brand': 'Test', 'model': 'Car',
             'daily_price': 100, 'mileage': 1000, 'category_id': self.category.id,
@@ -180,8 +185,8 @@ class TestConnectedWorkflow(TransactionCase):
         self.assertEqual(self.reservation.action_create_rental()['res_id'], rental.id)
         self.assertEqual(rental.initial_mileage, 1000)
         self.assertEqual(rental.amount, 300)
-        self.assertTrue(self.reservation.reference.startswith('RES/'))
-        self.assertTrue(rental.reference.startswith('RENT/'))
+        self.assertTrue(self.reservation.reference.startswith('RES '))
+        self.assertTrue(rental.reference.startswith('REN '))
         self.assertEqual(self.customer.rental_count, 1)
         self.assertEqual(self.vehicle.rental_count, 1)
         with self.assertRaises(ValidationError), self.cr.savepoint():
@@ -419,7 +424,7 @@ class TestConnectedWorkflow(TransactionCase):
         self.vehicle.write({'insurance_expiry': future, 'road_license_expiry': future, 'fitness_expiry': future})
         self.reservation.action_confirm()
         with self.assertRaises(ValidationError), self.cr.savepoint():
-            self.env.ref('car_rental_management_odoo.demio_setup_1').action_book()
+            self.env['car.rental.vehicle'].create({'brand': 'Test', 'model': 'Setup', 'status': 'setup'}).action_book()
 
     def test_agreement_report_and_new_views(self):
         rental = self.rental()

@@ -251,7 +251,7 @@ class Reservation(models.Model):
         if {'destination_id', 'category_id', 'start_date', 'end_date', 'vehicle_id', 'pickup_datetime', 'expected_return_datetime'}.intersection(vals) and any(r.status != 'draft' for r in self):
             raise ValidationError('Confirmed booking details are locked. Cancel an unused reservation and create a new one.')
         result = super().write(vals)
-        if {'destination_id', 'category_id', 'start_date', 'end_date', 'vehicle_id'}.intersection(vals):
+        if {'destination_id', 'category_id', 'start_date', 'end_date', 'vehicle_id', 'pickup_datetime', 'expected_return_datetime'}.intersection(vals):
             for record in self:
                 super(Reservation, record).write(record._price_values())
         return result

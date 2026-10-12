@@ -329,21 +329,25 @@ class Deposit(models.Model):
                     raise ValidationError('Settlement requires a returned and inspected rental, and cannot exceed the deposit held.')
                 if event.kind == 'refund':
                     unresolved = rental.damage_ids.filtered(lambda d: d.state == 'draft' or (d.cost > 0 and (not d.invoice_id or d.invoice_id.state != 'posted' or d.invoice_id.amount_residual > 0)))
-                    if unresolved:
-                        raise ValidationError('Assess damages and apply the deposit to approved damage invoices before refunding.')
+                    cleaning = rental.invoice_ids.filtered(lambda m: m.rental_invoice_kind == 'cleaning' and m.state != 'cancel' and (m.state != 'posted' or m.amount_residual > 0))
+                    if unresolved or cleaning:
+                        raise ValidationError('Settle damage and cleaning charges before refunding the remaining deposit.')
                     debit, credit = liability, bank
                 else:
                     damage = event.damage_id
-                    if not damage or damage.rental_id != rental or damage.state == 'draft' or damage.invoice_id.state != 'posted':
-                        raise ValidationError('Choose an approved damage case with a posted invoice for this rental.')
-                    if event.amount > damage.invoice_id.amount_residual + 0.005:
-                        raise ValidationError('Deposit retention cannot exceed the damage invoice balance.')
+                    charge_invoice = damage.invoice_id if damage else event.charge_invoice_id
+                    if damage and (damage.rental_id != rental or damage.state == 'draft'):
+                        raise ValidationError('Choose an approved damage case for this rental.')
+                    if not charge_invoice or charge_invoice.state != 'posted' or charge_invoice.car_rental_id != rental or charge_invoice.move_type != 'out_invoice' or (not damage and charge_invoice.rental_invoice_kind != 'cleaning'):
+                        raise ValidationError('Choose a posted damage or cleaning invoice for this rental.')
+                    if event.amount > charge_invoice.amount_residual + 0.005:
+                        raise ValidationError('Deposit application cannot exceed the charge invoice balance.')
                     debit = liability
-                    credit = damage.invoice_id.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable')[:1].account_id
+                    credit = charge_invoice.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable')[:1].account_id
             move = _journal_entry(event.env, event.company_id, journal, '%s: %s' % (rental.reference, event.kind), event.date, debit, credit, event.amount, partner)
             super(Deposit, event).write({'state': 'posted', 'account_move_id': move.id})
             if event.kind == 'retain':
-                lines = event.damage_id.invoice_id.line_ids.filtered(lambda l: l.account_id == credit)
+                lines = charge_invoice.line_ids.filtered(lambda l: l.account_id == credit)
                 (lines + move.line_ids.filtered(lambda l: l.account_id == credit)).reconcile()
 
     @api.model_create_multi

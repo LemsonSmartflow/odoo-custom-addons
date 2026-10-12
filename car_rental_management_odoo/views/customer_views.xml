@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
+<?xml version='1.0' encoding='utf-8'?>
 <odoo>
 
     <!-- ========================= -->
@@ -36,11 +35,11 @@
 
         <field name="arch" type="xml">
 
-            <form string="Customer">
+            <form string="Customer" class="o_car_rental_form">
 
                 <sheet>
 
-                    <group>
+                    <group col="1">
 
                         <group string="Personal Information">
 
@@ -126,24 +125,14 @@
     <!-- MAIN MENU -->
     <!-- ========================= -->
 
-    <menuitem
-        id="menu_car_rental_root"
-        name="Car Rental"
-        sequence="10"
-    />
+    <menuitem id="menu_car_rental_root" name="Car Rental" sequence="10"/>
 
 
     <!-- ========================= -->
     <!-- CUSTOMER MENU -->
     <!-- ========================= -->
 
-    <menuitem
-        id="menu_car_rental_customer"
-        name="Customers"
-        parent="menu_car_rental_root"
-        action="action_car_rental_customer"
-        sequence="10"
-    />
+    <menuitem id="menu_car_rental_customer" name="Customers" parent="menu_car_rental_root" action="action_car_rental_customer" sequence="10"/>
 
 
 </odoo>

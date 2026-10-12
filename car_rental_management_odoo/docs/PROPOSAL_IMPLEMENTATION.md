@@ -23,7 +23,7 @@ Source: **Car Rental Management Proposal.pdf**, 26 pages, supplied on 8 October 
 The owner has not yet supplied approved rates, registrations/VINs or agreement terms. Consequently:
 
 - Example pricing rules are **drafts** and cannot confirm bookings. Replace the illustrative amounts/duration bands with approved values, then explicitly approve each rule.
-- The ten proposed Demios are **Needs Setup**, without invented registration numbers. Enter real details, category, insurance/road licence/fitness dates, service schedule and photos, then activate them. They are excluded from allocation until configured.
+- Create actual vehicles with their number plates/Fleet IDs, category, insurance and road licence dates, service schedule and photos. No sample fleet is installed; incomplete setup vehicles are excluded from dashboard totals and allocation.
 - **Car Rental → Configuration → Settings** requires the actual company accounts, receipt journal, sales journal, service product, applicable sales tax and approved rental terms. Company currency is taken from Odoo; choose the company's approved currency before transacting. No account numbers or tax treatment are fabricated.
 - The default policy blocks pickup without valid compliance, signed terms, completed pickup inspection, collected deposit and full posted rental receipts. Management can change the payment/compliance/tracker policy. Missing terms still block agreement acknowledgement.
 - A late return beyond the configurable grace period is charged per commenced additional 24-hour period at the agreed daily rate. Confirm this policy with the business before production use.
@@ -67,7 +67,7 @@ No SMS, WhatsApp, payment gateway, GPS or production hosting integration is inst
 
 ## Acceptance checklist
 
-- Configure all ten actual vehicles and grant a separate test user each role.
+- Configure your actual vehicles and grant a separate test user each role.
 - Test a five-day Maun booking with an approved 500/day rule: rental subtotal 2,500; deposit 500. Review taxes independently under approved company configuration.
 - Reject overlapping bookings and allow a new rental starting on the previous rental's scheduled end date. The date intervals are half-open; inspect same-day turnaround policies before production.
 - Reject missing rules, expired compliance, unsigned agreements, incomplete inspections and unapproved overrides.
@@ -83,3 +83,13 @@ No SMS, WhatsApp, payment gateway, GPS or production hosting integration is inst
 The Car Rental menu groups Reservations and Rentals under **Bookings**; Vehicles, Inspections, Damage Assessments and Maintenance under **Fleet**; and Receipts, Invoices, Deposits & Refunds and Outstanding Invoices under **Payments**. Financial screens retain their accountant permissions. Invoice lists show only rental-linked invoices.
 
 Each rental has one **Payments** tab containing receipts, security deposit collection/refunds and late return charges. Pickup/return, agreement, inspections/damage and documents remain separate operational sections.
+
+## Operational upgrade (19.0.4.0.0)
+
+No demo fleet or example pricing is installed. The migration removes only unused, unregistered original Demio setup records and unused draft example rates; real vehicles, bookings and attachments are preserved. Dashboard values use the active company and actual registered vehicles.
+
+Fleet ID is the registration number and synchronises both ways. Fitness fields are hidden and no longer block booking/compliance checks. Customer profiles require physical/postal addresses, DOB and licence issue/expiry; confirmation requires age 21 on pickup, full-period licence validity and either Omang or passport plus a licence attachment. Historical unsorted attachments remain visible for manual classification.
+
+Booking timestamps are authoritative. Duration is rounded up by elapsed 24-hour periods; adjacent time slots can share a date. Late-return grace remains configurable; each commenced overdue 24-hour period after grace incurs one agreed daily rate. New references use RES/REN plus pickup month and a three-digit counter; counters are separate by company, month and year. Existing references remain intact.
+
+Pricing-rule deposits remain 50?100% of the agreed daily rate and are protected across reservation/rental creation and updates. Initial deposit collection below 50% is rejected, and handover still requires the full required deposit. Cleaning fees are configurable per rule and captured at booking. A dirty return creates a draft cleaning invoice; finance posts it and can reconcile it using the held deposit. Unpaid cleaning invoices block deposit refunds. No money is transferred automatically.

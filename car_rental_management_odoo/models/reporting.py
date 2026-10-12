@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 from .workflow import window
 
@@ -8,7 +8,7 @@ from .workflow import window
 class Dashboard(models.Model):
     _inherit = 'car.rental.dashboard'
 
-    company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
+    company_id = fields.Many2one('res.company', compute='_compute_company', search='_search_company', store=False)
     currency_id = fields.Many2one(related='company_id.currency_id')
     reserved_vehicles = fields.Integer(compute='_compute_dashboard')
     maintenance_vehicles = fields.Integer(compute='_compute_dashboard')
@@ -23,10 +23,30 @@ class Dashboard(models.Model):
     period_end = fields.Date(default=fields.Date.today, required=True)
     vehicle_ids = fields.Many2many('car.rental.vehicle', compute='_compute_dashboard')
 
+    @api.depends_context('company')
+    def _compute_company(self):
+        for dashboard in self:
+            dashboard.company_id = self.env.company
+
+    def _search_company(self, operator, value):
+        company = self.env.company.id
+        if operator in ('in', 'not in'):
+            matches = company in value
+            if operator == 'not in':
+                matches = not matches
+        elif operator in ('=', '!='):
+            matches = company == value
+            if operator == '!=':
+                matches = not matches
+        else:
+            return [('id', '=', 0)]
+        return [] if matches else [('id', '=', 0)]
+
+    @api.depends_context('company')
     def _compute_dashboard(self):
         for dashboard in self:
             domain = [('company_id', '=', dashboard.company_id.id)]
-            vehicles = self.env['car.rental.vehicle'].search(domain)
+            vehicles = self.env['car.rental.vehicle'].search(domain + [('registration_number', '!=', False), ('status', 'not in', ['setup', 'decommissioned'])])
             rentals = self.env['car.rental.rental'].search(domain)
             invoices = rentals.sudo().mapped('invoice_ids').filtered(lambda m: m.state == 'posted')
             dashboard.total_vehicles = len(vehicles)
@@ -39,7 +59,7 @@ class Dashboard(models.Model):
             dashboard.revenue = sum(rentals.mapped('paid_total'))
             dashboard.outstanding_balance = sum(rentals.mapped('financial_balance'))
             dashboard.deposits_held = sum(rentals.mapped('deposit_held'))
-            dashboard.rental_income = sum(invoices.filtered(lambda m: m.rental_invoice_kind in ('rental', 'late')).mapped('amount_untaxed_signed'))
+            dashboard.rental_income = sum(invoices.filtered(lambda m: m.rental_invoice_kind in ('rental', 'late', 'cleaning')).mapped('amount_untaxed_signed'))
             dashboard.damage_recovery = sum(invoices.filtered(lambda m: m.rental_invoice_kind == 'damage').mapped('amount_untaxed_signed'))
             requests = self.env['maintenance.request'].sudo().search(domain + [('rental_vehicle_id', '!=', False)])
             dashboard.maintenance_costs = sum(requests.mapped('rental_cost'))
