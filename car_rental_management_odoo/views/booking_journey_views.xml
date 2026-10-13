@@ -1,0 +1,90 @@
+<odoo>
+    <record id="access_booking_journey" model="ir.model.access">
+        <field name="name">Booking journey staff</field><field name="model_id" ref="model_car_rental_journey"/>
+        <field name="group_id" ref="group_car_rental_agent"/>
+        <field name="perm_read" eval="True"/><field name="perm_write" eval="True"/><field name="perm_create" eval="True"/>
+    </record>
+    <record id="rule_booking_journey_company" model="ir.rule">
+        <field name="name">Booking journey company isolation</field><field name="model_id" ref="model_car_rental_journey"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="booking_journey_list" model="ir.ui.view">
+        <field name="name">Booking journeys</field><field name="model">car.rental.journey</field>
+        <field name="arch" type="xml"><list><field name="name"/><field name="customer_id"/><field name="pickup_datetime"/><field name="vehicle_id"/><field name="step" widget="badge"/></list></field>
+    </record>
+    <record id="booking_journey_form" model="ir.ui.view">
+        <field name="name">Guided booking</field><field name="model">car.rental.journey</field>
+        <field name="arch" type="xml">
+            <form string="Booking Journey" class="o_car_rental_form">
+                <header>
+                    <button name="action_back" type="object" string="Back / Review Booking" invisible="step in ['customer', 'closed', 'cancelled']"/>
+                    <button name="action_continue" type="object" string="Continue" class="btn-primary" invisible="step in ['closed', 'cancelled', 'handover', 'settlement']"/>
+                    <button name="action_continue" type="object" string="Hand Over Vehicle" class="btn-primary" invisible="step != 'handover'" confirm="Confirm the keys and vehicle are being handed to the customer?"/>
+                    <button name="action_continue" type="object" string="Close Rental" class="btn-primary" invisible="step != 'settlement'" groups="group_rental_accountant"/>
+                    <button name="action_save_exit" type="object" string="Save &amp; Exit"/>
+                    <field name="step" widget="statusbar" options="{'clickable': False}" statusbar_visible="customer,details,quote,confirm,payment,pickup,handover,return,settlement,closed"/>
+                </header>
+                <sheet>
+                    <field name="reservation_id" invisible="1"/><field name="rental_id" invisible="1"/><field name="currency_id" invisible="1"/>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <div class="alert alert-info"><field name="guidance" nolabel="1"/></div>
+                    <group string="Customer" invisible="step != 'customer'">
+                        <field name="company_id" readonly="reservation_id"/>
+                        <field name="customer_id" domain="[('company_id', '=', company_id)]" context="{'default_company_id': company_id}" options="{'no_quick_create': True}"/>
+                        <button name="action_customer" type="object" string="Review Customer Documents" invisible="not customer_id"/>
+                    </group>
+                    <group string="Booking details" invisible="step != 'details'">
+                        <field name="destination_id" domain="[('company_id', '=', company_id)]"/>
+                        <field name="category_id" domain="[('company_id', '=', company_id)]"/>
+                        <field name="pickup_datetime"/><field name="expected_return_datetime"/>
+                        <field name="vehicle_id" domain="[('company_id', '=', company_id), ('category_id', '=', category_id), ('status', 'in', ['available', 'reserved', 'rented'])]"/>
+                        <div colspan="2" class="text-muted">Leave vehicle empty to allocate an available vehicle automatically. Availability is checked against both pickup and return times.</div>
+                    </group>
+                    <group string="Booking summary" invisible="step in ['customer', 'details']">
+                        <field name="customer_id" readonly="1"/><field name="vehicle_id" readonly="1"/>
+                        <field name="destination_id" readonly="1"/><field name="pickup_datetime" readonly="1"/><field name="expected_return_datetime" readonly="1"/>
+                        <field name="number_of_days" string="24-hour Rental Days"/><field name="amount" string="Hire Total" widget="monetary"/>
+                        <field name="deposit_required" string="Refundable Security Deposit"/>
+                        <field name="cleaning_fee" string="One-time Fee if Returned Dirty"/>
+                    </group>
+                    <field name="vehicle_image" widget="image" class="oe_avatar" invisible="not vehicle_id"/>
+                    <group string="Payment and security deposit" invisible="step != 'payment'">
+                        <button name="action_invoice" type="object" string="1. Create / Open Rental Invoice" groups="group_rental_accountant"/>
+                        <button name="action_payment" type="object" string="2. Record Rental Payment" groups="group_rental_accountant"/>
+                        <button name="action_deposit" type="object" string="3. Collect Security Deposit" groups="group_rental_accountant"/>
+                        <div colspan="2">An accountant must post the invoice and deposit receipt. Return here and click Continue to refresh progress.</div>
+                    </group>
+                    <group string="Agreement and inspections" invisible="step not in ['pickup', 'handover', 'return']">
+                        <button name="action_rental" type="object" string="Open Agreement and Rental"/>
+                        <button name="action_inspection" type="object" string="Open / Complete Inspection"/>
+                    </group>
+                    <group string="Settlement" invisible="step != 'settlement'">
+                        <button name="action_rental" type="object" string="Open Charges, Invoices and Deposit Refund"/>
+                        <div colspan="2">Post applicable late, cleaning and damage invoices. Apply approved deposit deductions, settle outstanding amounts and refund the remainder before closing.</div>
+                    </group>
+                    <group string="Linked records" invisible="not reservation_id">
+                        <button name="action_reservation" type="object" string="Reservation"/>
+                        <button name="action_rental" type="object" string="Rental and Payments" invisible="not rental_id"/>
+                        <button name="action_vehicle" type="object" string="Vehicle / Fleet Follow-up"/>
+                    </group>
+                </sheet><chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="action_booking_journeys" model="ir.actions.act_window">
+        <field name="name">Booking Journeys</field><field name="res_model">car.rental.journey</field><field name="view_mode">list,form</field>
+        <field name="domain">[('company_id', '=', allowed_company_ids[0])]</field>
+    </record>
+    <menuitem id="menu_booking_journeys" name="Booking Journeys" parent="menu_rental_bookings" action="action_booking_journeys" sequence="1"/>
+    <record id="reservation_journey_button" model="ir.ui.view">
+        <field name="name">Reservation journey</field><field name="model">car.rental.reservation</field><field name="inherit_id" ref="view_car_rental_reservation_form"/>
+        <field name="priority">100</field><field name="arch" type="xml"><xpath expr="//header" position="inside"><button name="action_booking_journey" type="object" string="Booking Journey"/></xpath></field>
+    </record>
+    <record id="rental_journey_button" model="ir.ui.view">
+        <field name="name">Rental journey</field><field name="model">car.rental.rental</field><field name="inherit_id" ref="view_car_rental_rental_form"/>
+        <field name="priority">100</field><field name="arch" type="xml">
+            <xpath expr="//header" position="inside"><button name="action_booking_journey" type="object" string="Booking Journey"/></xpath>
+            <xpath expr="//header/field[@name='status']" position="attributes"><attribute name="statusbar_visible">draft,ongoing,returned,closed</attribute></xpath>
+        </field>
+    </record>
+</odoo>
