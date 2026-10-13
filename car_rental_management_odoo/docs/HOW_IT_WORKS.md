@@ -2,6 +2,16 @@
 
 ## Start Here
 
+### Guided booking
+
+Open **Bookings → Booking Journeys → New**. Use **Continue** to move through Customer, Booking, Quote, Confirm, Payment, Agreement & Inspection, Handover, Return, Settlement and Closed.
+
+Use **Save & Exit** at any stage and reopen the journey later. Existing reservations and rentals have a **Booking Journey** button that resumes from their actual records. Back / Review Booking opens the reservation after a quote exists; confirmed booking details remain protected.
+
+The quote shows the hire total, refundable security deposit and separate one-time dirty return fee. Payment actions belong to the accountant. Agreement acknowledgement and completed pickup inspection precede handover. On return, complete the return inspection before Continue. At settlement, post and settle all applicable charges, apply approved deposit deductions and refund the remainder. **Close Rental** is available to the accountant and validates that nothing remains outstanding.
+
+Closing the customer rental does not release the car. Use **Vehicle / Fleet Follow-up** for cleaning, repairs and fleet release.
+
 ### Who does what?
 
 - Rental Staff: register customers, prepare bookings, obtain signatures, complete inspections and record handovers and returns.
@@ -16,12 +26,12 @@ Customers holds customer identity and licence details. Bookings contains reserva
 
 ### What counts as a completed cycle?
 
-- The rental is Returned and its pickup and return inspections are completed.
-- Rental, late-return and damage invoices are posted and settled, or an outstanding balance is being explicitly followed up.
+- The rental has completed return and is marked Closed by the accountant.
+- Rental, late-return, cleaning and damage invoices are posted and settled.
 - The deposit has been refunded or applied to approved damage charges; the amount held is zero.
 - Damage and repairs are resolved, cleaning is complete and the vehicle has been released.
 
-Returned describes the physical return. It does not automatically mean that all invoices are paid, the deposit is refunded or the vehicle is ready for another customer. Check each item above; there is no separate automatic financial-close status.
+Returned describes the physical return. Closed records completion of customer financial settlement. Fleet readiness is tracked separately and must be completed before the next handover.
 
 ## Before Your First Booking
 

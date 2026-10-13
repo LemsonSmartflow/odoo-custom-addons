@@ -8,6 +8,7 @@
             <form string="How It Works" create="0" edit="0" delete="0" duplicate="0" class="o_car_rental_form">
                 <sheet>
                     <h1>How It Works</h1>
+                    <div class="alert alert-success">Start at Bookings / Booking Journeys / New. Continue through Customer, Booking, Quote, Confirm, Payment, Agreement and Inspection, Handover, Return, Settlement and Closed. Save &amp; Exit lets you resume later. Existing reservations and rentals have a Booking Journey button.</div>
                     <p>A practical guide from the customer's first enquiry to final payment and the vehicle's next booking. Use the same customer, reservation and rental records throughout the cycle.</p>
                     <div class="alert alert-info" role="status">Customer → Reservation → Rental → Invoice and receipts → Pickup → Return inspection → Final charges and deposit settlement → Cleaning and release</div>
                     <notebook>
@@ -29,7 +30,7 @@
                                 <li>The deposit has been refunded or applied to approved damage charges; the amount held is zero.</li>
                                 <li>Damage and repairs are resolved, cleaning is complete and the vehicle has been released.</li>
                             </ul>
-                            <p><strong>Returned describes the physical return.</strong> It does not automatically mean that all invoices are paid, the deposit is refunded or the vehicle is ready for another customer. Check each item above; there is no separate automatic financial-close status.</p>
+                            <p><strong>Returned describes the physical return.</strong> The accountant uses Close Rental in the Booking Journey after invoices, charges and deposit refunds are settled. Closed completes the customer cycle. Fleet cleaning, repair and release are separate tasks.</p>
                         </page>
                         <page string="Before Your First Booking" name="guide_setup">
                             <h2>Prepare the business once</h2>
