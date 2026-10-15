@@ -33,9 +33,9 @@ class Journey(models.Model):
     guidance = fields.Text(compute='_compute_progress')
     step = fields.Selection([(s, label) for s, label in [
         ('customer', '1 Customer'), ('details', '2 Booking'), ('quote', '3 Quote'),
-        ('confirm', '4 Confirm'), ('payment', '5 Payment'), ('pickup', '6 Agreement & Inspection'),
-        ('handover', '7 Handover'), ('return', '8 Return'), ('settlement', '9 Settlement'),
-        ('closed', '10 Closed'), ('cancelled', 'Cancelled')]], compute='_compute_progress')
+        ('confirm', '4 Confirm'), ('agreement', '5 Agreement'), ('payment', '6 Payment'), ('pickup', '7 Pickup Inspection'),
+        ('handover', '8 Handover'), ('return', '9 Return'), ('settlement', '10 Settlement'),
+        ('closed', '11 Closed'), ('cancelled', 'Cancelled')]], compute='_compute_progress')
 
     @api.depends('customer_id', 'details_started', 'reservation_id.status', 'reservation_id.reference',
                  'reservation_id.rental_ids.status', 'reservation_id.rental_ids.agreement_state',
@@ -56,11 +56,13 @@ class Journey(models.Model):
             if reservation.status == 'confirmed':
                 step, guidance = 'confirm', 'The reservation is confirmed. Continue to open or create its rental.'
             if rental:
-                step, guidance = 'payment', 'Finance: post the rental invoice, record payment under company policy, and collect the full required security deposit.'
-                if not rental._journey_payment_blockers():
-                    step, guidance = 'pickup', 'Acknowledge the agreement and complete the pickup inspection, including photographs and customer signature.'
-                    if rental.agreement_state == 'signed' and rental.pickup_inspection_done:
-                        step, guidance = 'handover', 'Ready for final handover checks. Continue to hand over the vehicle; compliance and availability are checked again.'
+                step, guidance = 'agreement', 'Complete the rental agreement before collecting payment. For a digital agreement, collect all six signatures, then return here and continue.'
+                if rental.agreement_state == 'signed':
+                    step, guidance = 'payment', 'Finance: post the rental invoice, record payment under company policy, and collect the full required security deposit.'
+                    if not rental._journey_payment_blockers():
+                        step, guidance = 'pickup', 'Complete the pickup inspection, including photographs and customer signature.'
+                        if rental.pickup_inspection_done:
+                            step, guidance = 'handover', 'Ready for final handover checks. Continue to hand over the vehicle; compliance and availability are checked again.'
                 if rental.status == 'ongoing':
                     step, guidance = 'return', 'Vehicle is on hire. Record the actual return inspection with time, mileage, fuel, cleanliness and any damage. Continue after completing it.'
                 if rental.status == 'returned':
@@ -105,10 +107,12 @@ class Journey(models.Model):
             self.reservation_id.action_confirm()
         elif self.step == 'confirm':
             self.reservation_id.action_create_rental()
+        elif self.step == 'agreement':
+            return self.action_agreement()
         elif self.step == 'payment':
             raise ValidationError('\n'.join(self.rental_id._journey_payment_blockers()))
         elif self.step == 'pickup':
-            raise ValidationError('Complete the agreement acknowledgement and pickup inspection before handover.')
+            raise ValidationError('Complete the pickup inspection before handover.')
         elif self.step == 'handover':
             self.rental_id.action_start_rental()
         elif self.step == 'return':
@@ -149,6 +153,15 @@ class Journey(models.Model):
 
     def action_invoice(self):
         return self.rental_id.action_invoice()
+
+    def action_agreement(self):
+        self.ensure_one()
+        rental = self.rental_id
+        if not rental:
+            raise ValidationError('Confirm the booking and create its rental first.')
+        if rental.contract_ids or rental.company_id.sudo().cr_contract_pdf:
+            return rental.action_digital_contract()
+        return self.action_rental()
 
     def action_payment(self):
         return self.rental_id.action_record_payment()

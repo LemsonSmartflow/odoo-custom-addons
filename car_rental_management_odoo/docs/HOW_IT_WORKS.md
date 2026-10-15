@@ -26,7 +26,7 @@ Local links starting with `127.0.0.1` work on this computer only. After deployme
 
 ### Guided booking
 
-Open **Bookings → Booking Journeys → New**. Use **Continue** to move through Customer, Booking, Quote, Confirm, Payment, Agreement & Inspection, Handover, Return, Settlement and Closed.
+Open **Bookings → Booking Journeys → New**. Use **Continue** to move through Customer, Booking, Quote, Confirm, Agreement, Payment, Pickup Inspection, Handover, Return, Settlement and Closed. Complete the agreement before collecting payment in the journey. Digital agreements require all six signatures. Previously paid rentals keep their financial records and remain at Agreement until it is signed.
 
 Use **Save & Exit** at any stage and reopen the journey later. Existing reservations and rentals have a **Booking Journey** button that resumes from their actual records. Back / Review Booking opens the reservation after a quote exists; confirmed booking details remain protected.
 
