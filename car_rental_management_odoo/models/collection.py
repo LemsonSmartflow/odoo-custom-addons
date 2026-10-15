@@ -123,6 +123,8 @@ class Journey(models.Model):
 
     def action_collect_payment(self):
         self.ensure_one()
+        if self.rental_id.agreement_state != 'signed':
+            raise ValidationError('Complete and sign the rental agreement before collecting payment from the booking journey.')
         return self.rental_id.action_collect_payment()
 
 

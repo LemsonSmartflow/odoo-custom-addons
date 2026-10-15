@@ -13,7 +13,7 @@ class TestBookingJourney(TestConnectedWorkflow):
         rental = self.rental()
         action = rental.with_user(staff).action_booking_journey()
         journey = self.env['car.rental.journey'].with_user(staff).browse(action['res_id'])
-        self.assertEqual(journey.step, 'payment')
+        self.assertEqual(journey.step, 'agreement')
         with self.assertRaises(AccessError), self.cr.savepoint():
             rental.with_user(staff).action_close_journey()
 
@@ -48,10 +48,29 @@ class TestBookingJourney(TestConnectedWorkflow):
         self.assertEqual(journey.step, 'confirm')
         journey.action_continue()
         journey.invalidate_recordset()
-        self.assertEqual(journey.step, 'payment')
+        self.assertEqual(journey.step, 'agreement')
         self.assertEqual(journey.reservation_id.action_booking_journey()['res_id'], journey.id)
         with self.assertRaises(ValidationError), self.cr.savepoint():
-            journey.action_continue()
+            journey.action_collect_payment()
+
+    def test_agreement_before_payment_and_pickup(self):
+        rental = self.rental()
+        journey = self.env['car.rental.journey'].browse(rental.action_booking_journey()['res_id'])
+        self.assertEqual(journey.step, 'agreement')
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            journey.action_collect_payment()
+        rental.write({'agreement_signature': self.photo, 'agreement_signed_by': 'Test Customer'})
+        rental.action_sign_agreement()
+        journey.invalidate_recordset()
+        self.assertEqual(journey.step, 'payment')
+        self.assertEqual(journey.action_collect_payment()['res_model'], 'car.rental.collection')
+        self.payment(rental, rental.amount)
+        self.deposit(rental, 'collect', rental.deposit_required)
+        journey.invalidate_recordset()
+        self.assertEqual(journey.step, 'pickup')
+        self.inspection(rental, 'pickup', 1000)
+        journey.invalidate_recordset()
+        self.assertEqual(journey.step, 'handover')
 
     def test_return_settlement_and_close(self):
         rental = self.rental()

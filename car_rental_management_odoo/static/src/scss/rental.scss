@@ -68,7 +68,7 @@
         border-bottom: 2px solid #b7cdcf;
     }
     // Keep empty controls visible even when Odoo removes idle input borders.
-    .o_field_widget .o_input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+    .o_field_widget :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, select).o_input {
         border: 1px solid var(--rental-input-border) !important;
         border-radius: 6px;
         background-color: var(--o-view-background-color, #fff);
@@ -93,6 +93,36 @@
     .o_field_widget.o_readonly_modifier { line-height: 1.6; }
     .o_notebook .tab-pane { padding-top: 20px; }
     .o_field_x2many .o_input { min-height: 32px; padding: 4px 8px; }
+    // Monetary widgets overlay a transparent currency/ghost-value span on the
+    // input. Box the shared container, never the overlay, to keep digits visible.
+    .o_field_widget.o_field_monetary {
+        > div.position-relative {
+            box-sizing: border-box;
+            align-items: baseline;
+            border: 1px solid var(--rental-input-border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            min-height: 42px;
+            background: var(--o-view-background-color, #fff);
+            &:focus-within { border-color: #286a70; outline: 2px solid #286a7040; }
+        }
+        .o_input, .o_input:hover, .o_input:focus {
+            border: 0 !important;
+            background: transparent !important;
+            padding: 0 !important;
+            min-height: 24px;
+            line-height: 24px;
+            outline: none;
+            box-shadow: none;
+        }
+        input.o_input { min-width: 0; height: 24px; }
+        span.o_input.position-absolute {
+            top: 8px;
+            left: 12px;
+            width: calc(100% - 24px) !important;
+        }
+        &.o_field_invalid > div.position-relative { border-color: #c03943; }
+    }
     .o_inner_group {
         grid-template-columns: minmax(120px, 25%) minmax(0, 1fr);
         .o_wrap_label { white-space: normal; overflow-wrap: anywhere; }
