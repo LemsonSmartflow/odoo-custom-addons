@@ -20,7 +20,7 @@
                     <button name="action_back" type="object" string="Back / Review Booking" invisible="step in ['customer', 'closed', 'cancelled']"/>
                     <button name="action_continue" type="object" string="Continue" class="btn-primary" invisible="step in ['closed', 'cancelled', 'handover', 'settlement']"/>
                     <button name="action_continue" type="object" string="Hand Over Vehicle" class="btn-primary" invisible="step != 'handover'" confirm="Confirm the keys and vehicle are being handed to the customer?"/>
-                    <button name="action_continue" type="object" string="Close Rental" class="btn-primary" invisible="step != 'settlement'" groups="group_rental_accountant"/>
+                    <button name="action_continue" type="object" string="Close Rental" class="btn-primary" invisible="step != 'settlement'" groups="car_rental_management_odoo.group_rental_accountant"/>
                     <button name="action_save_exit" type="object" string="Save &amp; Exit"/>
                     <field name="step" widget="statusbar" options="{'clickable': False}" statusbar_visible="customer,details,quote,confirm,payment,pickup,handover,return,settlement,closed"/>
                 </header>
@@ -49,9 +49,9 @@
                     </group>
                     <field name="vehicle_image" widget="image" class="oe_avatar" invisible="not vehicle_id"/>
                     <group string="Payment and security deposit" invisible="step != 'payment'">
-                        <button name="action_invoice" type="object" string="1. Create / Open Rental Invoice" groups="group_rental_accountant"/>
-                        <button name="action_payment" type="object" string="2. Record Rental Payment" groups="group_rental_accountant"/>
-                        <button name="action_deposit" type="object" string="3. Collect Security Deposit" groups="group_rental_accountant"/>
+                        <button name="action_invoice" type="object" string="1. Create / Open Rental Invoice" groups="car_rental_management_odoo.group_rental_accountant"/>
+                        <button name="action_payment" type="object" string="2. Record Rental Payment" groups="car_rental_management_odoo.group_rental_accountant"/>
+                        <button name="action_deposit" type="object" string="3. Collect Security Deposit" groups="car_rental_management_odoo.group_rental_accountant"/>
                         <div colspan="2">An accountant must post the invoice and deposit receipt. Return here and click Continue to refresh progress.</div>
                     </group>
                     <group string="Agreement and inspections" invisible="step not in ['pickup', 'handover', 'return']">

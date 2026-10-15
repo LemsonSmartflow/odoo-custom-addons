@@ -1,0 +1,68 @@
+<odoo>
+<template id="digital_contract_page" name="Customer Digital Rental Agreement">
+<html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content="noindex,nofollow"/><title>City Delights Rental Agreement</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef2f5;color:#18303b;font:15px/1.5 system-ui,sans-serif}main{max-width:1120px;margin:24px auto;padding:28px;background:white;border-radius:14px}h1{font-size:28px;margin:4px 0 12px}h2{font-size:21px;margin:0 0 16px}h3{font-size:17px}p{margin:8px 0 16px}label{display:block;font-weight:600;margin-bottom:6px}input,textarea{width:100%;padding:10px 12px;border:1px solid #80959e;border-radius:6px;font:inherit;background:white}input:focus,textarea:focus{outline:3px solid #24767b33;border-color:#24767b}textarea{min-height:80px;resize:vertical}button,.download{display:inline-block;padding:10px 16px;background:#23676e;color:white;border:0;border-radius:6px;text-decoration:none;font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:3px solid #c07d27;outline-offset:3px}.download{margin:4px 8px 8px 0}.secondary{background:#e7eff1;color:#18303b}.notice{background:#edf5f7;padding:12px 16px;border-radius:8px;margin:12px 0}.error{background:#ffe7e4;color:#8c201a;padding:16px;margin:12px 0}.small{font-size:12px;color:#526773}.steps{display:none;gap:8px;margin:24px 0}.enhanced .steps{display:flex}.steps button{flex:1;background:#e7eff1;color:#18303b}.steps button[aria-current=step]{background:#23676e;color:white}.panel{padding:22px;border:1px solid #d3dfe4;border-radius:10px;margin:16px 0}.panel[hidden]{display:none}.details-grid,.fields-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 24px}.detail{min-width:0;border-bottom:1px solid #e5ecef;padding-bottom:10px}dt{font-size:12px;color:#526773;font-weight:600}dd{margin:4px 0 0;overflow-wrap:anywhere}.actions{display:none;justify-content:space-between;gap:12px;border-top:1px solid #d3dfe4;margin-top:20px;padding-top:16px}.enhanced .actions{display:flex}.actions button:only-child{margin-left:auto}.field{min-width:0}.check{display:flex;align-items:flex-start;gap:10px;font-weight:400;margin:14px 0}input[type=checkbox]{width:20px;height:20px;flex-shrink:0;margin-top:2px}canvas{display:block;width:100%;max-width:650px;height:180px;border:2px dashed #80959e;border-radius:8px;touch-action:none;background:white;margin:12px 0}.signature-area{max-width:700px;margin:auto}.progress-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;list-style:none;padding:0}.progress-list li{padding:12px;background:#f1f6f7;border-radius:6px;overflow-wrap:anywhere}.progress-list small{display:block;color:#526773}details{margin:16px 0}summary{cursor:pointer;font-weight:600;padding:12px;background:#f1f6f7;border-radius:6px}details[open]>dl{padding:16px}.sign-submit{margin-top:12px}@media(max-width:650px){main{margin:0;padding:16px;border-radius:0}.panel{padding:16px}.details-grid,.fields-grid{grid-template-columns:1fr}.progress-list{grid-template-columns:repeat(2,minmax(0,1fr))}.steps button{padding:10px 4px;font-size:13px}h1{font-size:24px}.download{display:block;text-align:center}}
+.panel h2:focus{outline:none}@media(min-width:1000px){.details-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}.signature-buttons{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid #d3dfe4}.signature-buttons .sign-submit{margin:0}.signature-buttons .back-button{display:none}.enhanced .signature-buttons .back-button{display:inline-block}
+</style></head><body><main>
+<p t-esc="contract.company_id.name"/><h1>Rental agreement</h1>
+<p><strong t-esc="signer.name"/> — <span t-esc="role_label"/></p>
+<div class="notice">Review the booking, check the customer details, then sign. Your private link records only your signature. The vehicle delivery receipt is completed at pickup.</div>
+<p class="small">Template: <span t-esc="contract.template_version"/>. This link expires on <span t-esc="contract.expires_on"/> UTC.</p>
+<a class="download" t-att-href="'%s/pdf/original' % request.httprequest.path" target="_blank" rel="noopener noreferrer">Read original contract (10 pages)</a>
+<a t-if="contract.state in ('signing', 'complete')" class="download" t-att-href="'%s/pdf/review' % request.httprequest.path" target="_blank" rel="noopener noreferrer">Review completed schedule and signatures</a>
+<a t-if="contract.state == 'complete'" class="download" t-att-href="'%s/pdf/completed' % request.httprequest.path" target="_blank" rel="noopener noreferrer">Download fully signed agreement</a>
+<div t-if="error" class="error" role="alert" t-esc="error"/>
+<div t-if="signer.signed_on" class="notice">Thank you. Your signature was recorded on <span t-esc="signer.signed_on"/> UTC. <span t-if="contract.state != 'complete'">The agreement is awaiting the remaining signatures.</span></div>
+<div t-if="not can_sign and not signer.signed_on" class="notice">The customer must complete and sign their details first, or this agreement is no longer open for signing. Please contact the rental office.</div>
+<form method="post" id="contract-form" t-if="can_sign">
+<nav class="steps" aria-label="Agreement steps"><button type="button" data-step="0">1. Booking</button><button type="button" data-step="1">2. Customer details</button><button type="button" data-step="2">3. Sign</button></nav>
+<section class="panel" data-panel="0"><h2>1. Review the booking</h2><dl class="details-grid"><t t-foreach="schedule.items()" t-as="item"><div class="detail"><dt t-esc="item[0]"/><dd t-esc="item[1]"/></div></t></dl><div class="actions"><button type="button" data-next="1">Continue to details</button></div></section>
+<section class="panel" data-panel="1">
+<input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+<h2>2. Customer details</h2><p t-if="signer.role == 'renter'">Check the prefilled information and complete the remaining fields. Email addresses are optional.</p><p t-else="">These details were confirmed by the customer and are read-only. Contact the office if anything is incorrect.</p><div class="fields-grid">
+<t t-foreach="customer_fields" t-as="entry">
+<div class="field" t-if="signer.role == 'renter'"><label t-att-for="entry[0]" t-esc="entry[1]"/>
+<textarea t-if="entry[0] in ('physical_address','postal_address')" t-att-id="entry[0]" t-att-name="entry[0]" t-att-readonly="signer.role != 'renter'" required="required" maxlength="2000" t-esc="values.get(entry[0], '')"/>
+<input t-else="" t-att-id="entry[0]" t-att-name="entry[0]" t-att-type="'email' if entry[0] in ('email','kin_email') else 'text'" t-att-value="values.get(entry[0], '')" t-att-readonly="signer.role != 'renter'" t-att-required="entry[0] not in ('email','kin_email')" maxlength="2000"/>
+</div><div class="detail" t-else=""><dt t-esc="entry[1]"/><dd t-esc="values.get(entry[0]) or 'Not provided'"/></div></t></div>
+<div class="actions"><button type="button" class="secondary" data-back="0">Back</button><button type="button" data-next="2">Continue to signature</button></div></section>
+<section class="panel" data-panel="2"><div class="signature-area"><h2>3. Your signature — <span t-esc="role_label"/></h2>
+<p>You are signing as <strong t-esc="signer.name"/>. If this is not you, contact the office and do not sign.</p>
+<canvas id="signature-pad" width="900" height="270" aria-label="Draw your signature"/>
+<input type="hidden" id="signature" name="signature"/>
+<button type="button" id="clear-signature">Clear signature</button>
+<label class="check"><input type="checkbox" name="accept" value="yes" required="required"/>I am the named signer. I have read the original agreement and the completed particulars above and agree to sign this document electronically in my stated role.</label>
+<p class="small">Customer details are locked after the customer signs. Ask the office for a replacement agreement if a correction is needed.</p>
+<div class="signature-buttons"><button type="button" class="secondary back-button" data-back="1">Back</button><button class="sign-submit" type="submit">Submit my signature</button></div></div></section>
+</form>
+<t t-if="not can_sign"><details><summary>Review vehicle and booking details</summary><div class="panel"><h2>1. Review the booking</h2><dl class="details-grid"><t t-foreach="schedule.items()" t-as="item"><div class="detail"><dt t-esc="item[0]"/><dd t-esc="item[1]"/></div></t></dl></div></details>
+<details t-if="contract.customer_details"><summary>Review customer details</summary><dl class="details-grid"><t t-foreach="customer_fields" t-as="entry"><div class="detail"><dt t-esc="entry[1]"/><dd t-esc="values.get(entry[0]) or 'Not provided'"/></div></t></dl></details></t>
+<details><summary>Signature progress: <t t-esc="len(contract.signer_ids.filtered('signed_on'))"/> of 6 completed</summary><ul class="progress-list"><t t-foreach="contract.signer_ids" t-as="person"><li><strong t-esc="person.name"/><small t-esc="dict(person._fields['role'].selection).get(person.role)"/><span t-esc="'Signed' if person.signed_on else 'Awaiting signature'"/></li></t></ul></details>
+<script type="text/javascript"><![CDATA[
+const form=document.getElementById('contract-form');
+let showStep=()=>{};
+if(form){
+ const panels=[...form.querySelectorAll('[data-panel]')], tabs=[...form.querySelectorAll('[data-step]')];
+ let current=0;
+ function validDetails(){for(const field of panels[1].querySelectorAll('input:not([type=hidden]),textarea')){if(!field.checkValidity()){showStep(1);field.reportValidity();return false;}}return true;}
+ showStep=index=>{current=index;panels.forEach((p,i)=>p.hidden=i!==index);tabs.forEach((b,i)=>{if(i===index)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});panels[index].querySelector('h2').setAttribute('tabindex','-1');panels[index].querySelector('h2').focus({preventScroll:true});};
+ form.addEventListener('click',event=>{const button=event.target.closest('[data-next],[data-back],[data-step]');if(!button)return;const index=Number(button.dataset.next??button.dataset.back??button.dataset.step);if(index===2 && !validDetails())return;showStep(index);});
+ form.addEventListener('submit',event=>{if(!validDetails()){event.preventDefault();return;}showStep(2);});
+ // Native validation cannot focus a hidden field; reveal its section first.
+ form.addEventListener('invalid',event=>{const panel=event.target.closest('[data-panel]');if(panel)showStep(Number(panel.dataset.panel));},true);
+ document.body.classList.add('enhanced');showStep(0);
+}
+const pad=document.getElementById('signature-pad');
+if(pad){const ctx=pad.getContext('2d');ctx.strokeStyle='#142b50';ctx.lineWidth=3;ctx.lineCap='round';let drawing=false,ink=false;
+function point(e){const b=pad.getBoundingClientRect();return [(e.clientX-b.left)*pad.width/b.width,(e.clientY-b.top)*pad.height/b.height];}
+pad.addEventListener('pointerdown',e=>{e.preventDefault();drawing=true;pad.setPointerCapture(e.pointerId);ctx.beginPath();ctx.moveTo(...point(e));});
+pad.addEventListener('pointermove',e=>{if(drawing){ctx.lineTo(...point(e));ctx.stroke();ink=true;}});
+pad.addEventListener('pointerup',()=>drawing=false);pad.addEventListener('pointercancel',()=>drawing=false);
+document.getElementById('clear-signature').onclick=()=>{ctx.clearRect(0,0,pad.width,pad.height);ink=false;};
+document.getElementById('contract-form').onsubmit=e=>{if(!ink){e.preventDefault();alert('Please draw your signature.');return;}document.getElementById('signature').value=pad.toDataURL('image/png').split(',')[1];};}
+]]></script>
+</main></body></html>
+</template>
+</odoo>

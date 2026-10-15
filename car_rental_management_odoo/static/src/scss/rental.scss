@@ -53,6 +53,46 @@
 
 // Keep rental forms readable with the chatter open and on smaller screens.
 .o_car_rental_form {
+    --rental-input-border: #81939e;
+    .o_group { row-gap: 20px; }
+    .o_inner_group {
+        row-gap: 14px;
+        margin-bottom: 24px;
+    }
+    .o_form_label { font-weight: 600; line-height: 1.5; }
+    .o_horizontal_separator {
+        padding: 12px 0 8px;
+        margin-bottom: 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        border-bottom: 2px solid #b7cdcf;
+    }
+    // Keep empty controls visible even when Odoo removes idle input borders.
+    .o_field_widget .o_input:not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+        border: 1px solid var(--rental-input-border) !important;
+        border-radius: 6px;
+        background-color: var(--o-view-background-color, #fff);
+        color: inherit;
+        min-height: 40px;
+        padding: 8px 12px;
+        box-sizing: border-box;
+        &:hover { border-color: #365e65 !important; }
+        &:focus {
+            border-color: #286a70 !important;
+            outline: 2px solid #286a7040;
+            outline-offset: 1px;
+        }
+        &::placeholder { color: #687780; opacity: 1; }
+    }
+    .o_field_invalid .o_input {
+        border-color: #c03943 !important;
+        background-color: #fff2f3;
+    }
+    .o_field_widget textarea.o_input { min-height: 100px; }
+    .o_field_many2one .o_input { padding-right: 30px !important; }
+    .o_field_widget.o_readonly_modifier { line-height: 1.6; }
+    .o_notebook .tab-pane { padding-top: 20px; }
+    .o_field_x2many .o_input { min-height: 32px; padding: 4px 8px; }
     .o_inner_group {
         grid-template-columns: minmax(120px, 25%) minmax(0, 1fr);
         .o_wrap_label { white-space: normal; overflow-wrap: anywhere; }

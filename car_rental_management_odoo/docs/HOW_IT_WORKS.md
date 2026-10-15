@@ -2,6 +2,28 @@
 
 ## Start Here
 
+### Collect rental payment and security deposit together
+
+Open **Payment & Security Deposit** from the rental or the journey's Payment step. The form shows the rental balance, deposit remaining and combined total. Enter the amount received, payment method, date and optional bank/receipt reference once. Check the allocation preview, then click **Record Payment & Deposit**.
+
+Partial payments fund the security deposit first, then rent. The first deposit collection must cover at least 50% of the agreed daily rate; the full required deposit is still needed before handover. Subsequent collections default to the remaining amount only. Recording creates/posts the rental invoice if needed and posts both entries together. A failure rolls back the whole collection. Repeated clicks do not create duplicate receipts. The receiving journal shown is the company's configured receipt bank/cash journal.
+
+Rental income and refundable deposits remain separately traceable in accounting, but staff use one collection form. Deposit deductions and refunds remain part of return settlement.
+
+### City Delights digital agreement
+
+1. In Settings → Digital Rental Agreement, load the supplied City Delights contract (or upload the approved PDF) and give it a version. This setting applies only to the active company.
+2. Confirm the booking and create its rental. Open **Digital Agreement** from the rental, or **Customer Digital Agreement** in the journey's agreement step.
+3. Enter the delivery place, payment advance deadline from clause 6, company notices email, company representative and the four witness names. Click **Prepare Signing Links**.
+4. Share the **Renter** link with the customer first. The customer reads the original contract, checks the prefilled booking schedule, completes their identity/contact/address and next-of-kin particulars, and draws their signature. Prices and security deposit are read-only.
+5. Customer submission locks those particulars. Share each remaining link only with its named company representative or witness. They review and sign the same locked document. These are private bearer links: anyone with one can access that person's signing request. They expire after 30 days. No email is sent automatically.
+6. Once all six people have signed, Odoo marks the rental agreement acknowledged and saves a combined PDF containing the unchanged original contract plus the completed particulars and signatures. **Print Agreement** opens that signed document. Original contract wording and banking details are retained as supplied.
+7. Complete the pickup inspection and delivery acknowledgement at the actual handover. The contract's Third Schedule is not a declaration that the car was received when the customer booked it.
+
+For corrections before all signatures are complete, a manager revokes the packet and prepares a replacement; old signatures remain in the audit trail and old links stop working. Issued documents retain their PDF version, booking particulars and content hash even if settings change later. Customer-entered details are retained on the agreement; they do not silently overwrite the customer profile.
+
+Local links starting with `127.0.0.1` work on this computer only. After deployment, use the Odoo.sh site's public HTTPS address for customer links. The application uses Odoo's configured `web.base.url`.
+
 ### Guided booking
 
 Open **Bookings → Booking Journeys → New**. Use **Continue** to move through Customer, Booking, Quote, Confirm, Payment, Agreement & Inspection, Handover, Return, Settlement and Closed.
