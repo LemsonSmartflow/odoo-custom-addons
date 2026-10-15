@@ -12,3 +12,5 @@ from . import reporting
 
 from . import business_rules
 from . import booking_journey
+from . import digital_contract
+from . import collection

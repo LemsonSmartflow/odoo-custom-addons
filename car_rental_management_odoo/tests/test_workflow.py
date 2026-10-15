@@ -201,15 +201,15 @@ class TestConnectedWorkflow(TransactionCase):
         self.assertEqual(first.status, 'partial')
         action = rental.action_record_payment()
         self.assertEqual(action['context']['default_rental_id'], rental.id)
-        self.assertEqual(action['context']['default_paid_amount'], 200)
+        self.assertEqual(action['res_model'], 'car.rental.collection')
         second = self.payment(rental, 200)
         self.assertEqual(rental.payment_status, 'paid')
         self.assertEqual(rental.balance_due, 0)
         self.assertEqual(first.remaining_amount, 0)
         self.assertEqual(first.status, 'paid')
         self.assertTrue(second.reference.startswith('PAY/'))
-        with self.assertRaises(ValidationError), self.cr.savepoint():
-            rental.action_record_payment()
+        # The unified form remains available until the security deposit is collected too.
+        self.assertEqual(rental.action_record_payment()['res_model'], 'car.rental.collection')
         with self.assertRaises(ValidationError), self.cr.savepoint():
             second.unlink()
         with self.assertRaises(ValidationError), self.cr.savepoint():
