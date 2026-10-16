@@ -2,6 +2,16 @@
 
 ## Start Here
 
+### Shared Contacts, Fleet and Accounting
+
+Customers are rental eligibility profiles linked to Odoo Contacts. At the top of a new customer form, select an existing Contact to reuse its name, phone, email and addresses. If you leave Contact empty, saving creates one automatically. The same contact is used on Sales orders and invoices. Phone/email/name/address changes from either screen update the other; invoicing no longer overwrites newer Contacts details. A contact can have one rental profile per company. Use **Contacts → Rental Profile** or **Rental Customer → Open Contact** to move between them. Complete licence, identity, age and document checks on the rental profile. The rental postal address is available on the Contact's Rental Details tab.
+
+Rental vehicles are availability profiles linked to Odoo Fleet. Select an existing Fleet vehicle when creating the rental profile, or save a vehicle with registration, brand and model to create its Fleet record. Incomplete vehicles remain in setup until those details are supplied. Use **Fleet → Rental Profile** or **Rental Vehicle → Odoo Fleet** to move between them. Registration, VIN, colour, seats, transmission, fuel and odometer updates are shared. Change the brand/model through Fleet. Standard Fleet odometer entries also update rental mileage. Rental photos, pricing category, allocation conflicts, inspections and availability remain rental-specific.
+
+Existing customer and vehicle profile IDs are retained during upgrade, so reservations, rentals and accounting links remain intact. Existing Contact/Fleet links are preserved. Do not replace these links to change the customer or car behind historical bookings. Signed agreements retain their recorded particulars and PDFs when shared records change later.
+
+Sales orders, invoices, journal entries and reconciliation use the existing Odoo apps. The combined rental/deposit form remains a rental-specific allocation tool: hire receipts and refundable-deposit liabilities must be recorded separately in accounting. Odoo Sign is not installed in the validated local environment; the existing six-person digital agreement remains in use until a Sign integration can be tested against an available installation.
+
 ### Collect rental payment and security deposit together
 
 Open **Payment & Security Deposit** from the rental or the journey's Payment step. The form shows the rental balance, deposit remaining and combined total. Enter the amount received, payment method, date and optional bank/receipt reference once. Check the allocation preview, then click **Record Payment & Deposit**.

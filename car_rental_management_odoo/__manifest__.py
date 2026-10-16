@@ -1,6 +1,6 @@
 {
     'name': 'Car Rental Management',
-    'version': '19.0.5.2.1',
+    'version': '19.0.6.0.0',
     'summary': 'Car Rental Management Application',
     'category': 'Services',
     'author': 'Clinton Giri',
@@ -8,6 +8,7 @@
 
     'depends': [
         'base',
+        'contacts',
         'mail',
         'fleet',
         'maintenance',
@@ -36,6 +37,7 @@
         'views/digital_contract_views.xml',
         'views/digital_contract_portal.xml',
         'views/collection_views.xml',
+        'views/shared_records_views.xml',
         'reports/agreement.xml',
         'data/proposal_setup.xml',
         'data/reminders.xml',
