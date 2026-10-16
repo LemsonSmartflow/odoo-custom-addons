@@ -347,13 +347,11 @@ class Customer(models.Model):
     _inherit = ['car.rental.customer', 'mail.thread', 'mail.activity.mixin']
 
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
-    partner_id = fields.Many2one('res.partner', string='Accounting Contact', readonly=True, copy=False)
+    partner_id = fields.Many2one('res.partner', string='Contact', copy=False, ondelete='restrict')
     document_ids = fields.Many2many('ir.attachment', string='ID and Licence Documents')
 
     @api.model_create_multi
     def create(self, vals_list):
-        if any(v.get('partner_id') for v in vals_list):
-            raise ValidationError('Accounting contacts are created through the invoicing workflow.')
         return super().create(vals_list)
 
     def _ensure_partner(self):
@@ -361,11 +359,7 @@ class Customer(models.Model):
             vals = {'name': customer.display_name, 'email': customer.email, 'phone': customer.phone, 'street': customer.address, 'company_id': customer.company_id.id}
             if not customer.partner_id:
                 super(Customer, customer).write({'partner_id': self.env['res.partner'].create(vals).id})
-            else:
-                customer.partner_id.write(vals)
         return self.partner_id
 
     def write(self, vals):
-        if 'partner_id' in vals:
-            raise ValidationError('The accounting contact is managed by the invoicing workflow.')
         return super().write(vals)

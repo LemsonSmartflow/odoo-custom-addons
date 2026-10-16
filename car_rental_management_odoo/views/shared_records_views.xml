@@ -1,0 +1,34 @@
+<odoo>
+    <record id="customer_shared_contact" model="ir.ui.view">
+        <field name="name">Rental shared contact</field><field name="model">car.rental.customer</field>
+        <field name="inherit_id" ref="view_car_rental_customer_form"/><field name="priority">150</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id'][@groups]" position="replace"/>
+            <xpath expr="//sheet/group[1]" position="before"><group string="Shared Odoo Contact">
+                <field name="partner_id" domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]" readonly="id" options="{'no_quick_create': True}"/>
+                <button name="action_contact" type="object" string="Open Contact" invisible="not partner_id"/>
+                <div colspan="2">Choose an existing Contact to reuse its details. Otherwise a Contact is created when you save. Identity, licence and rental eligibility remain on this rental profile.</div>
+            </group></xpath>
+        </field>
+    </record>
+    <record id="partner_rental_profile" model="ir.ui.view">
+        <field name="name">Contact rental access</field><field name="model">res.partner</field><field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside"><button name="action_rental_profile" type="object" class="oe_stat_button" icon="fa-car" groups="car_rental_management_odoo.group_car_rental_agent"><div class="o_stat_info"><span class="o_stat_text">Rental Profile</span></div></button></xpath>
+            <xpath expr="//notebook" position="inside"><page string="Rental Details" groups="car_rental_management_odoo.group_car_rental_agent"><group><field name="rental_postal_address"/></group><p>Open Rental Profile to complete identity documents, licence, age checks and review reservations.</p></page></xpath>
+        </field>
+    </record>
+    <record id="vehicle_shared_fleet" model="ir.ui.view">
+        <field name="name">Rental shared Fleet vehicle</field><field name="model">car.rental.vehicle</field><field name="inherit_id" ref="vehicle_form_proposal"/><field name="priority">150</field>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/div[hasclass('o_car_vehicle_header')]" position="before"><group string="Shared Odoo Fleet Vehicle"><field name="fleet_vehicle_id" readonly="id and fleet_vehicle_id" domain="[('company_id', '=', company_id)]" options="{'no_create': True}"/><div colspan="2">Select an existing Fleet vehicle or save a complete vehicle to create one. Registration, model, colour, seats, fuel, transmission and odometer are shared. Change the brand/model in Fleet.</div></group></xpath>
+            <field name="brand" position="attributes"><attribute name="readonly">fleet_vehicle_id</attribute></field>
+            <field name="model" position="attributes"><attribute name="readonly">fleet_vehicle_id</attribute></field>
+        </field>
+    </record>
+    <record id="fleet_rental_profile" model="ir.ui.view">
+        <field name="name">Fleet rental access</field><field name="model">fleet.vehicle</field><field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
+        <field name="arch" type="xml"><xpath expr="//div[@name='button_box']" position="inside"><button name="action_rental_profile" type="object" class="oe_stat_button" icon="fa-calendar" groups="car_rental_management_odoo.group_fleet_manager"><div class="o_stat_info"><span class="o_stat_text">Rental Profile</span></div></button></xpath></field>
+    </record>
+</odoo>
+
