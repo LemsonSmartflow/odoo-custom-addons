@@ -10,7 +10,7 @@
                     <h1>How It Works</h1>
                     <div class="alert alert-info">Use Payment &amp; Security Deposit to collect both in one form. Enter one received amount, method and date; review the automatic split and record it once. Partial payments fund the deposit first, then rent. Odoo creates/posts the rental invoice when needed and posts both entries together.</div>
                     <div class="alert alert-info">Digital contract: open the rental's Digital Agreement, enter delivery particulars and the company/witness names, then Prepare Signing Links. Share the renter link first; the customer completes their details and signs. The company representative and four witnesses then sign through their individual links. All six signatures are required before digital agreement handover. The signed original PDF and completion schedule are retained. Complete the delivery receipt at actual pickup.</div>
-                    <div class="alert alert-success" role="status">Start at Bookings / Booking Journeys / New. Continue through Customer, Booking, Quote, Confirm, Agreement, Payment, Pickup Inspection, Handover, Return, Settlement and Closed. Complete the agreement before collecting payment. Save &amp; Exit lets you resume later. Existing reservations and rentals have a Booking Journey button.</div>
+                    <div class="alert alert-success" role="status">Start at Bookings / Create a Booking / New. Continue through Customer, Booking, Quote, Confirm, Agreement, Payment, Pickup Inspection, Handover, Return, Settlement and Closed. Complete the agreement before collecting payment. Save &amp; Exit lets you resume later. Existing reservations and rentals have an Open Booking button.</div>
                     <p>A practical guide from the customer's first enquiry to final payment and the vehicle's next booking. Use the same customer, reservation and rental records throughout the cycle.</p>
                     <div class="alert alert-info" role="status">Customer → Reservation → Rental → Invoice and receipts → Pickup → Return inspection → Final charges and deposit settlement → Cleaning and release</div>
                     <notebook>
@@ -32,7 +32,7 @@
                                 <li>The deposit has been refunded or applied to approved damage charges; the amount held is zero.</li>
                                 <li>Damage and repairs are resolved, cleaning is complete and the vehicle has been released.</li>
                             </ul>
-                            <p><strong>Returned describes the physical return.</strong> The accountant uses Close Rental in the Booking Journey after invoices, charges and deposit refunds are settled. Closed completes the customer cycle. Fleet cleaning, repair and release are separate tasks.</p>
+                            <p><strong>Returned describes the physical return.</strong> The accountant uses Close Rental in the Create a Booking form after invoices, charges and deposit refunds are settled. Closed completes the customer cycle. Fleet cleaning, repair and release are separate tasks.</p>
                         </page>
                         <page string="Before Your First Booking" name="guide_setup">
                             <h2>Prepare the business once</h2>

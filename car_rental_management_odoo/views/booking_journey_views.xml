@@ -1,21 +1,21 @@
 <odoo>
     <record id="access_booking_journey" model="ir.model.access">
-        <field name="name">Booking journey staff</field><field name="model_id" ref="model_car_rental_journey"/>
+        <field name="name">Booking staff</field><field name="model_id" ref="model_car_rental_journey"/>
         <field name="group_id" ref="group_car_rental_agent"/>
         <field name="perm_read" eval="True"/><field name="perm_write" eval="True"/><field name="perm_create" eval="True"/>
     </record>
     <record id="rule_booking_journey_company" model="ir.rule">
-        <field name="name">Booking journey company isolation</field><field name="model_id" ref="model_car_rental_journey"/>
+        <field name="name">Booking company isolation</field><field name="model_id" ref="model_car_rental_journey"/>
         <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
     <record id="booking_journey_list" model="ir.ui.view">
-        <field name="name">Booking journeys</field><field name="model">car.rental.journey</field>
+        <field name="name">Create a Booking</field><field name="model">car.rental.journey</field>
         <field name="arch" type="xml"><list><field name="name"/><field name="customer_id"/><field name="pickup_datetime"/><field name="vehicle_id"/><field name="step" widget="badge"/></list></field>
     </record>
     <record id="booking_journey_form" model="ir.ui.view">
         <field name="name">Guided booking</field><field name="model">car.rental.journey</field>
         <field name="arch" type="xml">
-            <form string="Booking Journey" class="o_car_rental_form">
+            <form string="Create a Booking" class="o_car_rental_form">
                 <header>
                     <button name="action_back" type="object" string="Back / Review Booking" invisible="step in ['customer', 'closed', 'cancelled']"/>
                     <button name="action_continue" type="object" string="Continue" class="btn-primary" invisible="step in ['closed', 'cancelled', 'handover', 'settlement']"/>
@@ -76,18 +76,18 @@
         </field>
     </record>
     <record id="action_booking_journeys" model="ir.actions.act_window">
-        <field name="name">Booking Journeys</field><field name="res_model">car.rental.journey</field><field name="view_mode">list,form</field>
+        <field name="name">Create a Booking</field><field name="res_model">car.rental.journey</field><field name="view_mode">list,form</field>
         <field name="domain">[('company_id', '=', allowed_company_ids[0])]</field>
     </record>
-    <menuitem id="menu_booking_journeys" name="Booking Journeys" parent="menu_rental_bookings" action="action_booking_journeys" sequence="1"/>
+    <menuitem id="menu_booking_journeys" name="Create a Booking" parent="menu_rental_bookings" action="action_booking_journeys" sequence="1"/>
     <record id="reservation_journey_button" model="ir.ui.view">
-        <field name="name">Reservation journey</field><field name="model">car.rental.reservation</field><field name="inherit_id" ref="view_car_rental_reservation_form"/>
-        <field name="priority">100</field><field name="arch" type="xml"><xpath expr="//header" position="inside"><button name="action_booking_journey" type="object" string="Booking Journey"/></xpath></field>
+        <field name="name">Reservation booking</field><field name="model">car.rental.reservation</field><field name="inherit_id" ref="view_car_rental_reservation_form"/>
+        <field name="priority">100</field><field name="arch" type="xml"><xpath expr="//header" position="inside"><button name="action_booking_journey" type="object" string="Open Booking"/></xpath></field>
     </record>
     <record id="rental_journey_button" model="ir.ui.view">
-        <field name="name">Rental journey</field><field name="model">car.rental.rental</field><field name="inherit_id" ref="view_car_rental_rental_form"/>
+        <field name="name">Rental booking</field><field name="model">car.rental.rental</field><field name="inherit_id" ref="view_car_rental_rental_form"/>
         <field name="priority">100</field><field name="arch" type="xml">
-            <xpath expr="//header" position="inside"><button name="action_booking_journey" type="object" string="Booking Journey"/></xpath>
+            <xpath expr="//header" position="inside"><button name="action_booking_journey" type="object" string="Open Booking"/></xpath>
             <xpath expr="//header/field[@name='status']" position="attributes"><attribute name="statusbar_visible">draft,ongoing,returned,closed</attribute></xpath>
         </field>
     </record>

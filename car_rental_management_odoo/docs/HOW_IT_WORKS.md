@@ -4,7 +4,7 @@
 
 ### Shared Contacts, Fleet and Accounting
 
-**Car Rental → Customers uses Odoo Contacts.** Enter the name, phone, email and physical street address once on the standard Contact form. Open **Rental Details**, enable rentals for the current company, and enter the postal address, ID, date of birth and licence details. Upload Omang or passport plus the licence. Save, then choose **New Booking**. Existing rental customers already have these details in the tab; there is no separate customer form to maintain. Booking customer selectors use Contacts directly. Rental identity documents remain scoped to the current company.
+**Car Rental → Customers uses Odoo Contacts.** Enter the name, phone, email and physical street address once on the standard Contact form. Open **Rental Details**, enable rentals for the current company, and enter the postal address, ID, date of birth and licence details. Upload Omang or passport plus the licence. Save, then choose **Create a Booking**. Existing rental customers already have these details in the tab; there is no separate customer form to maintain. Booking customer selectors use Contacts directly. Rental identity documents remain scoped to the current company.
 
 **Car Rental → Fleet → Vehicles uses Odoo Fleet.** Enter the model and registration plate in Fleet. On **Rental Details**, click **Enable Rentals**, select the rental category, complete compliance details and use **Activate for Rental**. After a return, use **Start Cleaning** and **Release after Cleaning**. Existing rental vehicles are already enabled. Fleet manages registration, model, VIN, colour, seats, transmission, fuel and odometer; the rental tab contains only rental-specific setup, availability, preview, documents and actions. Standard Fleet odometer entries update rental mileage. Rental allocation, inspections and payment rules continue to apply.
 
@@ -14,7 +14,7 @@ Sales orders, invoices, journal entries and reconciliation use the existing Odoo
 
 ### Collect rental payment and security deposit together
 
-Open **Payment & Security Deposit** from the rental or the journey's Payment step. The form shows the rental balance, deposit remaining and combined total. Enter the amount received, payment method, date and optional bank/receipt reference once. Check the allocation preview, then click **Record Payment & Deposit**.
+Open **Payment & Security Deposit** from the rental or the booking's Payment step. The form shows the rental balance, deposit remaining and combined total. Enter the amount received, payment method, date and optional bank/receipt reference once. Check the allocation preview, then click **Record Payment & Deposit**.
 
 Partial payments fund the security deposit first, then rent. The first deposit collection must cover at least 50% of the agreed daily rate; the full required deposit is still needed before handover. Subsequent collections default to the remaining amount only. Recording creates/posts the rental invoice if needed and posts both entries together. A failure rolls back the whole collection. Repeated clicks do not create duplicate receipts. The receiving journal shown is the company's configured receipt bank/cash journal.
 
@@ -23,7 +23,7 @@ Rental income and refundable deposits remain separately traceable in accounting,
 ### City Delights digital agreement
 
 1. In Settings → Digital Rental Agreement, load the supplied City Delights contract (or upload the approved PDF) and give it a version. This setting applies only to the active company.
-2. Confirm the booking and create its rental. Open **Digital Agreement** from the rental, or **Customer Digital Agreement** in the journey's agreement step.
+2. Confirm the booking and create its rental. Open **Digital Agreement** from the rental, or **Customer Digital Agreement** in the booking's agreement step.
 3. Enter the delivery place, payment advance deadline from clause 6, company notices email, company representative and the four witness names. Click **Prepare Signing Links**.
 4. Share the **Renter** link with the customer first. The customer reads the original contract, checks the prefilled booking schedule, completes their identity/contact/address and next-of-kin particulars, and draws their signature. Prices and security deposit are read-only.
 5. Customer submission locks those particulars. Share each remaining link only with its named company representative or witness. They review and sign the same locked document. These are private bearer links: anyone with one can access that person's signing request. They expire after 30 days. No email is sent automatically.
@@ -36,9 +36,9 @@ Local links starting with `127.0.0.1` work on this computer only. After deployme
 
 ### Guided booking
 
-Open **Bookings → Booking Journeys → New**. Use **Continue** to move through Customer, Booking, Quote, Confirm, Agreement, Payment, Pickup Inspection, Handover, Return, Settlement and Closed. Complete the agreement before collecting payment in the journey. Digital agreements require all six signatures. Previously paid rentals keep their financial records and remain at Agreement until it is signed.
+Open **Bookings → Create a Booking → New**. Use **Continue** to move through Customer, Booking, Quote, Confirm, Agreement, Payment, Pickup Inspection, Handover, Return, Settlement and Closed. Complete the agreement before collecting payment in the booking. Digital agreements require all six signatures. Previously paid rentals keep their financial records and remain at Agreement until it is signed.
 
-Use **Save & Exit** at any stage and reopen the journey later. Existing reservations and rentals have a **Booking Journey** button that resumes from their actual records. Back / Review Booking opens the reservation after a quote exists; confirmed booking details remain protected.
+Use **Save & Exit** at any stage and reopen the booking later. Existing reservations and rentals have an **Open Booking** button that resumes from their actual records. Back / Review Booking opens the reservation after a quote exists; confirmed booking details remain protected.
 
 The quote shows the hire total, refundable security deposit and separate one-time dirty return fee. Payment actions belong to the accountant. Agreement acknowledgement and completed pickup inspection precede handover. On return, complete the return inspection before Continue. At settlement, post and settle all applicable charges, apply approved deposit deductions and refund the remainder. **Close Rental** is available to the accountant and validates that nothing remains outstanding.
 

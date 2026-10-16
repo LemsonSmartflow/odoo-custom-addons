@@ -10,7 +10,7 @@
 <group string="Automatic allocation"><field name="to_deposit"/><field name="to_rental"/><field name="remaining"/></group>
 <footer><button name="action_post" type="object" string="Record Payment &amp; Deposit" class="btn-primary" invisible="posted"/><button special="cancel" string="Cancel"/></footer>
 </form></field></record>
-<record id="journey_combined_collection" model="ir.ui.view"><field name="name">Journey combined collection</field><field name="model">car.rental.journey</field><field name="inherit_id" ref="booking_journey_form"/><field name="priority">120</field><field name="arch" type="xml">
+<record id="journey_combined_collection" model="ir.ui.view"><field name="name">Combined payment and deposit collection</field><field name="model">car.rental.journey</field><field name="inherit_id" ref="booking_journey_form"/><field name="priority">120</field><field name="arch" type="xml">
 <xpath expr="//button[@name='action_invoice']" position="replace"><button name="action_collect_payment" type="object" string="Payment &amp; Security Deposit" class="btn-primary" groups="car_rental_management_odoo.group_rental_accountant"/></xpath>
 <xpath expr="//button[@name='action_payment']" position="replace"/><xpath expr="//button[@name='action_deposit']" position="replace"/>
 <xpath expr="//group[button[@name='action_collect_payment']]/div" position="replace"><div colspan="2">Enter the received amount once. The allocation preview shows the rental payment, refundable deposit and remaining balance. Both entries are recorded together.</div></xpath>

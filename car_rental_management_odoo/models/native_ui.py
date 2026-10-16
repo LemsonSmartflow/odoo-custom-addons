@@ -91,7 +91,7 @@ class Partner(models.Model):
 
     def action_rental_book(self):
         profile = self._rental_customer()
-        return dict(window('New Booking', 'car.rental.journey', context={
+        return dict(window('Create a Booking', 'car.rental.journey', context={
             'default_customer_id': profile.id, 'default_contact_id': self.id,
             'default_company_id': self.env.company.id}), view_mode='form')
 

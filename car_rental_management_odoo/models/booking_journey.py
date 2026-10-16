@@ -7,11 +7,11 @@ from .pricing import require_role
 
 class Journey(models.Model):
     _name = 'car.rental.journey'
-    _description = 'Booking Journey'
+    _description = 'Booking'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'name'
     _check_company_auto = True
-    _reservation_unique = models.Constraint('UNIQUE(reservation_id)', 'This reservation already has a booking journey.')
+    _reservation_unique = models.Constraint('UNIQUE(reservation_id)', 'This reservation already has a booking.')
 
     name = fields.Char(compute='_compute_progress')
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
@@ -70,7 +70,7 @@ class Journey(models.Model):
                 if rental.status == 'closed':
                     step, guidance = 'closed', 'Booking cycle complete. Fleet cleaning, repairs and release remain available from the vehicle record.'
             if reservation.status == 'cancelled':
-                step, guidance = 'cancelled', 'This reservation was cancelled. Start a new journey for a new booking.'
+                step, guidance = 'cancelled', 'This reservation was cancelled. Use Create a Booking to start a new booking.'
             journey.step, journey.guidance = step, guidance
 
     def write(self, vals):
@@ -123,7 +123,7 @@ class Journey(models.Model):
 
     def action_open(self):
         self.ensure_one()
-        return window('Booking Journey', self._name, res_id=self.id)
+        return window('Create a Booking', self._name, res_id=self.id)
 
     def action_save_exit(self):
         return self.env['ir.actions.actions']._for_xml_id('car_rental_management_odoo.action_booking_journeys')
