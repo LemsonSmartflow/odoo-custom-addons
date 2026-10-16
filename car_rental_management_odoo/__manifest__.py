@@ -1,6 +1,6 @@
 {
     'name': 'Car Rental Management',
-    'version': '19.0.7.0.0',
+    'version': '19.0.8.0.0',
     'summary': 'Car Rental Management Application',
     'category': 'Services',
     'author': 'Clinton Giri',

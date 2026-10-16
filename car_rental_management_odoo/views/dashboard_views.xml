@@ -25,42 +25,124 @@
 
                 <sheet>
 
-                    <h1>
-                        Car Rental Dashboard
-                    </h1>
-
-                    <group col="1">
-
-                        <!-- VEHICLES -->
-                        <group string="Vehicles">
-
-                            <field name="total_vehicles" readonly="1"/>
-
-                            <field name="available_vehicles" readonly="1"/>
-
-                            <field name="rented_vehicles" readonly="1"/>
-
-                        </group>
+                    <!-- ============ HEADER BANNER ============ -->
+                    <div class="bg-primary text-white rounded-3 p-4 mb-4 d-flex align-items-center">
+                        <i class="fa fa-tachometer fa-3x me-4" role="img" aria-label="Dashboard" title="Dashboard"/>
+                        <div>
+                            <h1 class="text-white mb-0">Car Rental Dashboard</h1>
+                            <div class="text-white-50">Live overview of your fleet, customers and revenue</div>
+                        </div>
+                    </div>
 
 
-                        <!-- CUSTOMERS AND RENTALS -->
-                        <group string="Customers &amp; Rentals">
+                    <!-- ============ VEHICLES ============ -->
+                    <h4 class="text-muted text-uppercase small fw-bold mb-3">
+                        <i class="fa fa-car me-2" role="img" aria-label="Vehicles" title="Vehicles"/>Fleet Status
+                    </h4>
 
-                            <field name="total_customers" readonly="1"/>
+                    <div class="row mb-4">
 
-                            <field name="ongoing_rentals" readonly="1"/>
+                        <!-- Total vehicles -->
+                        <div class="col-12 col-md-4 mb-3">
+                            <div class="card shadow-sm border-0 h-100" style="border-left: 5px solid #714B67 !important;">
+                                <div class="card-body d-flex align-items-center">
+                                    <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center me-3 flex-shrink-0" style="width: 60px; height: 60px;">
+                                        <i class="fa fa-car fa-2x" role="img" aria-label="Total vehicles" title="Total vehicles"/>
+                                    </div>
+                                    <div>
+                                        <div class="text-muted text-uppercase small fw-bold">Total Vehicles</div>
+                                        <field name="total_vehicles" readonly="1" nolabel="1" class="fs-1 fw-bold text-primary mb-0"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                        </group>
+                        <!-- Available vehicles -->
+                        <div class="col-12 col-md-4 mb-3">
+                            <div class="card shadow-sm border-0 h-100" style="border-left: 5px solid #28a745 !important;">
+                                <div class="card-body d-flex align-items-center">
+                                    <div class="rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center me-3 flex-shrink-0" style="width: 60px; height: 60px;">
+                                        <i class="fa fa-check-circle fa-2x" role="img" aria-label="Available vehicles" title="Available vehicles"/>
+                                    </div>
+                                    <div>
+                                        <div class="text-muted text-uppercase small fw-bold">Available</div>
+                                        <field name="available_vehicles" readonly="1" nolabel="1" class="fs-1 fw-bold text-success mb-0"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                    </group>
+                        <!-- Rented vehicles -->
+                        <div class="col-12 col-md-4 mb-3">
+                            <div class="card shadow-sm border-0 h-100" style="border-left: 5px solid #fd7e14 !important;">
+                                <div class="card-body d-flex align-items-center">
+                                    <div class="rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center me-3 flex-shrink-0" style="width: 60px; height: 60px;">
+                                        <i class="fa fa-key fa-2x" role="img" aria-label="Rented vehicles" title="Rented vehicles"/>
+                                    </div>
+                                    <div>
+                                        <div class="text-muted text-uppercase small fw-bold">Currently Rented</div>
+                                        <field name="rented_vehicles" readonly="1" nolabel="1" class="fs-1 fw-bold text-warning mb-0"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
 
 
-                    <!-- FINANCIAL -->
-                    <group string="Financial">
+                    <!-- ============ CUSTOMERS, RENTALS, REVENUE ============ -->
+                    <h4 class="text-muted text-uppercase small fw-bold mb-3">
+                        <i class="fa fa-line-chart me-2" role="img" aria-label="Business" title="Business"/>Business Overview
+                    </h4>
 
-                        <field name="revenue" readonly="1"/>
+                    <div class="row mb-2">
 
-                    </group>
+                        <!-- Customers -->
+                        <div class="col-12 col-md-4 mb-3">
+                            <div class="card shadow-sm border-0 h-100" style="border-left: 5px solid #17a2b8 !important;">
+                                <div class="card-body d-flex align-items-center">
+                                    <div class="rounded-circle bg-info-subtle text-info d-flex align-items-center justify-content-center me-3 flex-shrink-0" style="width: 60px; height: 60px;">
+                                        <i class="fa fa-users fa-2x" role="img" aria-label="Customers" title="Customers"/>
+                                    </div>
+                                    <div>
+                                        <div class="text-muted text-uppercase small fw-bold">Total Customers</div>
+                                        <field name="total_customers" readonly="1" nolabel="1" class="fs-1 fw-bold text-info mb-0"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ongoing rentals -->
+                        <div class="col-12 col-md-4 mb-3">
+                            <div class="card shadow-sm border-0 h-100" style="border-left: 5px solid #6f42c1 !important;">
+                                <div class="card-body d-flex align-items-center">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0" style="width: 60px; height: 60px; background-color: #e9ddf7; color: #6f42c1;">
+                                        <i class="fa fa-road fa-2x" role="img" aria-label="Ongoing rentals" title="Ongoing rentals"/>
+                                    </div>
+                                    <div>
+                                        <div class="text-muted text-uppercase small fw-bold">Ongoing Rentals</div>
+                                        <field name="ongoing_rentals" readonly="1" nolabel="1" class="fs-1 fw-bold mb-0" style="color: #6f42c1;"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Revenue -->
+                        <div class="col-12 col-md-4 mb-3">
+                            <div class="card shadow-sm border-0 h-100" style="border-left: 5px solid #20c997 !important;">
+                                <div class="card-body d-flex align-items-center">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0" style="width: 60px; height: 60px; background-color: #d3f5ea; color: #20c997;">
+                                        <i class="fa fa-money fa-2x" role="img" aria-label="Revenue" title="Revenue"/>
+                                    </div>
+                                    <div>
+                                        <div class="text-muted text-uppercase small fw-bold">Revenue</div>
+                                        <field name="revenue" readonly="1" nolabel="1" class="fs-1 fw-bold mb-0" style="color: #20c997;"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
 
                 </sheet>
 
