@@ -4,3 +4,4 @@ from . import test_booking_journey
 from . import test_digital_contract
 from . import test_collection
 from . import test_shared_records
+from . import test_native_ui

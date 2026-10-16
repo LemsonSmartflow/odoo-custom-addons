@@ -25,7 +25,7 @@ class TestSharedRecords(TestConnectedWorkflow):
         self.assertEqual(profile.partner_id, partner)
         self.assertEqual(profile.first_name, 'Existing')
         self.assertEqual(profile.email, 'person@example.test')
-        self.assertEqual(partner.action_rental_profile()['res_id'], profile.id)
+        self.assertEqual(partner.action_rental_profile()['res_id'], partner.id)
         with self.assertRaises(ValidationError), self.cr.savepoint():
             profile.write({'partner_id': self.customer.partner_id.id})
 
@@ -39,7 +39,7 @@ class TestSharedRecords(TestConnectedWorkflow):
         self.vehicle.write({'color': 'Red'})
         self.assertEqual(fleet.color, 'Red')
         self.assertEqual(self.vehicle.action_sync_fleet()['res_id'], fleet.id)
-        self.assertEqual(fleet.action_rental_profile()['res_id'], self.vehicle.id)
+        self.assertEqual(fleet.action_rental_profile()['res_id'], fleet.id)
         self.env['fleet.vehicle.odometer'].create({'vehicle_id': fleet.id, 'value': 1700, 'date': '2026-10-16'})
         self.assertEqual(self.vehicle.mileage, 1700)
         fleet.fuel_type = 'gasoline'

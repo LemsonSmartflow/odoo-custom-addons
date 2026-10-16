@@ -15,3 +15,5 @@ from . import booking_journey
 from . import digital_contract
 from . import collection
 from . import shared_records
+
+from . import native_ui
