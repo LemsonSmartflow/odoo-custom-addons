@@ -36,7 +36,7 @@
                         <group string="Driving licence"><field name="rental_license_document_ids" widget="many2many_binary" nolabel="1"/></group>
                         <group string="Other / existing documents"><field name="rental_document_ids" widget="many2many_binary" nolabel="1"/></group>
                     </group>
-                    <button name="action_rental_book" type="object" string="New Booking" class="btn-primary" invisible="not rental_enabled"/>
+                    <button name="action_rental_book" type="object" string="Create a Booking" class="btn-primary" invisible="not rental_enabled"/>
                 </page>
             </xpath>
         </field>
