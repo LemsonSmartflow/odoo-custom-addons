@@ -19,16 +19,16 @@ class CarRental(models.Model):
         required=True
     )
 
-    customer_id = fields.Many2one(
-        'car.rental.customer',
+    partner_id = fields.Many2one(
+        'res.partner',
         string='Customer',
-        related='reservation_id.customer_id',
+        related='reservation_id.partner_id',
         store=True,
         readonly=True
     )
 
     vehicle_id = fields.Many2one(
-        'car.rental.vehicle',
+        'fleet.vehicle',
         string='Vehicle',
         related='reservation_id.vehicle_id',
         store=True,
@@ -84,7 +84,7 @@ class CarRental(models.Model):
                 )
 
             record.status = 'ongoing'
-            record.vehicle_id.status = 'rented'
+            record.vehicle_id.rental_status = 'rented'
 
     def action_return_vehicle(self):
         for record in self:
@@ -101,6 +101,6 @@ class CarRental(models.Model):
 
             record.status = 'returned'
 
-            record.vehicle_id.status = 'available'
+            record.vehicle_id.rental_status = 'available'
 
-            record.vehicle_id.mileage = record.final_mileage
+            record.vehicle_id.odometer = record.final_mileage

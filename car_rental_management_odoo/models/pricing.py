@@ -11,15 +11,6 @@ def require_role(env, role):
         raise AccessError('Your Car Rental role does not allow this operation.')
 
 
-class Category(models.Model):
-    _name = 'car.rental.category'
-    _description = 'Rental Vehicle Category'
-
-    name = fields.Char(required=True)
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
-
-
 class Destination(models.Model):
     _name = 'car.rental.zone'
     _description = 'Rental Destination'
@@ -40,7 +31,7 @@ class PricingRule(models.Model):
     name = fields.Char(required=True, tracking=True)
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
     currency_id = fields.Many2one(related='company_id.currency_id')
-    category_id = fields.Many2one('car.rental.category', required=True, check_company=True)
+    category_id = fields.Many2one('fleet.vehicle.model.category', required=True)
     destination_id = fields.Many2one('car.rental.zone', required=True, check_company=True)
     min_days = fields.Integer(default=1, required=True)
     max_days = fields.Integer(string='Maximum Days (0 = unlimited)')
@@ -135,7 +126,7 @@ class Reservation(models.Model):
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
     currency_id = fields.Many2one(related='company_id.currency_id')
     destination_id = fields.Many2one('car.rental.zone', check_company=True, tracking=True)
-    category_id = fields.Many2one('car.rental.category', check_company=True, tracking=True)
+    category_id = fields.Many2one('fleet.vehicle.model.category', tracking=True)
     vehicle_id = fields.Many2one(required=False, check_company=True, tracking=True)
     pricing_rule_id = fields.Many2one('car.rental.rate.rule', readonly=True, copy=False)
     quoted_daily_rate = fields.Float(string='Agreed Daily Rate', readonly=True, copy=False)
@@ -154,7 +145,7 @@ class Reservation(models.Model):
     override_approved_by = fields.Many2one('res.users', readonly=True, copy=False)
     override_approved_on = fields.Datetime(readonly=True, copy=False)
     legacy_booking = fields.Boolean(readonly=True, copy=False)
-    available_vehicle_ids = fields.Many2many('car.rental.vehicle', compute='_compute_available')
+    available_vehicle_ids = fields.Many2many('fleet.vehicle', compute='_compute_available')
 
     @api.depends('quoted_daily_rate', 'deposit_ratio')
     def _compute_deposit(self):
@@ -205,16 +196,16 @@ class Reservation(models.Model):
     @api.onchange('vehicle_id')
     def _onchange_vehicle_category(self):
         if self.vehicle_id:
-            self.category_id = self.vehicle_id.category_id
+            self.category_id = self.vehicle_id.rental_category_id
         self._onchange_pricing()
 
     @api.depends('category_id', 'start_date', 'end_date', 'company_id')
     def _compute_available(self):
         for record in self:
-            candidates = self.env['car.rental.vehicle'].search([
-                ('company_id', '=', record.company_id.id), ('category_id', '=', record.category_id.id),
-                ('status', 'in', ['available', 'reserved', 'rented']), ('registration_number', '!=', False),
-            ]) if record.category_id else self.env['car.rental.vehicle']
+            candidates = self.env['fleet.vehicle'].search([
+                ('company_id', '=', record.company_id.id), ('rental_category_id', '=', record.category_id.id),
+                ('rental_status', 'in', ['available', 'reserved', 'rented']), ('license_plate', '!=', False),
+            ]) if record.category_id else self.env['fleet.vehicle']
             conflicts = self.search([('id', '!=', record._origin.id or 0), ('vehicle_id', 'in', candidates.ids), ('status', '!=', 'cancelled'), ('start_date', '<', record.end_date), ('end_date', '>', record.start_date)]) if record.start_date and record.end_date else self.browse()
             record.available_vehicle_ids = candidates - conflicts.mapped('vehicle_id')
 
@@ -228,7 +219,7 @@ class Reservation(models.Model):
                 raise ValidationError('Create a draft reservation, then confirm it.')
             vals.pop('quoted_daily_rate', None)
             if not vals.get('category_id') and vals.get('vehicle_id'):
-                vals['category_id'] = self.env['car.rental.vehicle'].browse(vals['vehicle_id']).category_id.id
+                vals['category_id'] = self.env['fleet.vehicle'].browse(vals['vehicle_id']).rental_category_id.id
             if vals.get('start_date') and not vals.get('pickup_datetime'):
                 vals['pickup_datetime'] = datetime.combine(fields.Date.to_date(vals['start_date']), time(8))
             if vals.get('end_date') and not vals.get('expected_return_datetime'):
@@ -263,7 +254,7 @@ class Reservation(models.Model):
         self._compute_available()
         if not self.available_vehicle_ids:
             raise ValidationError('No vehicle in this category is available for the requested dates.')
-        self.vehicle_id = self.available_vehicle_ids.sorted('fleet_id')[:1]
+        self.vehicle_id = self.available_vehicle_ids.sorted('license_plate')[:1]
 
     def action_confirm(self):
         for record in self:
@@ -279,7 +270,7 @@ class Reservation(models.Model):
                 raise ValidationError('No approved pricing rule matches this destination, category, duration and date.')
             if not record.vehicle_id:
                 record.action_allocate()
-            if record.vehicle_id.category_id != record.category_id:
+            if record.vehicle_id.rental_category_id != record.category_id:
                 raise ValidationError('The allocated vehicle does not match the requested category.')
             record.vehicle_id._check_ready()
             record._check_vehicle_availability()
@@ -288,8 +279,10 @@ class Reservation(models.Model):
             record.vehicle_id._refresh_reserved_status()
 
     def action_cancel(self):
+        self.check_access('write')
         vehicles = self.mapped('vehicle_id')
         for record in self:
+            record.rental_ids._cancel_before_pickup()
             super(Reservation, record).write({'status': 'cancelled'})
         vehicles._refresh_reserved_status()
 
@@ -304,7 +297,7 @@ class Reservation(models.Model):
         for record in self:
             if record.status == 'cancelled' or not record.vehicle_id or not record.start_date or not record.end_date:
                 continue
-            self.env.cr.execute('UPDATE car_rental_vehicle SET id = id WHERE id = %s', [record.vehicle_id.id])
+            self.env.cr.execute('UPDATE fleet_vehicle SET id = id WHERE id = %s', [record.vehicle_id.id])
             if self.search_count([('id', '!=', record.id), ('vehicle_id', '=', record.vehicle_id.id), ('status', '!=', 'cancelled'), ('start_date', '<', record.end_date), ('end_date', '>', record.start_date)]):
                 raise ValidationError('This vehicle is already allocated during these dates.')
 
@@ -340,26 +333,3 @@ class Reservation(models.Model):
                 raise ValidationError('Scheduled pickup must fall on the rental start date (UTC).')
             if record.expected_return_datetime and record.end_date and record.expected_return_datetime.date() != record.end_date:
                 raise ValidationError('Scheduled return must fall on the rental end date (UTC).')
-
-
-class Customer(models.Model):
-    _name = 'car.rental.customer'
-    _inherit = ['car.rental.customer', 'mail.thread', 'mail.activity.mixin']
-
-    company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
-    partner_id = fields.Many2one('res.partner', string='Contact', copy=False, ondelete='restrict')
-    document_ids = fields.Many2many('ir.attachment', string='ID and Licence Documents')
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        return super().create(vals_list)
-
-    def _ensure_partner(self):
-        for customer in self:
-            vals = {'name': customer.display_name, 'email': customer.email, 'phone': customer.phone, 'street': customer.address, 'company_id': customer.company_id.id}
-            if not customer.partner_id:
-                super(Customer, customer).write({'partner_id': self.env['res.partner'].create(vals).id})
-        return self.partner_id
-
-    def write(self, vals):
-        return super().write(vals)

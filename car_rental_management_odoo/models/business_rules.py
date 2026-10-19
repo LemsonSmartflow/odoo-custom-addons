@@ -38,87 +38,6 @@ def validate_reference(records):
             raise ValidationError('This reference is already used in the company. Choose a different reference.')
 
 
-class Customer(models.Model):
-    _inherit = 'car.rental.customer'
-
-    cin = fields.Char(string='Omang / Passport Number')
-    physical_address = fields.Text(required=True)
-    postal_address = fields.Text(required=True)
-    date_of_birth = fields.Date(required=True)
-    license_issue_date = fields.Date(string='Licence Date of Issue', required=True)
-    omang_document_ids = fields.Many2many('ir.attachment', 'rental_customer_omang_rel', string='Omang Documents')
-    passport_document_ids = fields.Many2many('ir.attachment', 'rental_customer_passport_rel', string='Passport Documents')
-    license_document_ids = fields.Many2many('ir.attachment', 'rental_customer_licence_rel', string='Licence Documents')
-
-    @api.constrains('physical_address', 'postal_address', 'date_of_birth', 'license_issue_date', 'license_expiry')
-    def _check_profile(self):
-        for customer in self:
-            if not customer.physical_address or not customer.physical_address.strip() or not customer.postal_address or not customer.postal_address.strip():
-                raise ValidationError('Physical address and postal address are required.')
-            if customer.date_of_birth and customer.date_of_birth >= fields.Date.today():
-                raise ValidationError('Date of birth must be in the past.')
-            if customer.license_issue_date and customer.license_expiry and customer.license_issue_date > customer.license_expiry:
-                raise ValidationError('Licence expiry must follow its issue date.')
-            if customer.license_issue_date and customer.license_issue_date > fields.Date.today():
-                raise ValidationError('Licence date of issue cannot be in the future.')
-
-    def _check_rental_eligibility(self, pickup, return_time):
-        self.ensure_one()
-        local_pickup = fields.Datetime.context_timestamp(self, pickup).date()
-        local_return = fields.Datetime.context_timestamp(self, return_time).date()
-        if not all([self.physical_address, self.postal_address, self.date_of_birth, self.license_issue_date]):
-            raise ValidationError('Complete the customer addresses, date of birth and licence issue date before booking.')
-        birthday = self.date_of_birth
-        age = local_pickup.year - birthday.year - ((local_pickup.month, local_pickup.day) < (birthday.month, birthday.day))
-        if age < 21:
-            raise ValidationError('The customer must be at least 21 years old on the pickup date.')
-        if not self.license_expiry or self.license_expiry < local_return or self.license_issue_date > local_pickup:
-            raise ValidationError('The driving licence must be valid throughout the rental period.')
-        if not (self.omang_document_ids or self.passport_document_ids) or not self.license_document_ids:
-            raise ValidationError('Upload either Omang or passport, plus the driving licence, before confirming the reservation.')
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        for vals in vals_list:
-            vals['address'] = vals.get('physical_address') or vals.get('address')
-        return super().create(vals_list)
-
-    def write(self, vals):
-        if 'physical_address' in vals:
-            vals = dict(vals, address=vals['physical_address'])
-        return super().write(vals)
-
-
-class Vehicle(models.Model):
-    _inherit = 'car.rental.vehicle'
-
-    @api.onchange('fleet_id')
-    def _onchange_fleet_registration(self):
-        self.registration_number = self.fleet_id
-
-    @api.onchange('registration_number')
-    def _onchange_registration_fleet(self):
-        self.fleet_id = self.registration_number
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        for vals in vals_list:
-            if vals.get('fleet_id') or vals.get('registration_number'):
-                value = vals.get('fleet_id') or vals['registration_number']
-                if vals.get('fleet_id') and vals.get('registration_number') and vals['fleet_id'] != vals['registration_number']:
-                    raise ValidationError('Fleet ID and registration number must be the same.')
-                vals.update(fleet_id=value, registration_number=value)
-        return super().create(vals_list)
-
-    def write(self, vals):
-        if 'fleet_id' in vals or 'registration_number' in vals:
-            value = vals.get('fleet_id', vals.get('registration_number'))
-            if 'fleet_id' in vals and 'registration_number' in vals and vals['fleet_id'] != vals['registration_number']:
-                raise ValidationError('Fleet ID and registration number must be the same.')
-            vals = dict(vals, fleet_id=value, registration_number=value)
-        return super().write(vals)
-
-
 class PricingRule(models.Model):
     _inherit = 'car.rental.rate.rule'
 
@@ -163,10 +82,10 @@ class Reservation(models.Model):
     @api.depends('category_id', 'pickup_datetime', 'expected_return_datetime', 'company_id')
     def _compute_available(self):
         for record in self:
-            candidates = self.env['car.rental.vehicle'].search([
-                ('company_id', '=', record.company_id.id), ('category_id', '=', record.category_id.id),
-                ('status', 'in', ['available', 'reserved', 'rented']), ('registration_number', '!=', False),
-            ]) if record.category_id else self.env['car.rental.vehicle']
+            candidates = self.env['fleet.vehicle'].search([
+                ('company_id', '=', record.company_id.id), ('rental_category_id', '=', record.category_id.id),
+                ('rental_status', 'in', ['available', 'reserved', 'rented']), ('license_plate', '!=', False),
+            ]) if record.category_id else self.env['fleet.vehicle']
             conflicts = self.search([('id', '!=', record._origin.id or 0), ('vehicle_id', 'in', candidates.ids),
                                      ('status', '!=', 'cancelled'), ('pickup_datetime', '<', record.expected_return_datetime),
                                      ('expected_return_datetime', '>', record.pickup_datetime)]) if record.pickup_datetime and record.expected_return_datetime else self.browse()
@@ -177,7 +96,7 @@ class Reservation(models.Model):
         for record in self:
             if record.status == 'cancelled' or not record.vehicle_id or not record.pickup_datetime or not record.expected_return_datetime:
                 continue
-            self.env.cr.execute('UPDATE car_rental_vehicle SET id = id WHERE id = %s', [record.vehicle_id.id])
+            self.env.cr.execute('UPDATE fleet_vehicle SET id = id WHERE id = %s', [record.vehicle_id.id])
             if self.search_count([('id', '!=', record.id), ('vehicle_id', '=', record.vehicle_id.id), ('status', '!=', 'cancelled'),
                                   ('pickup_datetime', '<', record.expected_return_datetime), ('expected_return_datetime', '>', record.pickup_datetime)]):
                 raise ValidationError('This vehicle is already allocated during these pickup/return times.')
@@ -225,7 +144,7 @@ class Reservation(models.Model):
         for record in self:
             if not record.pickup_datetime or not record.expected_return_datetime:
                 raise ValidationError('Select pickup and return date and time.')
-            record.customer_id._check_rental_eligibility(record.pickup_datetime, record.expected_return_datetime)
+            record.partner_id._check_rental_eligibility(record.pickup_datetime, record.expected_return_datetime)
         return super().action_confirm()
 
     def action_refresh_cleaning_fee(self):
@@ -253,7 +172,7 @@ class Rental(models.Model):
 
     @api.onchange('reservation_id')
     def _onchange_customer_signature_name(self):
-        self.agreement_signed_by = self.customer_id.display_name if self.customer_id else False
+        self.agreement_signed_by = self.partner_id.display_name if self.partner_id else False
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -263,7 +182,7 @@ class Rental(models.Model):
             reservation = self.env['car.rental.reservation'].browse(vals.get('reservation_id'))
             vals['reference'] = (vals.get('reference') or '').strip()
             if reservation:
-                vals.setdefault('agreement_signed_by', reservation.customer_id.display_name)
+                vals.setdefault('agreement_signed_by', reservation.partner_id.display_name)
                 if not vals['reference'] or vals['reference'].lower() == 'new':
                     vals['reference'] = monthly_reference(self.env, self._name, 'REN', reservation.company_id, reservation.start_date)
         return super().create(vals_list)
@@ -278,7 +197,7 @@ class Rental(models.Model):
     def action_start_rental(self):
         for rental in self:
             rental.reservation_id._check_deposit_policy()
-            rental.customer_id._check_rental_eligibility(rental.reservation_id.pickup_datetime, rental.expected_return_datetime)
+            rental.partner_id._check_rental_eligibility(rental.reservation_id.pickup_datetime, rental.expected_return_datetime)
         result = super().action_start_rental()
         for rental in self:
             pickup = rental.inspection_ids.filtered(lambda c: c.kind == 'pickup' and c.state == 'done')[:1]
@@ -338,14 +257,14 @@ class Inspection(models.Model):
 
     @api.onchange('rental_id')
     def _onchange_acknowledgement_name(self):
-        self.acknowledged_by = self.rental_id.customer_id.display_name if self.rental_id else False
+        self.acknowledged_by = self.rental_id.partner_id.display_name if self.rental_id else False
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('rental_id'):
                 rental = self.env['car.rental.rental'].browse(vals['rental_id'])
-                vals.setdefault('acknowledged_by', rental.customer_id.display_name)
+                vals.setdefault('acknowledged_by', rental.partner_id.display_name)
         return super().create(vals_list)
 
     def action_complete(self):
@@ -365,6 +284,7 @@ class Deposit(models.Model):
     charge_invoice_id = fields.Many2one('account.move', string='Cleaning Invoice', check_company=True)
 
     def action_post(self):
+        require_role(self.env, 'group_rental_accountant')
         for event in self:
             if event.kind == 'collect' and event.rental_id.deposit_collected <= 0 and event.amount < event.rental_id.reservation_id.quoted_daily_rate * 0.5 - 0.005:
                 raise ValidationError('Initial security deposit collection cannot be below 50% of the agreed daily rate.')

@@ -41,32 +41,33 @@ class CarRentalDashboard(models.Model):
     )
 
     def _compute_dashboard(self):
-        Vehicle = self.env['car.rental.vehicle']
-        Customer = self.env['car.rental.customer']
+        Vehicle = self.env['fleet.vehicle']
+        Customer = self.env['res.partner']
         Rental = self.env['car.rental.rental']
-        Payment = self.env['car.rental.payment']
+        Payment = self.env['account.payment']
 
         total_vehicles = Vehicle.search_count([])
 
         available_vehicles = Vehicle.search_count([
-            ('status', '=', 'available')
+            ('rental_status', '=', 'available')
         ])
 
         rented_vehicles = Vehicle.search_count([
-            ('status', '=', 'rented')
+            ('rental_status', '=', 'rented')
         ])
 
-        total_customers = Customer.search_count([])
+        total_customers = Customer.search_count([('rental_cin', '!=', False)])
 
         ongoing_rentals = Rental.search_count([
             ('status', '=', 'ongoing')
         ])
 
         payments = Payment.search([
-            ('status', 'in', ['partial', 'paid'])
+            ('car_rental_id', '!=', False),
+            ('state', '=', 'paid'),
         ])
 
-        revenue = sum(payments.mapped('paid_amount'))
+        revenue = sum(payments.mapped('amount'))
 
         for record in self:
             record.total_vehicles = total_vehicles
