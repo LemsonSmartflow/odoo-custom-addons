@@ -2,7 +2,7 @@
     <record id="access_booking_journey" model="ir.model.access">
         <field name="name">Booking staff</field><field name="model_id" ref="model_car_rental_journey"/>
         <field name="group_id" ref="group_car_rental_agent"/>
-        <field name="perm_read" eval="True"/><field name="perm_write" eval="True"/><field name="perm_create" eval="True"/>
+        <field name="perm_read" eval="True"/><field name="perm_write" eval="True"/><field name="perm_create" eval="True"/><field name="perm_unlink" eval="True"/>
     </record>
     <record id="rule_booking_journey_company" model="ir.rule">
         <field name="name">Booking company isolation</field><field name="model_id" ref="model_car_rental_journey"/>
@@ -10,7 +10,7 @@
     </record>
     <record id="booking_journey_list" model="ir.ui.view">
         <field name="name">Create a Booking</field><field name="model">car.rental.journey</field>
-        <field name="arch" type="xml"><list><field name="name"/><field name="customer_id"/><field name="pickup_datetime"/><field name="vehicle_id"/><field name="step" widget="badge"/></list></field>
+        <field name="arch" type="xml"><list><field name="name"/><field name="partner_id"/><field name="pickup_datetime"/><field name="vehicle_id"/><field name="step" widget="badge"/></list></field>
     </record>
     <record id="booking_journey_form" model="ir.ui.view">
         <field name="name">Guided booking</field><field name="model">car.rental.journey</field>
@@ -21,6 +21,8 @@
                     <button name="action_continue" type="object" string="Continue" class="btn-primary" invisible="step in ['closed', 'cancelled', 'handover', 'settlement']"/>
                     <button name="action_continue" type="object" string="Hand Over Vehicle" class="btn-primary" invisible="step != 'handover'" confirm="Confirm the keys and vehicle are being handed to the customer?"/>
                     <button name="action_continue" type="object" string="Close Rental" class="btn-primary" invisible="step != 'settlement'" groups="car_rental_management_odoo.group_rental_accountant"/>
+                    <button name="action_cancel" type="object" string="Cancel Booking" invisible="step in ['return', 'settlement', 'closed', 'cancelled']" confirm="Cancel this booking and release its reservation? Existing records will be retained."/>
+                    <button name="action_end_early" type="object" string="End Rental Early" invisible="step != 'return'"/>
                     <button name="action_save_exit" type="object" string="Save &amp; Exit"/>
                     <field name="step" widget="statusbar" options="{'clickable': False}" statusbar_visible="customer,details,quote,confirm,agreement,payment,pickup,handover,return,settlement,closed"/>
                 </header>
@@ -30,18 +32,18 @@
                     <div class="alert alert-info"><field name="guidance" nolabel="1"/></div>
                     <group string="Customer" invisible="step != 'customer'">
                         <field name="company_id" readonly="reservation_id"/>
-                        <field name="customer_id" domain="[('company_id', '=', company_id)]" context="{'default_company_id': company_id}" options="{'no_quick_create': True}"/>
-                        <button name="action_customer" type="object" string="Review Customer Documents" invisible="not customer_id"/>
+                        <field name="partner_id" domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]" context="{'default_company_id': company_id}" options="{'no_quick_create': True}"/>
+                        <button name="action_customer" type="object" string="Review Customer Documents" invisible="not partner_id"/>
                     </group>
                     <group string="Booking details" invisible="step != 'details'">
                         <field name="destination_id" domain="[('company_id', '=', company_id)]"/>
-                        <field name="category_id" domain="[('company_id', '=', company_id)]"/>
+                        <field name="category_id"/>
                         <field name="pickup_datetime"/><field name="expected_return_datetime"/>
-                        <field name="vehicle_id" domain="[('company_id', '=', company_id), ('category_id', '=', category_id), ('status', 'in', ['available', 'reserved', 'rented'])]"/>
+                        <field name="vehicle_id" domain="[('company_id', '=', company_id), ('rental_category_id', '=', category_id), ('rental_status', 'in', ['available', 'reserved', 'rented'])]"/>
                         <div colspan="2" class="text-muted">Leave vehicle empty to allocate an available vehicle automatically. Availability is checked against both pickup and return times.</div>
                     </group>
                     <group string="Booking summary" invisible="step in ['customer', 'details']">
-                        <field name="customer_id" readonly="1"/><field name="vehicle_id" readonly="1"/>
+                        <field name="partner_id" readonly="1"/><field name="vehicle_id" readonly="1"/>
                         <field name="destination_id" readonly="1"/><field name="pickup_datetime" readonly="1"/><field name="expected_return_datetime" readonly="1"/>
                         <field name="number_of_days" string="24-hour Rental Days"/><field name="amount" string="Hire Total" widget="monetary"/>
                         <field name="deposit_required" string="Refundable Security Deposit"/>

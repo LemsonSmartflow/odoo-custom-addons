@@ -1,64 +1,103 @@
-from odoo.exceptions import AccessError, ValidationError
-from odoo.tests import Form
+"""Native Contacts and Fleet screens backed by the extended standard models.
+
+Rental identity lives directly on res.partner and rental operations directly on
+fleet.vehicle, so these tests exercise the public screen actions and the native
+record rather than any bespoke bridge model.
+"""
+from datetime import timedelta
+
 from odoo import fields
-from .test_workflow import TestConnectedWorkflow
+from odoo.exceptions import AccessError, ValidationError
+from odoo.tests import Form, tagged
+
+from .common import RentalTestCommon
 
 
-class TestNativeScreens(TestConnectedWorkflow):
+@tagged('post_install', '-at_install')
+class TestNativeScreens(RentalTestCommon):
+
     def test_contact_edits_same_rental_details(self):
-        contact = self.customer.partner_id
-        self.assertTrue(contact.rental_enabled)
-        self.assertEqual(contact.rental_cin, self.customer.cin)
-        contact.write({'rental_cin': 'UPDATED-ID'})
-        self.assertEqual(self.customer.cin, 'UPDATED-ID')
-        self.assertEqual(contact.action_rental_profile()['res_model'], 'res.partner')
-        self.assertEqual(self.customer.get_formview_action()['res_model'], 'res.partner')
+        partner = self._make_partner()
+        self.assertTrue(partner.rental_enabled)
+        partner.write({'rental_cin': 'UPDATED-ID'})
+        self.assertEqual(partner.rental_cin, 'UPDATED-ID')
+        profile = partner.action_rental_profile()
+        self.assertEqual(profile['res_model'], 'res.partner')
+        self.assertEqual(profile['res_id'], partner.id)
+        self.assertEqual(partner.get_formview_action()['res_model'], 'res.partner')
 
     def test_native_contact_create_and_booking(self):
-        vals = {'name': 'Native Customer', 'street': 'Physical address', 'rental_postal_address': 'Postal address', 'rental_enabled': True}
-        for key in ('cin', 'date_of_birth', 'driving_license', 'license_issue_date', 'license_expiry'):
-            vals['rental_' + key] = self.customer[key]
-        contact = self.env['res.partner'].create(vals)
-        profile = contact._rental_customer()
-        self.assertEqual(profile.partner_id, contact)
+        contact = self.env['res.partner'].create({
+            'name': 'Native Customer',
+            'company_type': 'person',
+            'street': 'Physical address',
+            'rental_postal_address': 'Postal address',
+            'rental_enabled': True,
+            'rental_cin': 'NATIVE-ID',
+            'rental_date_of_birth': fields.Date.today() - timedelta(days=365 * 30),
+            'rental_driving_license': 'NATIVE-LICENCE',
+            'rental_license_issue_date': fields.Date.today() - timedelta(days=365 * 3),
+            'rental_license_expiry': fields.Date.today() + timedelta(days=365 * 2),
+        })
+        self.assertTrue(contact.rental_enabled)
+        booking = contact.action_rental_book()
+        self.assertEqual(booking['res_model'], 'car.rental.journey')
+        self.assertEqual(booking['context']['default_partner_id'], contact.id)
         journey = self.env['car.rental.journey'].create({'contact_id': contact.id})
-        self.assertEqual(journey.customer_id, profile)
+        self.assertEqual(journey.partner_id, contact)
+        self.assertEqual(journey.contact_id, contact)
         self.assertEqual(journey.action_customer()['res_model'], 'res.partner')
-        self.assertEqual(contact.action_rental_book()['context']['default_customer_id'], profile.id)
-        self.assertEqual(self.env['car.rental.customer'].search_count([('partner_id', '=', contact.id)]), 1)
+        self.assertEqual(journey.action_customer()['res_id'], contact.id)
 
     def test_contact_company_and_incomplete_validation(self):
-        contact = self.env['res.partner'].create({'name': 'Ordinary Contact'})
-        self.assertFalse(contact.rental_enabled)
+        ordinary = self.env['res.partner'].create({'name': 'Ordinary Contact'})
+        self.assertFalse(ordinary.rental_enabled)
         with self.assertRaises(ValidationError), self.cr.savepoint():
-            self.env['car.rental.journey'].create({'contact_id': contact.id})
+            ordinary.action_rental_book()
+
+        reservation = self._make_reservation()
+        as_manager = self.env['car.rental.reservation'].with_user(self.user_manager)
+        self.assertEqual(as_manager.search([('id', '=', reservation.id)]).ids, reservation.ids)
         other = self.env['res.company'].create({'name': 'Different rental company'})
-        self.assertFalse(self.customer.partner_id.with_company(other).rental_enabled)
-        with self.assertRaises(ValidationError), self.cr.savepoint():
-            self.customer.partner_id.with_company(other)._rental_customer()
+        self.assertFalse(as_manager.with_company(other).search([('id', '=', reservation.id)]))
 
     def test_native_fleet_details_keep_one_vehicle(self):
-        fleet = self.vehicle.fleet_vehicle_id
-        self.assertEqual(fleet.rental_vehicle_id, self.vehicle)
-        self.assertEqual(fleet.action_rental_profile()['res_model'], 'fleet.vehicle')
-        fleet.write({'rental_road_license_number': 'ROAD-123'})
-        self.assertEqual(self.vehicle.road_license_number, 'ROAD-123')
-        fleet.action_enable_rentals()
-        self.assertEqual(len(fleet.rental_vehicle_ids), 1)
-        self.assertEqual(self.vehicle.get_formview_action()['res_model'], 'fleet.vehicle')
-        new = self.env['fleet.vehicle'].create({'model_id': fleet.model_id.id, 'license_plate': 'NATIVE-NEW', 'company_id': self.env.company.id})
-        new.action_enable_rentals()
-        self.assertEqual(new.rental_status, 'setup')
-        new.rental_category_id = self.category
-        new.action_rental_activate()
-        self.assertEqual(new.rental_status, 'available')
+        vehicle = self._make_vehicle(status='setup')
+        self.assertEqual(vehicle.action_rental_profile()['res_model'], 'fleet.vehicle')
+        before = self.env['fleet.vehicle'].search_count([('company_id', '=', self.company.id)])
+        action = vehicle.action_enable_rentals()
+        self.assertEqual(action['res_model'], 'fleet.vehicle')
+        self.assertEqual(vehicle.rental_status, 'available')
+        self.assertEqual(
+            self.env['fleet.vehicle'].search_count([('company_id', '=', self.company.id)]), before)
+        self.assertEqual(vehicle.get_formview_action()['res_model'], 'fleet.vehicle')
+        self.assertEqual(
+            vehicle.action_rental_reservations()['res_model'], 'car.rental.reservation')
+        self.assertEqual(vehicle.action_rental_rentals()['res_model'], 'car.rental.rental')
+        self.assertEqual(vehicle.action_rental_book()['res_model'], 'car.rental.journey')
+
+    def test_native_fleet_activate_requires_registration_and_category(self):
+        vehicle = self._make_vehicle(status='setup')
+        fresh = self.env['fleet.vehicle'].create({
+            'model_id': vehicle.model_id.id,
+            'license_plate': 'NATIVE-NEW',
+            'company_id': self.company.id,
+        })
+        with self.assertRaises(ValidationError), self.cr.savepoint():
+            fresh.action_enable_rentals()
+        fresh.rental_category_id = vehicle.rental_category_id
+        fresh.action_rental_activate()
+        self.assertEqual(fresh.rental_status, 'available')
 
     def test_native_menus(self):
-        for menu, model in [('menu_car_rental_customer', 'res.partner'), ('menu_car_rental_vehicle', 'fleet.vehicle')]:
-            self.assertEqual(self.env.ref('car_rental_management_odoo.' + menu).action.res_model, model)
+        for menu, model in [('menu_car_rental_customer', 'res.partner'),
+                            ('menu_car_rental_vehicle', 'fleet.vehicle')]:
+            self.assertEqual(
+                self.env.ref('car_rental_management_odoo.' + menu).action.res_model, model)
 
     def test_contact_form_enables_rentals(self):
-        self.env.user.write({'group_ids': [fields.Command.link(self.env.ref('car_rental_management_odoo.group_car_rental_agent').id)]})
+        agent_group = self.env.ref('car_rental_management_odoo.group_car_rental_agent')
+        self.env.user.write({'group_ids': [fields.Command.link(agent_group.id)]})
         with Form(self.env['res.partner']) as ordinary:
             ordinary.name = 'Non-rental Contact'
         self.assertFalse(ordinary.record.rental_enabled)
@@ -68,22 +107,21 @@ class TestNativeScreens(TestConnectedWorkflow):
             form.rental_enabled = True
             form.rental_postal_address = 'PO Box 10'
             form.rental_cin = 'FORM-ID'
-            form.rental_date_of_birth = self.customer.date_of_birth
+            form.rental_date_of_birth = fields.Date.today() - timedelta(days=365 * 30)
             form.rental_driving_license = 'FORM-LICENCE'
-            form.rental_license_issue_date = self.customer.license_issue_date
-            form.rental_license_expiry = self.customer.license_expiry
+            form.rental_license_issue_date = fields.Date.today() - timedelta(days=365 * 3)
+            form.rental_license_expiry = fields.Date.today() + timedelta(days=365 * 2)
         self.assertTrue(form.record.rental_enabled)
-        self.assertEqual(form.record._rental_customer().cin, 'FORM-ID')
+        self.assertEqual(form.record.rental_cin, 'FORM-ID')
 
     def test_staff_can_read_fleet_without_managing_it(self):
-        staff = self.env['res.users'].with_context(no_reset_password=True).create({
-            'name': 'Native Screen Staff', 'login': 'native-screen-staff',
-            'company_id': self.env.company.id, 'company_ids': [fields.Command.set(self.env.company.ids)],
-            'group_ids': [fields.Command.set([self.env.ref('base.group_user').id, self.env.ref('car_rental_management_odoo.group_car_rental_agent').id])]})
-        fleet = self.vehicle.fleet_vehicle_id.with_user(staff)
-        self.assertEqual(fleet.read(['license_plate', 'model_id', 'rental_status'])[0]['license_plate'], self.vehicle.registration_number)
+        vehicle = self._make_vehicle()
+        staff_vehicle = vehicle.with_user(self.user_agent)
+        data = staff_vehicle.read(['license_plate', 'model_id', 'rental_status'])[0]
+        self.assertEqual(data['license_plate'], vehicle.license_plate)
         with self.assertRaises(AccessError), self.cr.savepoint():
-            fleet.write({'license_plate': 'NOT-ALLOWED'})
-        with Form(self.customer.partner_id.with_user(staff)) as form:
+            staff_vehicle.write({'license_plate': 'NOT-ALLOWED'})
+        partner = self._make_partner()
+        with Form(partner.with_user(self.user_agent)) as form:
             form.rental_cin = 'STAFF-EDIT'
-        self.assertEqual(self.customer.cin, 'STAFF-EDIT')
+        self.assertEqual(partner.rental_cin, 'STAFF-EDIT')

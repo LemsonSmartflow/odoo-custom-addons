@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='utf-8'?>
+﻿<?xml version='1.0' encoding='utf-8'?>
 <odoo>
 
     <!-- ========================= -->
@@ -14,7 +14,7 @@
 
                 <field name="reference" readonly="0" required="0" placeholder="Generated on save, or enter your reference"/>
                 <field name="reservation_id"/>
-                <field name="customer_id"/>
+                <field name="partner_id"/>
                 <field name="vehicle_id"/>
                 <field name="start_date"/>
                 <field name="return_date"/>
@@ -63,7 +63,7 @@
 
                             <field name="reservation_id"/>
 
-                            <field name="customer_id" readonly="1"/>
+                            <field name="partner_id" readonly="1"/>
 
                             <field name="vehicle_id" readonly="1"/>
 
@@ -130,7 +130,7 @@
 
                 <field name="reference" readonly="0" required="0" placeholder="Generated on save, or enter your reference"/>
                 <field name="reservation_id"/>
-                <field name="customer_id"/>
+                <field name="partner_id"/>
                 <field name="vehicle_id"/>
 
                 <filter name="draft" string="Draft" domain="[('status', '=', 'draft')]"/>

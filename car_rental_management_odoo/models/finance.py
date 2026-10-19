@@ -22,6 +22,7 @@ class Company(models.Model):
     rental_block_expired_documents = fields.Boolean(default=True, string='Require Valid Vehicle Compliance Documents')
     rental_block_tracker = fields.Boolean(default=False, string='Require an Operational Tracker')
     rental_late_grace_hours = fields.Float(default=2, string='Late Return Grace (hours)')
+    rental_allow_direct_invoice = fields.Boolean(default=False, string='Allow Direct Rental Invoicing Without a Sales Order')
 
     @api.constrains('cr_income_account_id', 'cr_damage_account_id', 'cr_deposit_account_id', 'cr_cash_journal_id', 'cr_sales_journal_id', 'cr_expense_account_id', 'cr_tax_id', 'rental_late_grace_hours')
     def _check_rental_configuration(self):
@@ -64,6 +65,7 @@ class Settings(models.TransientModel):
     rental_block_expired_documents = fields.Boolean(related='company_id.rental_block_expired_documents', readonly=False)
     rental_block_tracker = fields.Boolean(related='company_id.rental_block_tracker', readonly=False)
     rental_late_grace_hours = fields.Float(related='company_id.rental_late_grace_hours', readonly=False)
+    rental_allow_direct_invoice = fields.Boolean(related='company_id.rental_allow_direct_invoice', readonly=False)
 
 
 class Move(models.Model):
@@ -75,7 +77,7 @@ class Move(models.Model):
     def _post(self, soft=True):
         for move in self.filtered(lambda m: m.car_rental_id and m.rental_invoice_kind == 'rental' and m.move_type == 'out_invoice'):
             rental = move.car_rental_id
-            if move.partner_id != rental.customer_id.partner_id or move.currency_id != rental.currency_id or float_compare(move.amount_total, rental.amount, precision_rounding=move.currency_id.rounding):
+            if move.partner_id != rental.partner_id or move.currency_id != rental.currency_id or float_compare(move.amount_total, rental.amount, precision_rounding=move.currency_id.rounding):
                 raise ValidationError('A rental invoice must match the agreed booking customer, currency and amount.')
         return super()._post(soft=soft)
 
@@ -92,7 +94,7 @@ class SaleOrder(models.Model):
             require_role(self.env, 'group_rental_accountant')
             if not self.company_id.cr_sales_journal_id or not self.company_id.cr_income_account_id:
                 raise ValidationError('Configure the rental sales journal and income account first.')
-            if self.partner_id != self.car_rental_id.customer_id.partner_id or self.company_id != self.car_rental_id.company_id or self.currency_id != self.car_rental_id.currency_id or float_compare(self.amount_total, self.car_rental_id.amount, precision_rounding=self.currency_id.rounding):
+            if self.partner_id != self.car_rental_id.partner_id or self.company_id != self.car_rental_id.company_id or self.currency_id != self.car_rental_id.currency_id or float_compare(self.amount_total, self.car_rental_id.amount, precision_rounding=self.currency_id.rounding):
                 raise ValidationError('The rental quotation must match the agreed booking amount and currency. Request a pricing override on the booking rather than changing its quotation.')
             values.update({'car_rental_id': self.car_rental_id.id, 'rental_invoice_kind': 'rental', 'journal_id': self.company_id.cr_sales_journal_id.id})
         return values
@@ -109,6 +111,15 @@ class SaleLine(models.Model):
         if self.order_id.car_rental_id and not self.display_type:
             values['account_id'] = self.company_id.cr_income_account_id.id
         return values
+
+
+class AccountPayment(models.Model):
+    _inherit = 'account.payment'
+
+    car_rental_id = fields.Many2one('car.rental.rental', string='Car Rental', ondelete='restrict', copy=False, index=True)
+    rental_invoice_kind = fields.Selection([('rental', 'Rental'), ('damage', 'Damage Recovery'), ('late', 'Late Return')], copy=False)
+    collection_reference = fields.Char(string='Bank / Receipt Reference', copy=False)
+    rental_legacy = fields.Boolean(string='Legacy Receipt', default=False, copy=False, readonly=True)
 
 
 class Rental(models.Model):
@@ -151,7 +162,7 @@ class Rental(models.Model):
         self.env.cr.execute('UPDATE car_rental_rental SET id = id WHERE id = %s', [self.id])
         if not account or not self.company_id.cr_sales_journal_id:
             raise ValidationError('Configure rental income accounts and the sales journal in Car Rental Settings first.')
-        partner = self.customer_id._ensure_partner()
+        partner = self.partner_id
         if not partner.with_company(self.company_id).property_account_receivable_id:
             raise ValidationError('Configure the customer receivable account first.')
         if kind == 'rental' and self.sale_order_id:
@@ -169,8 +180,10 @@ class Rental(models.Model):
         self.ensure_one()
         existing = self.invoice_ids.filtered(lambda m: m.rental_invoice_kind == 'rental' and m.state != 'cancel')[:1]
         if not existing:
-            if self.payment_ids.filtered(lambda p: p.ledger_state == 'legacy'):
+            if self.payment_ids.filtered(lambda p: p.rental_legacy):
                 raise ValidationError('This rental has historical unposted receipts. Reconcile its opening balance with your accountant before invoicing to avoid charging twice.')
+            if not self.sale_order_id and not self.company_id.rental_allow_direct_invoice:
+                self._ensure_sale_order()
             existing = self._make_invoice('rental', self.company_id.cr_income_account_id, [{
                 'name': '%s — %s — %s days' % (self.reference, self.destination_id.name or 'Rental', self.reservation_id.number_of_days),
                 'quantity': self.reservation_id.number_of_days, 'price_unit': self.reservation_id.quoted_daily_rate,
@@ -203,77 +216,30 @@ class Rental(models.Model):
         self.ensure_one()
         return dict(self.action_deposits(), view_mode='form', target='new', context={'default_rental_id': self.id, 'default_kind': 'refund', 'default_amount': self.deposit_held})
 
+    def _ensure_sale_order(self):
+        self.ensure_one()
+        if self.sale_order_id:
+            return self.sale_order_id
+        if not self.company_id.cr_rental_product_id:
+            raise ValidationError('Select the rental service product in Car Rental Settings.')
+        order = self.env['sale.order'].with_company(self.company_id).create({
+            'partner_id': self.partner_id.id, 'company_id': self.company_id.id,
+            'origin': self.reference, 'car_rental_id': self.id, 'order_line': [fields.Command.create({
+                'product_id': self.company_id.cr_rental_product_id.id, 'name': self.reference,
+                'product_uom_qty': self.reservation_id.number_of_days, 'price_unit': self.reservation_id.quoted_daily_rate,
+                'tax_ids': [fields.Command.set(self.reservation_id.tax_id.ids)],
+            })],
+        })
+        self.sale_order_id = order
+        return order
+
     def action_quotation(self):
         require_role(self.env, 'group_rental_manager')
         self.ensure_one()
-        if not self.company_id.cr_rental_product_id:
-            raise ValidationError('Select the rental service product in Car Rental Settings.')
-        if not self.sale_order_id:
-            if self.invoice_ids.filtered(lambda m: m.rental_invoice_kind == 'rental' and m.state != 'cancel'):
-                raise ValidationError('This rental is already invoiced. Open its invoice instead of creating another commercial document.')
-            order = self.env['sale.order'].with_company(self.company_id).create({
-                'partner_id': self.customer_id._ensure_partner().id, 'company_id': self.company_id.id,
-                'origin': self.reference, 'car_rental_id': self.id, 'order_line': [fields.Command.create({
-                    'product_id': self.company_id.cr_rental_product_id.id, 'name': self.reference,
-                    'product_uom_qty': self.reservation_id.number_of_days, 'price_unit': self.reservation_id.quoted_daily_rate,
-                    'tax_ids': [fields.Command.set(self.reservation_id.tax_id.ids)],
-                })],
-            })
-            self.sale_order_id = order
-        return window('Rental Quotation', 'sale.order', res_id=self.sale_order_id.id)
-
-
-class Payment(models.Model):
-    _name = 'car.rental.payment'
-    _inherit = ['car.rental.payment', 'mail.thread', 'mail.activity.mixin']
-
-    company_id = fields.Many2one(related='rental_id.company_id', store=True)
-    currency_id = fields.Many2one(related='company_id.currency_id')
-    ledger_state = fields.Selection([('draft', 'Draft Receipt'), ('posted', 'Posted Receipt'), ('legacy', 'Historical / Unposted')], default='draft', readonly=True, tracking=True, copy=False)
-    account_move_id = fields.Many2one('account.move', readonly=True, copy=False)
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        if any(v.get('ledger_state', 'draft') != 'draft' or v.get('account_move_id') for v in vals_list):
-            raise ValidationError('Create draft receipts and post them using Post Receipt.')
-        return super().create(vals_list)
-
-    def write(self, vals):
-        if {'ledger_state', 'account_move_id'}.intersection(vals) or any(p.ledger_state in ('posted', 'legacy') for p in self) and set(vals) - {'message_follower_ids'}:
-            raise ValidationError('Posted and historical receipts cannot be changed. Use accounting reversals for corrections.')
-        return super().write(vals)
-
-    def unlink(self):
-        if any(p.ledger_state != 'draft' for p in self):
-            raise ValidationError('Posted and historical receipts cannot be deleted.')
-        return super().unlink()
-
-    def action_post_receipt(self):
-        require_role(self.env, 'group_rental_accountant')
-        for receipt in self:
-            if receipt.ledger_state != 'draft':
-                raise ValidationError('Only draft receipts can be posted.')
-            invoice = receipt.rental_id.invoice_ids.filtered(lambda m: m.rental_invoice_kind == 'rental' and m.state == 'posted')[:1]
-            if not invoice:
-                raise ValidationError('Create and post the rental invoice before posting its receipt.')
-            self.env.cr.execute('UPDATE car_rental_rental SET id = id WHERE id = %s', [receipt.rental_id.id])
-            invoice.invalidate_recordset(['amount_residual'])
-            if float_compare(receipt.paid_amount, invoice.amount_residual, precision_rounding=receipt.currency_id.rounding) > 0:
-                raise ValidationError('The receipt exceeds the posted invoice balance.')
-            journal = receipt.company_id.cr_cash_journal_id
-            if not journal or not journal.default_account_id:
-                raise ValidationError('Configure a bank/cash journal with its bank/cash account first.')
-            receivable_lines = invoice.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable')
-            move = _journal_entry(receipt.env, receipt.company_id, journal, receipt.reference, receipt.payment_date,
-                                  journal.default_account_id, receivable_lines[:1].account_id,
-                                  receipt.paid_amount, invoice.partner_id)
-            super(Payment, receipt).write({'ledger_state': 'posted', 'account_move_id': move.id})
-            (receivable_lines + move.line_ids.filtered(lambda l: l.account_id == receivable_lines[:1].account_id)).reconcile()
-            receipt.message_post(body='Receipt posted to Accounting: %s.' % move.name)
-
-    def action_account_move(self):
-        self.ensure_one()
-        return window('Receipt Journal Entry', 'account.move', res_id=self.account_move_id.id)
+        if self.invoice_ids.filtered(lambda m: m.rental_invoice_kind == 'rental' and m.state != 'cancel'):
+            raise ValidationError('This rental is already invoiced. Open its invoice instead of creating another commercial document.')
+        order = self._ensure_sale_order()
+        return window('Rental Quotation', 'sale.order', res_id=order.id)
 
 
 def _journal_entry(env, company, journal, reference, date, debit_account, credit_account, amount, partner):
@@ -318,7 +284,7 @@ class Deposit(models.Model):
             liability = event.company_id.cr_deposit_account_id
             if not journal or not journal.default_account_id or not liability:
                 raise ValidationError('Configure the deposit liability account and bank/cash journal first.')
-            partner = rental.customer_id._ensure_partner()
+            partner = rental.partner_id
             bank = journal.default_account_id
             debit, credit = bank, liability
             if event.kind == 'collect':

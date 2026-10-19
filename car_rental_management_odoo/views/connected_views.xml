@@ -1,70 +1,34 @@
 <?xml version='1.0' encoding='utf-8'?>
 <odoo>
     <record id="vehicle_gallery" model="ir.ui.view">
-        <field name="name">car.rental.vehicle.gallery</field>
-        <field name="model">car.rental.vehicle</field>
+        <field name="name">fleet.vehicle.gallery.rental</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="priority">15</field>
         <field name="arch" type="xml">
             <kanban class="o_car_rental_gallery" records_draggable="0">
-                <field name="image_1920"/>
-                <field name="status"/>
+                <field name="rental_image"/>
+                <field name="rental_status"/>
                 <templates>
                     <t t-name="card">
                         <div class="o_car_photo">
-                            <field t-if="record.image_1920.raw_value" name="image_1920" widget="image" options="{'size': [360, 200]}"/>
+                            <field t-if="record.rental_image.raw_value" name="rental_image" widget="image" options="{'size': [360, 200]}"/>
                             <div t-else="" class="o_car_photo_placeholder"><i class="fa fa-car" title="Vehicle photo"/><span>Add a vehicle photo</span></div>
                         </div>
                         <div class="p-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <strong><field name="registration_number"/></strong>
-                                <field name="status" widget="badge" decoration-success="status == 'available'" decoration-warning="status == 'rented'" decoration-danger="status == 'maintenance'"/>
+                                <strong><field name="license_plate"/></strong>
+                                <field name="rental_status" widget="badge" decoration-success="rental_status == 'available'" decoration-warning="rental_status == 'rented'" decoration-danger="rental_status in ['maintenance', 'damaged']"/>
                             </div>
-                            <h4 class="mb-2"><field name="brand"/> <field name="model"/></h4>
-                            <div class="text-muted"><field name="year"/> · <field name="transmission"/> · <field name="seats"/> seats</div>
+                            <h4 class="mb-2"><field name="model_id"/></h4>
+                            <div class="text-muted"><field name="model_year"/> · <field name="transmission"/> · <field name="seats"/> seats</div>
                             <div class="d-flex justify-content-between align-items-center mt-3">
-                                <div><strong><field name="daily_price"/></strong><span class="text-muted"> / day</span></div>
-                                <button name="action_book" type="object" class="btn btn-primary btn-sm" invisible="status == 'maintenance'">Reserve</button>
+                                <div class="text-muted">Destination pricing</div>
+                                <button name="action_book" type="object" class="btn btn-primary btn-sm" invisible="rental_status not in ['available', 'reserved', 'rented']">Reserve</button>
                             </div>
                         </div>
                     </t>
                 </templates>
             </kanban>
-        </field>
-    </record>
-    <record id="action_car_rental_vehicle" model="ir.actions.act_window">
-        <field name="view_mode">kanban,list,form</field>
-    </record>
-
-    <record id="vehicle_form_connected" model="ir.ui.view">
-        <field name="name">car.rental.vehicle.form.connected</field>
-        <field name="model">car.rental.vehicle</field>
-        <field name="inherit_id" ref="view_car_rental_vehicle_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//form" position="replace">
-                <form string="Vehicle" class="o_car_rental_form">
-                    <header>
-                        <button name="action_book" type="object" string="New Reservation" class="btn-primary" invisible="status == 'maintenance'"/>
-                    </header>
-                    <sheet>
-                        <div class="oe_button_box" name="button_box">
-                            <button name="action_reservations" type="object" class="oe_stat_button" icon="fa-calendar"><field name="reservation_count" widget="statinfo" string="Reservations"/></button>
-                            <button name="action_rentals" type="object" class="oe_stat_button" icon="fa-key"><field name="rental_count" widget="statinfo" string="Rentals"/></button>
-                        </div>
-                        <div class="row g-4 mb-4 o_car_vehicle_header">
-                            <div class="col-md-5"><field name="image_1920" widget="image" options="{'size': [400, 240]}" class="o_car_vehicle_image"/></div>
-                            <div class="col-md-7">
-                                <div class="text-muted text-uppercase mb-2">Vehicle profile</div>
-                                <h1><field name="registration_number" placeholder="Registration number"/></h1>
-                                <group><field name="brand" placeholder="Toyota"/><field name="model" placeholder="Corolla"/><field name="status" widget="badge" decoration-success="status == 'available'" decoration-warning="status == 'rented'" decoration-danger="status == 'maintenance'"/><field name="daily_price"/></group>
-                            </div>
-                        </div>
-                        <notebook>
-                            <page string="Specifications" name="specifications"><group col="1"><group string="Vehicle details"><field name="registration_number" string="Registration Number / Number Plate" placeholder="Enter the vehicle number plate"/><field name="year"/><field name="color"/><field name="category"/></group><group string="Driving &amp; capacity"><field name="fuel_type"/><field name="transmission"/><field name="seats"/><field name="mileage"/></group></group><group string="Availability"><field name="status"/></group></page>
-                            <page string="Reservations"><field name="reservation_ids" readonly="1"><list create="0" delete="0"><field name="reference"/><field name="customer_id"/><field name="start_date"/><field name="end_date"/><field name="amount"/><field name="status" widget="badge"/></list></field></page>
-                            <page string="Rental History"><field name="rental_ids" readonly="1"><list create="0" delete="0"><field name="reference"/><field name="customer_id"/><field name="start_date"/><field name="amount"/><field name="paid_total"/><field name="balance_due"/><field name="status" widget="badge"/></list></field></page>
-                        </notebook>
-                    </sheet>
-                </form>
-            </xpath>
         </field>
     </record>
 
@@ -86,7 +50,7 @@
                         <div class="oe_button_box" name="button_box"><button name="action_rentals" type="object" class="oe_stat_button" icon="fa-key" invisible="rental_count == 0"><field name="rental_count" widget="statinfo" string="Rentals"/></button></div>
                         <div class="oe_title"><div class="text-muted">RESERVATION</div><h1><field name="reference" readonly="0" required="0" placeholder="Generated on save, or enter your reference"/></h1></div>
                         <group col="1">
-                            <group string="Customer &amp; vehicle"><field name="customer_id" readonly="rental_count &gt; 0"/><field name="vehicle_id" readonly="rental_count &gt; 0" domain="[('status', '!=', 'maintenance')]"/><field name="vehicle_image" widget="image" nolabel="1" options="{'size': [320, 180]}" invisible="not vehicle_id"/></group>
+                            <group string="Customer &amp; vehicle"><field name="partner_id" readonly="rental_count &gt; 0"/><field name="vehicle_id" readonly="rental_count &gt; 0" domain="[('rental_status', '!=', 'maintenance')]"/><field name="vehicle_image" widget="image" nolabel="1" options="{'size': [320, 180]}" invisible="not vehicle_id"/></group>
                             <group string="Dates &amp; pricing"><field name="start_date" readonly="rental_count &gt; 0"/><field name="end_date" readonly="rental_count &gt; 0"/><field name="number_of_days"/><field name="daily_price"/><field name="amount" class="fw-bold"/></group>
                         </group>
                         <div class="alert alert-info" invisible="status != 'confirmed' or rental_count &gt; 0" role="status">Reservation confirmed. Create a rental to record pickup mileage and payments.</div>
@@ -116,14 +80,14 @@
                         </div>
                         <div class="oe_title"><div class="text-muted">RENTAL</div><h1><field name="reference" readonly="0" required="0" placeholder="Generated on save, or enter your reference"/></h1></div>
                         <group col="1">
-                            <group string="Booking"><field name="reservation_id" domain="[('status', '=', 'confirmed')]" readonly="status != 'draft' or payment_count &gt; 0"/><field name="customer_id"/><field name="vehicle_id"/><field name="vehicle_image" widget="image" nolabel="1" options="{'size': [320, 180]}" invisible="not vehicle_id"/></group>
+                            <group string="Booking"><field name="reservation_id" domain="[('status', '=', 'confirmed')]" readonly="status != 'draft' or payment_count &gt; 0"/><field name="partner_id"/><field name="vehicle_id"/><field name="vehicle_image" widget="image" nolabel="1" options="{'size': [320, 180]}" invisible="not vehicle_id"/></group>
                             <group string="Rental summary" name="rental_summary"><field name="start_date"/><field name="return_date"/><field name="amount"/><field name="paid_total"/><field name="balance_due" class="fw-bold"/><field name="payment_status" widget="badge" decoration-success="payment_status == 'paid'" decoration-warning="payment_status == 'partial'" decoration-danger="payment_status == 'unpaid'"/></group>
                         </group>
                         <notebook>
                             <page string="Pickup &amp; Return"><group col="1"><group string="Pickup"><field name="initial_mileage" readonly="status != 'draft'"/></group><group string="Return"><field name="final_mileage" readonly="status == 'returned'" invisible="status == 'draft'"/></group></group><div class="alert alert-info" invisible="status != 'ongoing'" role="status">Enter the final mileage, then click Return Vehicle. Complete the return inspection before returning the vehicle. Fleet staff then clear it for the next booking.</div></page>
                             <page string="Payments" name="payments">
                                 <div class="d-flex justify-content-between align-items-center mb-3"><span class="text-muted">Record instalments here. The balance updates across the rental and payment records.</span><button name="action_record_payment" type="object" string="Record Payment" class="btn-primary" invisible="balance_due &lt;= 0"/></div>
-                                <field name="payment_ids" readonly="1"><list create="0" delete="0"><field name="reference" readonly="0" required="0" placeholder="Generated on save, or enter your reference"/><field name="payment_date"/><field name="payment_method"/><field name="paid_amount" sum="Total paid"/><field name="remaining_amount" string="Rental Balance"/><field name="status" string="Rental Payment Status" widget="badge"/></list></field>
+                                <field name="payment_ids" readonly="1"><list create="0" delete="0"><field name="payment_reference"/><field name="date"/><field name="amount" sum="Total paid"/><field name="state" widget="badge"/></list></field>
                             </page>
                         </notebook>
                     </sheet>
@@ -133,38 +97,18 @@
     </record>
 
     <record id="payment_form_connected" model="ir.ui.view">
-        <field name="name">car.rental.payment.form.connected</field>
-        <field name="model">car.rental.payment</field>
-        <field name="inherit_id" ref="view_car_rental_payment_form"/>
+        <field name="name">account.payment.form.rental</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//form" position="replace">
-                <form string="Payment" class="o_car_rental_form">
-                    <sheet>
-                        <div class="oe_button_box" name="button_box"><button name="action_rental" type="object" class="oe_stat_button" icon="fa-key" invisible="not rental_id"><div class="o_stat_info"><span class="o_stat_text">Open Rental</span></div></button></div>
-                        <div class="oe_title"><div class="text-muted">PAYMENT</div><h1><field name="reference" readonly="1"/></h1></div>
-                        <group col="1">
-                            <group string="Rental details"><field name="rental_id" options="{'no_create': True}"/><field name="customer_id"/><field name="vehicle_id"/><field name="vehicle_image" widget="image" nolabel="1" options="{'size': [260, 150]}" invisible="not vehicle_id"/></group>
-                            <group string="Payment details"><field name="payment_date"/><field name="payment_method"/><field name="paid_amount" string="This Payment"/><field name="total_amount" string="Rental Total"/><field name="remaining_amount" string="Rental Balance"/><field name="status" string="Rental Payment Status" widget="badge" decoration-success="status == 'paid'" decoration-warning="status == 'partial'" decoration-danger="status == 'unpaid'"/></group>
-                        </group>
-                        <div class="alert alert-info" role="status">Save a payment to update the rental's total paid and outstanding balance. You can record multiple instalments.</div>
-                    </sheet>
-                </form>
+            <xpath expr="//sheet" position="before">
+                <field name="car_rental_id" invisible="1"/>
+                <div class="alert alert-info" role="status" invisible="not car_rental_id">This payment settles rental <field name="car_rental_id" class="oe_link"/></div>
             </xpath>
-        </field>
-    </record>
-
-    <record id="customer_form_connected" model="ir.ui.view">
-        <field name="name">car.rental.customer.form.connected</field>
-        <field name="model">car.rental.customer</field>
-        <field name="inherit_id" ref="view_car_rental_customer_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//sheet" position="before"><header><button name="action_book" string="New Reservation" type="object" class="btn-primary"/></header></xpath>
-            <xpath expr="//sheet/group[1]" position="before">
-                <div class="oe_button_box" name="button_box"><button name="action_reservations" type="object" class="oe_stat_button" icon="fa-calendar"><field name="reservation_count" widget="statinfo" string="Reservations"/></button><button name="action_rentals" type="object" class="oe_stat_button" icon="fa-key"><field name="rental_count" widget="statinfo" string="Rentals"/></button></div>
-                <div class="oe_title"><div class="text-muted">CUSTOMER PROFILE</div><h1><field name="first_name" placeholder="First name"/> <field name="last_name" placeholder="Last name"/></h1></div>
+            <xpath expr="//field[@name='amount']" position="after">
+                <field name="rental_invoice_kind" invisible="not car_rental_id"/>
+                <field name="collection_reference" invisible="not car_rental_id"/>
             </xpath>
-            <field name="email" position="attributes"><attribute name="widget">email</attribute></field>
-            <field name="phone" position="attributes"><attribute name="widget">phone</attribute></field>
         </field>
     </record>
 
@@ -178,7 +122,7 @@
     </record>
     <record id="rental_search_connected" model="ir.ui.view">
         <field name="name">car.rental.rental.search.connected</field><field name="model">car.rental.rental</field><field name="inherit_id" ref="view_car_rental_rental_search"/>
-        <field name="arch" type="xml"><xpath expr="//search" position="inside"><separator/><filter name="balance_due" string="Balance Due" domain="[('balance_due', '&gt;', 0)]"/><filter name="paid" string="Fully Paid" domain="[('payment_status', '=', 'paid')]"/><separator/><filter name="by_customer" string="Customer" context="{'group_by': 'customer_id'}"/><filter name="by_vehicle" string="Vehicle" context="{'group_by': 'vehicle_id'}"/></xpath></field>
+        <field name="arch" type="xml"><xpath expr="//search" position="inside"><separator/><filter name="balance_due" string="Balance Due" domain="[('balance_due', '&gt;', 0)]"/><filter name="paid" string="Fully Paid" domain="[('payment_status', '=', 'paid')]"/><separator/><filter name="by_customer" string="Customer" context="{'group_by': 'partner_id'}"/><filter name="by_vehicle" string="Vehicle" context="{'group_by': 'vehicle_id'}"/></xpath></field>
     </record>
     <record id="reservation_list_connected" model="ir.ui.view">
         <field name="name">car.rental.reservation.list.connected</field><field name="model">car.rental.reservation</field><field name="inherit_id" ref="view_car_rental_reservation_list"/>
@@ -186,14 +130,16 @@
     </record>
 
     <record id="dashboard_connected" model="ir.ui.view">
-        <field name="name">car.rental.dashboard.connected</field><field name="model">car.rental.dashboard</field><field name="inherit_id" ref="view_car_rental_dashboard_form"/>
+        <field name="name">car.rental.dashboard.connected</field>
+        <field name="model">car.rental.dashboard</field>
+        <field name="inherit_id" ref="view_car_rental_dashboard_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="replace">
                 <form string="Car Rental Dashboard" create="0" edit="0" delete="0" class="o_car_rental_dashboard o_car_rental_form">
                     <sheet>
                         <div class="o_car_dashboard_hero"><div class="text-uppercase small mb-2">Your rental workspace</div><h1>Fleet, bookings &amp; payments</h1><p class="mb-0">Choose a vehicle, confirm a reservation, hand over the keys and track every payment.</p></div>
                         <div class="row g-3 my-3">
-                            <div class="col-lg-3 col-sm-6"><button name="action_vehicles" type="object" class="o_car_metric"><i class="fa fa-car" title="Vehicles"/><field name="total_vehicles"/><span>Vehicles</span><small>Open photo gallery →</small></button></div>
+                            <div class="col-lg-3 col-sm-6"><button name="action_vehicles" type="object" class="o_car_metric"><i class="fa fa-car" title="Vehicles"/><field name="total_vehicles"/><span>Vehicles</span><small>Open vehicle gallery →</small></button></div>
                             <div class="col-lg-3 col-sm-6"><button name="action_available" type="object" class="o_car_metric"><i class="fa fa-check-circle" title="Available"/><field name="available_vehicles"/><span>Available now</span><small>Find your next vehicle →</small></button></div>
                             <div class="col-lg-3 col-sm-6"><button name="action_reservations" type="object" class="o_car_metric"><i class="fa fa-calendar" title="Reservations"/><field name="confirmed_reservations"/><span>Confirmed reservations</span><small>Prepare a pickup →</small></button></div>
                             <div class="col-lg-3 col-sm-6"><button name="action_rentals" type="object" class="o_car_metric"><i class="fa fa-key" title="Rentals"/><field name="ongoing_rentals"/><span>Ongoing rentals</span><small>Manage returns →</small></button></div>

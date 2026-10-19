@@ -15,21 +15,22 @@ class Journey(models.Model):
 
     name = fields.Char(compute='_compute_progress')
     company_id = fields.Many2one('res.company', required=True, default=lambda self: self.env.company)
-    customer_id = fields.Many2one('car.rental.customer', check_company=True)
+    partner_id = fields.Many2one('res.partner', string='Customer', check_company=True)
     destination_id = fields.Many2one('car.rental.zone', check_company=True)
-    category_id = fields.Many2one('car.rental.category', check_company=True)
-    vehicle_id = fields.Many2one('car.rental.vehicle', check_company=True)
+    category_id = fields.Many2one('fleet.vehicle.model.category')
+    vehicle_id = fields.Many2one('fleet.vehicle', check_company=True)
     pickup_datetime = fields.Datetime()
     expected_return_datetime = fields.Datetime(string='Return Date and Time')
     reservation_id = fields.Many2one('car.rental.reservation', readonly=True, copy=False, check_company=True)
     rental_id = fields.Many2one('car.rental.rental', compute='_compute_progress')
+    cancelled = fields.Boolean(readonly=True, copy=False)
     details_started = fields.Boolean(copy=False)
     currency_id = fields.Many2one(related='company_id.currency_id')
     amount = fields.Float(related='reservation_id.amount')
     deposit_required = fields.Monetary(related='reservation_id.deposit_required')
     cleaning_fee = fields.Monetary(related='reservation_id.cleaning_fee')
     number_of_days = fields.Integer(related='reservation_id.number_of_days')
-    vehicle_image = fields.Image(related='vehicle_id.image_1920')
+    vehicle_image = fields.Image(related='vehicle_id.rental_image')
     guidance = fields.Text(compute='_compute_progress')
     step = fields.Selection([(s, label) for s, label in [
         ('customer', '1 Customer'), ('details', '2 Booking'), ('quote', '3 Quote'),
@@ -37,17 +38,17 @@ class Journey(models.Model):
         ('handover', '8 Handover'), ('return', '9 Return'), ('settlement', '10 Settlement'),
         ('closed', '11 Closed'), ('cancelled', 'Cancelled')]], compute='_compute_progress')
 
-    @api.depends('customer_id', 'details_started', 'reservation_id.status', 'reservation_id.reference',
+    @api.depends('cancelled', 'partner_id', 'details_started', 'reservation_id.status', 'reservation_id.reference',
                  'reservation_id.rental_ids.status', 'reservation_id.rental_ids.agreement_state',
                  'reservation_id.rental_ids.inspection_ids.state', 'reservation_id.rental_ids.deposit_held',
                  'reservation_id.rental_ids.balance_due', 'reservation_id.rental_ids.invoice_ids.state',
-                 'reservation_id.rental_ids.invoice_ids.amount_residual')
+                 'reservation_id.rental_ids.invoice_ids.amount_residual', 'reservation_id.rental_ids.sale_order_id')
     def _compute_progress(self):
         for journey in self:
             reservation = journey.reservation_id
             rental = reservation.rental_ids[:1]
             journey.rental_id = rental
-            journey.name = reservation.reference or ('Booking: %s' % journey.customer_id.display_name if journey.customer_id else 'New Booking')
+            journey.name = reservation.reference or ('Booking: %s' % journey.partner_id.display_name if journey.partner_id else 'New Booking')
             step, guidance = 'customer', 'Select or create the customer. Complete identity, licence and address details.'
             if journey.details_started:
                 step, guidance = 'details', 'Choose destination, category, pickup and return times. Continue to calculate the quote.'
@@ -69,14 +70,16 @@ class Journey(models.Model):
                     step, guidance = 'settlement', '\n'.join(rental._journey_close_blockers()) or 'All customer balances and deposit movements are settled. Continue to close the rental. Fleet release remains a separate task.'
                 if rental.status == 'closed':
                     step, guidance = 'closed', 'Booking cycle complete. Fleet cleaning, repairs and release remain available from the vehicle record.'
-            if reservation.status == 'cancelled':
+            if journey.cancelled or reservation.status == 'cancelled':
                 step, guidance = 'cancelled', 'This reservation was cancelled. Use Create a Booking to start a new booking.'
             journey.step, journey.guidance = step, guidance
 
     def write(self, vals):
+        if 'cancelled' in vals:
+            raise ValidationError('Use Cancel Booking to cancel this booking.')
         if 'reservation_id' in vals:
             raise ValidationError('Use Continue to link the reservation.')
-        if {'customer_id', 'company_id', 'destination_id', 'category_id', 'vehicle_id', 'pickup_datetime', 'expected_return_datetime'}.intersection(vals) and any(self.mapped('reservation_id')):
+        if {'partner_id', 'company_id', 'destination_id', 'category_id', 'vehicle_id', 'pickup_datetime', 'expected_return_datetime'}.intersection(vals) and any(self.mapped('reservation_id')):
             raise ValidationError('Edit the linked reservation to change booking details.')
         return super().write(vals)
 
@@ -86,15 +89,15 @@ class Journey(models.Model):
         self.invalidate_recordset()
         self._compute_progress()
         if self.step == 'customer':
-            if not self.customer_id:
+            if not self.partner_id:
                 raise ValidationError('Select a customer first.')
             self.details_started = True
         elif self.step == 'details':
-            if not all([self.customer_id, self.destination_id, self.category_id, self.pickup_datetime, self.expected_return_datetime]):
+            if not all([self.partner_id, self.destination_id, self.category_id, self.pickup_datetime, self.expected_return_datetime]):
                 raise ValidationError('Complete customer, destination, category, pickup and return times.')
-            self.customer_id._check_rental_eligibility(self.pickup_datetime, self.expected_return_datetime)
+            self.partner_id._check_rental_eligibility(self.pickup_datetime, self.expected_return_datetime)
             reservation = self.env['car.rental.reservation'].create({
-                'company_id': self.company_id.id, 'customer_id': self.customer_id.id,
+                'company_id': self.company_id.id, 'partner_id': self.partner_id.id,
                 'destination_id': self.destination_id.id, 'category_id': self.category_id.id,
                 'vehicle_id': self.vehicle_id.id, 'pickup_datetime': self.pickup_datetime,
                 'expected_return_datetime': self.expected_return_datetime})
@@ -125,6 +128,28 @@ class Journey(models.Model):
         self.ensure_one()
         return window('Create a Booking', self._name, res_id=self.id)
 
+    def action_cancel(self):
+        self.ensure_one()
+        self.check_access('write')
+        self.env.cr.execute('SELECT id FROM car_rental_journey WHERE id=%s FOR UPDATE', [self.id])
+        self.invalidate_recordset()
+        if self.reservation_id:
+            self.reservation_id.action_cancel()
+        super().write({'cancelled': True})
+        self.message_post(body='Booking cancelled. Existing records are retained for reference.')
+        return self.action_open()
+
+    def action_end_early(self):
+        self.ensure_one()
+        if self.rental_id.status != 'ongoing':
+            raise ValidationError('Only a vehicle currently on hire can be returned early.')
+        return self.action_inspection()
+
+    def unlink(self):
+        if any(self.mapped('reservation_id')):
+            raise ValidationError('This booking has a reservation. Use Cancel Booking to retain its history.')
+        return super().unlink()
+
     def action_save_exit(self):
         return self.env['ir.actions.actions']._for_xml_id('car_rental_management_odoo.action_booking_journeys')
 
@@ -137,7 +162,7 @@ class Journey(models.Model):
 
     def action_customer(self):
         self.ensure_one()
-        return window('Customer', 'car.rental.customer', res_id=self.customer_id.id)
+        return window('Customer', 'res.partner', res_id=self.partner_id.id)
 
     def action_reservation(self):
         self.ensure_one()
@@ -149,7 +174,7 @@ class Journey(models.Model):
 
     def action_vehicle(self):
         self.ensure_one()
-        return window('Fleet Follow-up', 'car.rental.vehicle', res_id=(self.reservation_id.vehicle_id or self.vehicle_id).id)
+        return window('Fleet Follow-up', 'fleet.vehicle', res_id=(self.reservation_id.vehicle_id or self.vehicle_id).id)
 
     def action_invoice(self):
         return self.rental_id.action_invoice()
@@ -192,6 +217,8 @@ class Rental(models.Model):
     def _journey_payment_blockers(self):
         self.ensure_one()
         problems = []
+        if not self.sale_order_id and not self.company_id.rental_allow_direct_invoice:
+            problems.append('Create the rental sales quotation before invoicing.')
         if not self.sudo().invoice_ids.filtered(lambda m: m.rental_invoice_kind == 'rental' and m.state == 'posted' and m.move_type == 'out_invoice'):
             problems.append('Post the rental invoice.')
         if self.company_id.rental_require_full_payment and not self.currency_id.is_zero(self.balance_due):
@@ -217,8 +244,8 @@ class Rental(models.Model):
             problems.append('Apply approved charges to the deposit and refund the remaining deposit.')
         if self.damage_ids.filtered(lambda d: d.state == 'draft' or (d.cost > 0 and (d.invoice_id.state != 'posted' or not d.invoice_id.currency_id.is_zero(d.invoice_id.amount_residual)))):
             problems.append('Finish damage assessment and settle approved damage charges.')
-        if self.deposit_transaction_ids.filtered(lambda d: d.state == 'draft') or self.payment_ids.filtered(lambda p: p.ledger_state == 'draft'):
-            problems.append('Finish or remove unposted deposit transactions and receipts.')
+        if self.deposit_transaction_ids.filtered(lambda d: d.state == 'draft') or self.payment_ids.filtered(lambda p: p.state == 'draft' and not p.rental_legacy):
+            problems.append('Finish or remove unposted deposit transactions and payments.')
         return problems
 
     def action_close_journey(self):
@@ -248,7 +275,7 @@ class Reservation(models.Model):
 
     def write(self, vals):
         result = super().write(vals)
-        keys = {'customer_id', 'destination_id', 'category_id', 'vehicle_id', 'pickup_datetime', 'expected_return_datetime'}
+        keys = {'partner_id', 'destination_id', 'category_id', 'vehicle_id', 'pickup_datetime', 'expected_return_datetime'}
         if keys.intersection(vals):
             for reservation in self:
                 journeys = self.env['car.rental.journey'].search([('reservation_id', '=', reservation.id)])
@@ -263,7 +290,7 @@ class Reservation(models.Model):
         if not journey:
             journey = self.env['car.rental.journey'].create({
                 'company_id': self.company_id.id, 'reservation_id': self.id,
-                'customer_id': self.customer_id.id, 'destination_id': self.destination_id.id,
+                'partner_id': self.partner_id.id, 'destination_id': self.destination_id.id,
                 'category_id': self.category_id.id, 'vehicle_id': self.vehicle_id.id,
                 'pickup_datetime': self.pickup_datetime, 'expected_return_datetime': self.expected_return_datetime})
         return journey.action_open()

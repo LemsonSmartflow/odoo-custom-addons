@@ -205,9 +205,9 @@ class Contract(models.Model):
             raise ValidationError('The contract template must be a PDF.')
         booking = rental.reservation_id
         snapshot = {'Rental reference': rental.reference, 'Reservation': booking.reference,
-                    'Named renter': rental.customer_id.display_name,
-                    'Registration': rental.vehicle_id.registration_number, 'Manufacturer': rental.vehicle_id.brand,
-                    'Type / Model': rental.vehicle_id.model, 'Colour': rental.vehicle_id.color,
+                    'Named renter': rental.partner_id.display_name,
+                    'Registration': rental.vehicle_id.license_plate, 'Manufacturer': rental.vehicle_id.model_id.brand_id.name,
+                    'Type / Model': rental.vehicle_id.model_id.name, 'Colour': rental.vehicle_id.color,
                     'Delivery date (UTC)': str(booking.pickup_datetime), 'Return date (UTC)': str(booking.expected_return_datetime),
                     'Lease period (24-hour days)': booking.number_of_days, 'Delivery place': self.delivery_place,
                     'Permitted base / destination (clause 10.9)': booking.destination_id.name,
@@ -223,7 +223,7 @@ class Contract(models.Model):
                      'template_version': company.cr_contract_version, 'source_hash': hashlib.sha256(raw).hexdigest(),
                      'snapshot': json.dumps(snapshot, ensure_ascii=False), 'state': 'sent',
                      'expires_on': fields.Datetime.now() + timedelta(days=30)})
-        names = dict(zip([r for r, label in ROLES], [rental.customer_id.display_name] + names))
+        names = dict(zip([r for r, label in ROLES], [rental.partner_id.display_name] + names))
         for role, label in ROLES:
             self.env['car.rental.contract.signer']._new_request(self, role, names[role])
         self.message_post(body='Contract issued. Share each private link only with its named signer. No messages were sent automatically.')
@@ -240,9 +240,9 @@ class Contract(models.Model):
     def _prefill(self):
         if self.customer_details:
             return json.loads(self.customer_details)
-        c = self.rental_id.customer_id
-        return {'full_name': c.display_name, 'identity': c.cin, 'physical_address': c.physical_address,
-                'postal_address': c.postal_address, 'phone': c.phone, 'email': c.email, 'licence': c.driving_license}
+        c = self.rental_id.partner_id
+        return {'full_name': c.display_name, 'identity': c.rental_cin, 'physical_address': c.street,
+                'postal_address': c.rental_postal_address, 'phone': c.phone, 'email': c.email, 'licence': c.rental_driving_license}
 
     def _pdf(self, include_signatures=True):
         self.ensure_one()

@@ -11,7 +11,7 @@ class Collection(models.TransientModel):
     company_id = fields.Many2one(related='rental_id.company_id')
     currency_id = fields.Many2one(related='rental_id.currency_id')
     journal_id = fields.Many2one(related='company_id.cr_cash_journal_id', string='Receiving Journal')
-    customer_id = fields.Many2one(related='rental_id.customer_id')
+    partner_id = fields.Many2one(related='rental_id.partner_id', string='Customer')
     rental_due = fields.Monetary(compute='_compute_split', string='Rental Balance')
     deposit_due = fields.Monetary(compute='_compute_split', string='Security Deposit Remaining')
     total_due = fields.Monetary(compute='_compute_split', string='Total Remaining')
@@ -91,10 +91,22 @@ class Collection(models.TransientModel):
                     'collection_method': self.payment_method, 'collection_reference': self.reference})
                 deposit.action_post()
             if rental_amount:
-                receipt = self.env['car.rental.payment'].create({
-                    'rental_id': rental.id, 'paid_amount': rental_amount, 'payment_date': self.date,
-                    'payment_method': self.payment_method, 'collection_reference': self.reference})
-                receipt.action_post_receipt()
+                journal = self.journal_id
+                if not journal:
+                    raise ValidationError('Configure the rental bank/cash journal in Car Rental Settings first.')
+                payment = self.env['account.payment'].create({
+                    'payment_type': 'inbound', 'partner_type': 'customer',
+                    'partner_id': invoice.partner_id.id, 'amount': rental_amount,
+                    'date': self.date, 'journal_id': journal.id,
+                    'payment_reference': self.reference or rental.reference,
+                    'memo': '%s rental payment' % rental.reference,
+                    'car_rental_id': rental.id, 'rental_invoice_kind': 'rental',
+                    'collection_reference': self.reference or False,
+                })
+                payment.action_post()
+                receivable = invoice.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable')
+                pay_lines = payment.move_id.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable')
+                (receivable + pay_lines).reconcile()
             super().write({'posted': True})
             rental.message_post(body='Combined collection: %s %s; security deposit %s; rental payment %s. Method: %s. Reference: %s.' %
                                 (currency.round(self.amount), currency.name, deposit_amount, rental_amount, self.payment_method, self.reference or '-'))
@@ -132,8 +144,3 @@ class Deposit(models.Model):
     _inherit = 'car.rental.deposit.transaction'
     collection_method = fields.Selection([('cash', 'Cash'), ('card', 'Card'), ('bank_transfer', 'Bank Transfer')], readonly=True)
     collection_reference = fields.Char(readonly=True)
-
-
-class Payment(models.Model):
-    _inherit = 'car.rental.payment'
-    collection_reference = fields.Char(readonly=True, string='Bank / Receipt Reference')

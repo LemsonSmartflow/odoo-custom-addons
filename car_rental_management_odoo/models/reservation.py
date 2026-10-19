@@ -17,16 +17,19 @@ class RentalReservation(models.Model):
         required=True
     )
 
-    customer_id = fields.Many2one(
-        'car.rental.customer',
+    partner_id = fields.Many2one(
+        'res.partner',
         string='Customer',
-        required=True
+        required=True,
+        check_company=True,
+        tracking=True
     )
 
     vehicle_id = fields.Many2one(
-        'car.rental.vehicle',
+        'fleet.vehicle',
         string='Vehicle',
-        required=True
+        required=True,
+        check_company=True
     )
 
     start_date = fields.Date(
@@ -83,7 +86,7 @@ class RentalReservation(models.Model):
 
     @api.depends(
         'number_of_days',
-        'vehicle_id.daily_price'
+        'vehicle_id.rental_daily_rate'
     )
     def _compute_amount(self):
         for record in self:
@@ -91,7 +94,7 @@ class RentalReservation(models.Model):
             if record.vehicle_id:
                 record.amount = (
                     record.number_of_days
-                    * record.vehicle_id.daily_price
+                    * (record.vehicle_id.rental_daily_rate or 0)
                 )
 
             else:
@@ -137,20 +140,20 @@ class RentalReservation(models.Model):
     # =========================
 
     @api.constrains(
-        'customer_id',
+        'partner_id',
         'start_date'
     )
     def _check_driving_license(self):
         for record in self:
 
             if (
-                record.customer_id
+                record.partner_id
                 and record.start_date
-                and record.customer_id.license_expiry
+                and record.partner_id.rental_license_expiry
             ):
 
                 if (
-                    record.customer_id.license_expiry
+                    record.partner_id.rental_license_expiry
                     < record.start_date
                 ):
                     raise ValidationError(
@@ -170,7 +173,7 @@ class RentalReservation(models.Model):
 
             if (
                 record.vehicle_id
-                and record.vehicle_id.status == 'maintenance'
+                and record.vehicle_id.rental_status == 'maintenance'
             ):
                 raise ValidationError(
                     'This vehicle is in maintenance '
