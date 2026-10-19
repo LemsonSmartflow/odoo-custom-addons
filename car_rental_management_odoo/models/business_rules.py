@@ -284,6 +284,7 @@ class Deposit(models.Model):
     charge_invoice_id = fields.Many2one('account.move', string='Cleaning Invoice', check_company=True)
 
     def action_post(self):
+        require_role(self.env, 'group_rental_accountant')
         for event in self:
             if event.kind == 'collect' and event.rental_id.deposit_collected <= 0 and event.amount < event.rental_id.reservation_id.quoted_daily_rate * 0.5 - 0.005:
                 raise ValidationError('Initial security deposit collection cannot be below 50% of the agreed daily rate.')

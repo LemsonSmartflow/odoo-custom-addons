@@ -59,7 +59,8 @@ class TestNativeScreens(RentalTestCommon):
         as_manager = self.env['car.rental.reservation'].with_user(self.user_manager)
         self.assertEqual(as_manager.search([('id', '=', reservation.id)]).ids, reservation.ids)
         other = self.env['res.company'].create({'name': 'Different rental company'})
-        self.assertFalse(as_manager.with_company(other).search([('id', '=', reservation.id)]))
+        self.user_manager.company_ids = [(4, other.id)]
+        self.assertFalse(as_manager.with_context(allowed_company_ids=other.ids).search([('id', '=', reservation.id)]))
 
     def test_native_fleet_details_keep_one_vehicle(self):
         vehicle = self._make_vehicle(status='setup')
@@ -125,3 +126,16 @@ class TestNativeScreens(RentalTestCommon):
         with Form(partner.with_user(self.user_agent)) as form:
             form.rental_cin = 'STAFF-EDIT'
         self.assertEqual(partner.rental_cin, 'STAFF-EDIT')
+
+    def test_native_receipts_and_category_actions(self):
+        from odoo.tools.safe_eval import safe_eval
+        action = self.env.ref('car_rental_management_odoo.action_car_rental_payment')
+        self.assertEqual(action.res_model, 'account.payment')
+        self.assertEqual(self.env.ref('car_rental_management_odoo.menu_car_rental_payment').action, action)
+        for xmlid in ('action_car_rental_payment', 'action_categories'):
+            action = self.env.ref('car_rental_management_odoo.' + xmlid)
+            domain = safe_eval(action.domain or '[]', {'allowed_company_ids': self.company.ids})
+            self.env[action.res_model].search(domain, limit=1)
+        self.assertIn(('car_rental_id', '!=', False), safe_eval(
+            self.env.ref('car_rental_management_odoo.action_car_rental_payment').domain,
+            {'allowed_company_ids': self.company.ids}))

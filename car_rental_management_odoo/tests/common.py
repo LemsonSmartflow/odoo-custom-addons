@@ -45,10 +45,7 @@ class RentalTestCommon(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.company = (
-            cls.env['res.company'].search([('cr_income_account_id', '!=', False)], limit=1)
-            or cls.env.company
-        )
+        cls.company = cls.env.company
         cls.env = cls.env(context=dict(
             cls.env.context, allowed_company_ids=[cls.company.id], tracking_disable=True))
         cls.company.write({
@@ -59,8 +56,8 @@ class RentalTestCommon(TransactionCase):
             'rental_late_grace_hours': 2.0,
             'rental_agreement_terms': 'Standard rental agreement terms for tests.',
         })
-        cls.receivable_account = cls._find_account('asset_receivable')
         cls._ensure_journal_accounts()
+        cls.receivable_account = cls._find_account('asset_receivable')
         cls._create_roles()
         cls._counter = 0
 
@@ -79,10 +76,33 @@ class RentalTestCommon(TransactionCase):
 
     @classmethod
     def _ensure_journal_accounts(cls):
-        # Cash/bank deposits post through the journal's default account.
-        for journal in (cls.company.cr_cash_journal_id, cls.company.cr_sales_journal_id):
-            if journal and not journal.default_account_id:
-                journal.default_account_id = cls._find_account('asset_cash') or cls._find_account('asset_current')
+        # Self-contained fixtures: a fresh Odoo.sh database has no rental accounts.
+        accounts = {}
+        for index, (label, kind) in enumerate([
+            ('Receivable', 'asset_receivable'), ('Payable', 'liability_payable'),
+            ('Rental income', 'income'), ('Deposits', 'liability_current'),
+            ('Bank', 'asset_cash'), ('Maintenance', 'expense')]):
+            accounts[kind] = cls.env['account.account'].create({
+                'name': 'Rental test ' + label, 'code': 'CRT%03d' % index,
+                'account_type': kind, 'company_ids': [(6, 0, cls.company.ids)],
+                'reconcile': kind in ('asset_receivable', 'liability_payable'),
+            })
+        bank = cls.env['account.journal'].create({
+            'name': 'Rental test bank', 'code': 'CRTB', 'type': 'bank',
+            'company_id': cls.company.id, 'default_account_id': accounts['asset_cash'].id})
+        bank.inbound_payment_method_line_ids.payment_account_id = accounts['asset_cash']
+        sales = cls.env['account.journal'].create({
+            'name': 'Rental test sales', 'code': 'CRTS', 'type': 'sale',
+            'company_id': cls.company.id, 'default_account_id': accounts['income'].id})
+        cls.company.write({
+            'cr_cash_journal_id': bank.id, 'cr_sales_journal_id': sales.id,
+            'cr_income_account_id': accounts['income'].id,
+            'cr_damage_account_id': accounts['income'].id,
+            'cr_deposit_account_id': accounts['liability_current'].id,
+            'cr_expense_account_id': accounts['expense'].id,
+            'cr_rental_product_id': cls.env.ref('car_rental_management_odoo.rental_service_product').id,
+            'cr_tax_id': False,
+        })
 
     @classmethod
     def _create_roles(cls):
