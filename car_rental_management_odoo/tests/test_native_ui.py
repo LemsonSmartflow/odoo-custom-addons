@@ -79,7 +79,8 @@ class TestNativeScreens(RentalTestCommon):
         self.assertEqual(vehicle.action_rental_book()['res_model'], 'car.rental.journey')
 
     def test_native_fleet_activate_requires_registration_and_category(self):
-        arch = ElementTree.fromstring(self.env['fleet.vehicle'].get_view(view_type='form')['arch'])
+        arch = ElementTree.fromstring(
+            self.env['fleet.vehicle'].with_user(self.user_fleet).get_view(view_type='form')['arch'])
         setup_group = arch.find(".//page[@name='rental_details']/group[@name='rental_setup']")
         self.assertIsNotNone(setup_group)
         self.assertEqual(setup_group.get('invisible'), "rental_status != 'setup'")
