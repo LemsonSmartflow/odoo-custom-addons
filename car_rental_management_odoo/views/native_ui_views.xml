@@ -55,6 +55,9 @@
             <xpath expr="//notebook" position="inside">
                 <page string="Rental Details" name="rental_details" groups="car_rental_management_odoo.group_fleet_manager">
                     <button name="action_enable_rentals" type="object" string="Enable Rentals" class="btn-primary" invisible="rental_status != 'setup'"/>
+                    <group string="Rental setup" name="rental_setup" invisible="rental_status != 'setup'">
+                        <field name="rental_category_id"/>
+                    </group>
                     <div invisible="rental_status == 'setup'">
                         <group>
                             <group string="Rental setup"><field name="rental_category_id"/><field name="rental_status"/><field name="rental_image" widget="image" class="oe_avatar"/></group>

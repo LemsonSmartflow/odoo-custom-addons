@@ -5,6 +5,7 @@ fleet.vehicle, so these tests exercise the public screen actions and the native
 record rather than any bespoke bridge model.
 """
 from datetime import timedelta
+from xml.etree import ElementTree
 
 from odoo import fields
 from odoo.exceptions import AccessError, ValidationError
@@ -78,6 +79,12 @@ class TestNativeScreens(RentalTestCommon):
         self.assertEqual(vehicle.action_rental_book()['res_model'], 'car.rental.journey')
 
     def test_native_fleet_activate_requires_registration_and_category(self):
+        arch = ElementTree.fromstring(self.env['fleet.vehicle'].get_view(view_type='form')['arch'])
+        setup_group = arch.find(".//page[@name='rental_details']/group[@name='rental_setup']")
+        self.assertIsNotNone(setup_group)
+        self.assertEqual(setup_group.get('invisible'), "rental_status != 'setup'")
+        self.assertIsNotNone(setup_group.find("./field[@name='rental_category_id']"))
+
         vehicle = self._make_vehicle(status='setup')
         fresh = self.env['fleet.vehicle'].create({
             'model_id': vehicle.model_id.id,
