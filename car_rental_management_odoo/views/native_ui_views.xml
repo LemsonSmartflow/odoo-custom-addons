@@ -2,6 +2,25 @@
 <odoo>
     <record id="group_car_rental_agent" model="res.groups"><field name="implied_ids" eval="[(4, ref('base.group_partner_manager'))]"/></record>
 
+    <record id="partner_rental_date_sort" model="ir.ui.view">
+        <field name="name">Contacts rental date sorting</field><field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes"><attribute name="default_order">create_date desc, id desc</attribute></xpath>
+            <xpath expr="//field[@name='complete_name']" position="after"><field name="create_date" string="Created On" optional="show"/></xpath>
+        </field>
+    </record>
+    <record id="partner_rental_date_group" model="ir.ui.view">
+        <field name="name">Contacts rental date and type grouping</field><field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="create_date"/>
+                <group><filter name="rental_group_contact_type" string="Contact Type" context="{'group_by': 'company_type'}"/><filter name="rental_group_contact_category" string="Contact Category" context="{'group_by': 'category_id'}"/><filter name="rental_group_contact_created" string="Created Month" context="{'group_by': 'create_date:month'}"/></group>
+            </xpath>
+        </field>
+    </record>
+
     <record id="partner_native_rental_details" model="ir.ui.view">
         <field name="name">Contact rental details</field><field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
@@ -12,27 +31,55 @@
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Rental Details" name="rental_details" groups="car_rental_management_odoo.group_car_rental_agent">
-                    <group><field name="rental_enabled" string="Enable Rentals for This Company"/></group>
-                    <div class="alert alert-info">Use the standard contact name, phone, email and street address above. Rental documents below belong to the current company. Drivers must be at least 21 at pickup.</div>
-                    <group invisible="not rental_enabled">
-                        <group string="Identity and address">
-                            <field name="rental_cin" required="rental_enabled"/>
-                            <field name="rental_date_of_birth" required="rental_enabled"/>
-                            <field name="rental_postal_address" string="Postal Address" required="rental_enabled"/>
+                    <div class="o_car_rental_customer_form">
+                        <div class="o_car_rental_customer_intro">
+                            <div>
+                                <span class="o_car_rental_eyebrow">CUSTOMER ELIGIBILITY</span>
+                                <h2>Rental profile</h2>
+                                <p>Complete the customer's identity, licence and supporting documents. Details are checked as you enter them.</p>
+                            </div>
+                            <div class="o_car_rental_toggle">
+                                <span>Enable rental bookings</span>
+                                <field name="rental_enabled" nolabel="1" widget="boolean_toggle"/>
+                            </div>
+                        </div>
+                        <div class="o_car_rental_customer_notice" role="status">
+                            <i class="fa fa-info-circle" aria-hidden="true"/>
+                            <span>Customers must be 21 or older and have a current driving licence. If required documents are missing, Save will prompt you to upload the selected ID and driving-licence documents.</span>
+                        </div>
+                        <group invisible="not rental_enabled">
+                            <group string="Identity and address" class="o_car_rental_customer_card">
+                                <field name="rental_identity_type" required="rental_enabled"/>
+                                <field name="rental_cin" string="Omang Number" placeholder="9 digits" required="rental_enabled and rental_identity_type == 'omang'" invisible="rental_identity_type != 'omang'"/>
+                                <field name="rental_passport_number" placeholder="6–20 letters or digits" required="rental_enabled and rental_identity_type == 'passport'" invisible="rental_identity_type != 'passport'"/>
+                                <field name="rental_date_of_birth" required="rental_enabled"/>
+                                <field name="rental_birth_date_full" string="Full date" readonly="1" invisible="not rental_date_of_birth"/>
+                                <field name="rental_age" invisible="1"/>
+                                <field name="rental_is_underage" invisible="1"/>
+                                <field name="rental_postal_address" string="Postal Address" required="rental_enabled"/>
+                            </group>
+                            <group string="Driving licence" class="o_car_rental_customer_card">
+                                <field name="rental_driving_license" placeholder="6–20 letters or digits" required="rental_enabled"/>
+                                <field name="rental_license_issue_date" required="rental_enabled"/>
+                                <field name="rental_license_issue_date_full" string="Full date" readonly="1" invisible="not rental_license_issue_date"/>
+                                <field name="rental_license_expiry" required="rental_enabled"/>
+                                <field name="rental_license_expiry_full" string="Full date" readonly="1" invisible="not rental_license_expiry"/>
+                            </group>
                         </group>
-                        <group string="Driving licence">
-                            <field name="rental_driving_license" required="rental_enabled"/>
-                            <field name="rental_license_issue_date" required="rental_enabled"/>
-                            <field name="rental_license_expiry" required="rental_enabled"/>
+                        <div class="o_car_rental_underage_notice" role="alert" invisible="not rental_enabled or not rental_is_underage">
+                            <i class="fa fa-exclamation-circle" aria-hidden="true"/>
+                            <span>This customer is under 21 and cannot be enabled for rentals.</span>
+                        </div>
+                        <group string="Required documents" invisible="not rental_enabled" class="o_car_rental_document_grid">
+                            <group string="Omang document" invisible="rental_identity_type != 'omang'"><field name="rental_omang_document_ids" widget="many2many_binary" nolabel="1"/></group>
+                            <group string="Passport document" invisible="rental_identity_type != 'passport'"><field name="rental_passport_document_ids" widget="many2many_binary" nolabel="1"/></group>
+                            <group string="Driving-licence document"><field name="rental_license_document_ids" widget="many2many_binary" nolabel="1"/></group>
+                            <group string="Other documents"><field name="rental_document_ids" widget="many2many_binary" nolabel="1"/></group>
                         </group>
-                    </group>
-                    <group invisible="not rental_enabled">
-                        <group string="Omang"><field name="rental_omang_document_ids" widget="many2many_binary" nolabel="1"/></group>
-                        <group string="Passport"><field name="rental_passport_document_ids" widget="many2many_binary" nolabel="1"/></group>
-                        <group string="Driving licence"><field name="rental_license_document_ids" widget="many2many_binary" nolabel="1"/></group>
-                        <group string="Other / existing documents"><field name="rental_document_ids" widget="many2many_binary" nolabel="1"/></group>
-                    </group>
-                    <button name="action_rental_book" type="object" string="Create a Booking" class="btn-primary" invisible="not rental_enabled"/>
+                        <div class="o_car_rental_customer_actions">
+                            <button name="action_rental_book" type="object" string="Create a Booking" class="btn-primary" invisible="not rental_enabled"/>
+                        </div>
+                    </div>
                 </page>
             </xpath>
         </field>
@@ -48,24 +95,27 @@
         <field name="name">Fleet rental details</field><field name="model">fleet.vehicle</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//header/field[@name='state_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_reservations" type="object" class="oe_stat_button" icon="fa-calendar" groups="car_rental_management_odoo.group_car_rental_agent"><field name="reservation_count" widget="statinfo" string="Reservations"/></button>
                 <button name="action_rentals" type="object" class="oe_stat_button" icon="fa-key" groups="car_rental_management_odoo.group_car_rental_agent"><field name="rental_count" widget="statinfo" string="Rentals"/></button>
             </xpath>
             <xpath expr="//notebook" position="inside">
-                <page string="Rental Details" name="rental_details" groups="car_rental_management_odoo.group_fleet_manager">
+                <page string="Rental Details" name="rental_details" class="o_car_rental_fleet_details" groups="car_rental_management_odoo.group_fleet_manager">
                     <button name="action_enable_rentals" type="object" string="Enable Rentals" class="btn-primary" invisible="rental_status != 'setup'"/>
                     <group string="Rental setup" name="rental_setup" invisible="rental_status != 'setup'">
                         <field name="rental_category_id"/>
                     </group>
                     <div invisible="rental_status == 'setup'">
                         <group>
-                            <group string="Rental setup"><field name="rental_category_id"/><field name="rental_status"/><field name="rental_image" widget="image" class="oe_avatar"/></group>
+                            <group string="Rental setup"><field name="rental_status"/><field name="rental_image" widget="image" class="oe_avatar"/></group>
                             <group string="Service and tracking"><field name="rental_tracker_working"/><field name="rental_service_interval"/><field name="rental_next_service_date"/><field name="rental_next_service_mileage"/><field name="rental_service_due"/><field name="manager_id"/></group>
                         </group>
                         <group>
-                            <group string="Insurance and licences (Fleet contracts)">
-                                <field name="log_contracts" readonly="1"><list create="1" delete="0"><field name="cost_subtype_id"/><field name="insurer_id"/><field name="ins_ref"/><field name="start_date"/><field name="expiration_date"/><field name="state" widget="badge"/></list></field>
+                            <group string="Vehicle road licence and insurance (Fleet contracts)">
+                                <field name="log_contracts"><list create="1" delete="0" default_order="expiration_date asc, id desc"><field name="cost_subtype_id"/><field name="insurer_id"/><field name="ins_ref"/><field name="start_date"/><field name="expiration_date"/><field name="state" widget="badge"/></list></field>
                             </group>
                             <group string="Rental documents"><field name="rental_document_ids" widget="many2many_binary" nolabel="1"/></group>
                         </group>
@@ -84,11 +134,31 @@
                     </div>
                 </page>
                 <page string="Reservations" name="rental_reservations_page" groups="car_rental_management_odoo.group_car_rental_agent">
-                    <field name="reservation_ids" readonly="1"><list create="0" delete="0"><field name="reference"/><field name="partner_id"/><field name="start_date"/><field name="end_date"/><field name="amount"/><field name="status" widget="badge"/></list></field>
+                    <field name="reservation_ids" readonly="1"><list create="0" delete="0" default_order="pickup_datetime desc, id desc"><field name="reference"/><field name="partner_id"/><field name="start_date"/><field name="end_date"/><field name="amount"/><field name="status" widget="badge"/></list></field>
                 </page>
                 <page string="Rental History" name="rental_history_page" groups="car_rental_management_odoo.group_car_rental_agent">
-                    <field name="rental_ids" readonly="1"><list create="0" delete="0"><field name="reference"/><field name="partner_id"/><field name="start_date"/><field name="amount"/><field name="paid_total"/><field name="balance_due"/><field name="status" widget="badge"/></list></field>
+                    <field name="rental_ids" readonly="1"><list create="0" delete="0" default_order="start_date desc, id desc"><field name="reference"/><field name="partner_id"/><field name="start_date"/><field name="amount"/><field name="paid_total"/><field name="balance_due"/><field name="status" widget="badge"/></list></field>
                 </page>
+            </xpath>
+        </field>
+    </record>
+    <record id="fleet_rental_date_sort" model="ir.ui.view">
+        <field name="name">Fleet rental date sorting</field><field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes"><attribute name="default_order">create_date desc, id desc</attribute></xpath>
+            <xpath expr="//field[@name='category_id']" position="after"><field name="rental_status" string="Rental Status" optional="show"/><field name="create_date" string="Created On" optional="show"/></xpath>
+        </field>
+    </record>
+    <record id="fleet_rental_date_group" model="ir.ui.view">
+        <field name="name">Fleet rental date and type grouping</field><field name="model">fleet.vehicle</field>
+        <field name="inherit_id" ref="fleet.fleet_vehicle_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="category_id"/>
+                <field name="rental_status"/>
+                <field name="create_date"/>
+                <group><filter name="rental_group_category" string="Vehicle Category" context="{'group_by': 'category_id'}"/><filter name="rental_group_status" string="Rental Status" context="{'group_by': 'rental_status'}"/><filter name="rental_group_created" string="Created Month" context="{'group_by': 'create_date:month'}"/></group>
             </xpath>
         </field>
     </record>

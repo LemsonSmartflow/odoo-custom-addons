@@ -24,7 +24,8 @@ class FleetVehicle(models.Model):
         ('damaged', 'Accident / Damaged'),
         ('decommissioned', 'Decommissioned'),
     ], string='Rental Availability', default='setup', required=True, tracking=True, copy=False)
-    rental_category_id = fields.Many2one('fleet.vehicle.model.category', string='Rental Category', tracking=True)
+    rental_category_id = fields.Many2one(
+        related='category_id', string='Rental Category', store=True, tracking=True)
     rental_daily_rate = fields.Monetary(string='Legacy Daily Rate', currency_field='currency_id', default=0,
                                         help='Legacy vehicle rate. New reservations use approved destination pricing rules.')
     rental_tracker_working = fields.Boolean(string='Tracker Operational', default=True)
@@ -86,11 +87,9 @@ class FleetVehicle(models.Model):
                 raise ValidationError(_('The vehicle is not available for rental.'))
             if vehicle.company_id.rental_block_expired_documents:
                 today = fields.Date.today()
-                for kind in ('Insurance', 'Road Licence'):
-                    contract = vehicle._rental_open_contract(kind)
-                    if not contract or not contract.expiration_date or contract.expiration_date < today:
-                        raise ValidationError(
-                            _('Valid %s coverage is required before pickup.') % kind.lower())
+                contract = vehicle._rental_open_contract('Road Licence')
+                if not contract or not contract.expiration_date or contract.expiration_date < today:
+                    raise ValidationError(_('This vehicle needs a current Road Licence contract in Fleet before pickup. This is separate from the customer driving licence. Insurance is optional.'))
             if vehicle.company_id.rental_block_tracker and not vehicle.rental_tracker_working:
                 raise ValidationError(_('The vehicle tracker must be operational.'))
 
@@ -131,10 +130,19 @@ class FleetVehicle(models.Model):
                         raise ValidationError(_('Resolve outstanding damage cases before releasing the vehicle.'))
         return super().write(vals)
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get('rental_next_service_mileage'):
+                interval = vals.get('rental_service_interval', 10000)
+                if interval > 0:
+                    vals['rental_next_service_mileage'] = vals.get('odometer', 0) + interval
+        return super().create(vals_list)
+
     def _operational_update(self, vals):
         if set(vals) - {'rental_status', 'odometer'}:
             raise ValidationError(_('Only odometer and operational status can be updated by a handover.'))
-        return super().write(vals)
+        return super(FleetVehicle, self.sudo()).write(vals)
 
     def action_rental_reservations(self):
         self.ensure_one()

@@ -14,20 +14,12 @@
             <xpath expr="//group[@name='rental_summary']/field[@name='return_date']" position="replace"/>
         </field>
     </record>
-    <record id="reservation_month_search" model="ir.ui.view">
-        <field name="name">rental.reservation.month.search</field><field name="model">car.rental.reservation</field>
-        <field name="arch" type="xml"><search><field name="reference"/><field name="partner_id"/><field name="vehicle_id"/><field name="destination_id"/><filter name="pickup_month" string="Pickup Month" context="{'group_by': 'pickup_datetime:month'}"/></search></field>
-    </record>
     <record id="action_car_rental_reservation" model="ir.actions.act_window">
-        <field name="search_view_id" ref="reservation_month_search"/>
-        <field name="context">{'search_default_pickup_month': 1}</field>
-    </record>
-    <record id="rental_month_search" model="ir.ui.view">
-        <field name="name">rental.month.search</field><field name="model">car.rental.rental</field>
-        <field name="arch" type="xml"><search><field name="reference"/><field name="partner_id"/><field name="vehicle_id"/><filter name="pickup_month" string="Pickup Month" context="{'group_by': 'pickup_datetime:month'}"/></search></field>
+        <field name="search_view_id" ref="view_car_rental_reservation_search"/>
+        <field name="context">{}</field>
     </record>
     <record id="action_car_rental_rental" model="ir.actions.act_window">
-        <field name="search_view_id" ref="rental_month_search"/>
-        <field name="context">{'search_default_pickup_month': 1}</field>
+        <field name="search_view_id" ref="view_car_rental_rental_search"/>
+        <field name="context">{}</field>
     </record>
 </odoo>

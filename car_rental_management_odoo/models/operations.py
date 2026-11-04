@@ -19,6 +19,7 @@ class Rental(models.Model):
     expected_return_datetime = fields.Datetime(related='reservation_id.expected_return_datetime')
     actual_pickup_datetime = fields.Datetime(readonly=True, copy=False)
     actual_return_datetime = fields.Datetime(readonly=True, copy=False)
+    distance_travelled = fields.Float(string='Distance Travelled (km)', compute='_compute_distance_travelled', store=True)
     inspection_ids = fields.One2many('car.rental.check', 'rental_id')
     pickup_inspection_done = fields.Boolean(compute='_compute_inspections')
     return_inspection_done = fields.Boolean(compute='_compute_inspections')
@@ -31,6 +32,11 @@ class Rental(models.Model):
     document_ids = fields.Many2many('ir.attachment', string='Rental Documents')
     late_days = fields.Integer(readonly=True, copy=False)
     late_charge = fields.Monetary(readonly=True, copy=False)
+
+    @api.depends('initial_mileage', 'final_mileage')
+    def _compute_distance_travelled(self):
+        for rental in self:
+            rental.distance_travelled = max(rental.final_mileage - rental.initial_mileage, 0) if rental.final_mileage else 0
 
     @api.depends('inspection_ids.state', 'inspection_ids.kind')
     def _compute_inspections(self):
@@ -64,8 +70,9 @@ class Rental(models.Model):
             rental.message_post(body='Agreement acknowledged by %s.' % rental.agreement_signed_by)
 
     def write(self, vals):
-        if {'status', 'agreement_state', 'agreement_signed_on', 'actual_pickup_datetime', 'actual_return_datetime', 'late_days', 'late_charge'}.intersection(vals):
-            raise ValidationError('Use the handover, return or agreement actions to update workflow fields.')
+        if {'status', 'agreement_state', 'agreement_signed_on', 'actual_pickup_datetime', 'actual_return_datetime',
+                'initial_mileage', 'final_mileage', 'late_days', 'late_charge'}.intersection(vals):
+            raise ValidationError('Use the handover, return, inspection or agreement actions to update workflow fields.')
         if {'agreement_terms', 'agreement_signature', 'agreement_signed_by'}.intersection(vals) and any(r.agreement_state == 'signed' for r in self):
             raise ValidationError('An acknowledged agreement is immutable.')
         return super().write(vals)
@@ -203,7 +210,8 @@ class Inspection(models.Model):
                 raise ValidationError('Describe the new damage.')
             super(Inspection, check).write({'state': 'done', 'inspector_id': self.env.user.id})
             if check.kind == 'pickup':
-                check.rental_id.initial_mileage = check.mileage
+                super(Rental, check.rental_id).write({'initial_mileage': check.mileage})
+                check.vehicle_id._operational_update({'odometer': check.mileage})
             elif check.new_damage:
                 self.env['car.rental.damage.case'].create({'rental_id': check.rental_id.id, 'inspection_id': check.id, 'name': check.damage_notes})
 

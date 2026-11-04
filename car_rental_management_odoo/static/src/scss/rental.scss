@@ -54,10 +54,40 @@
 // Keep rental forms readable with the chatter open and on smaller screens.
 .o_car_rental_form {
     --rental-input-border: #81939e;
+    --rental-ink: #173a45;
+    --rental-accent: #286a70;
     .o_group { row-gap: 20px; }
     .o_inner_group {
         row-gap: 14px;
         margin-bottom: 24px;
+    }
+    .o_form_sheet {
+        max-width: 1240px;
+        margin: 20px auto;
+        padding: clamp(20px, 3vw, 36px);
+        border: 1px solid #e0e8ea;
+        border-radius: 16px;
+        background: var(--o-view-background-color, #fff);
+        box-shadow: 0 8px 28px #173a450d;
+    }
+    .o_form_statusbar {
+        border-bottom: 1px solid #e0e8ea;
+        background: #f7fafb;
+        .o_arrow_button {
+            min-height: 38px;
+            font-weight: 600;
+        }
+    }
+    .o_form_view_header {
+        .btn {
+            min-height: 38px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .btn-primary {
+            border-color: var(--rental-accent);
+            background: var(--rental-accent);
+        }
     }
     .o_form_label { font-weight: 600; line-height: 1.5; }
     .o_horizontal_separator {
@@ -65,7 +95,9 @@
         margin-bottom: 12px;
         font-size: 1rem;
         font-weight: 700;
-        border-bottom: 2px solid #b7cdcf;
+        color: var(--rental-ink);
+        border-bottom: 1px solid #cbdadd;
+        text-transform: none;
     }
     // Keep empty controls visible even when Odoo removes idle input borders.
     .o_field_widget :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, select).o_input {
@@ -78,7 +110,7 @@
         box-sizing: border-box;
         &:hover { border-color: #365e65 !important; }
         &:focus {
-            border-color: #286a70 !important;
+            border-color: var(--rental-accent) !important;
             outline: 2px solid #286a7040;
             outline-offset: 1px;
         }
@@ -92,6 +124,22 @@
     .o_field_many2one .o_input { padding-right: 30px !important; }
     .o_field_widget.o_readonly_modifier { line-height: 1.6; }
     .o_notebook .tab-pane { padding-top: 20px; }
+    .o_notebook .nav-tabs {
+        gap: 4px;
+        border-bottom-color: #dce5e8;
+        .nav-link {
+            padding: 10px 14px;
+            border-radius: 8px 8px 0 0;
+            color: #536871;
+            font-weight: 600;
+            &:hover { color: var(--rental-accent); }
+            &.active {
+                color: var(--rental-ink);
+                border-color: #dce5e8 #dce5e8 #fff;
+                background: #fff;
+            }
+        }
+    }
     .o_field_x2many .o_input { min-height: 32px; padding: 4px 8px; }
     // Monetary widgets overlay a transparent currency/ghost-value span on the
     // input. Box the shared container, never the overlay, to keep digits visible.
@@ -104,7 +152,7 @@
             padding: 8px 12px;
             min-height: 42px;
             background: var(--o-view-background-color, #fff);
-            &:focus-within { border-color: #286a70; outline: 2px solid #286a7040; }
+            &:focus-within { border-color: var(--rental-accent); outline: 2px solid #286a7040; }
         }
         .o_input, .o_input:hover, .o_input:focus {
             border: 0 !important;
@@ -140,5 +188,458 @@
     .oe_title .o_field_char { width: 100%; }
     @media (max-width: 575px) {
         .o_inner_group { grid-template-columns: minmax(0, 1fr); }
+    }
+}
+
+.o_form_view .o_car_rental_customer_form {
+    --rental-ink: #172f3b;
+    --rental-muted: #60737d;
+    --rental-line: #dce5e8;
+    --rental-accent: #286a70;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 8px 4px 24px;
+    color: var(--rental-ink);
+
+    .o_car_rental_customer_intro {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 24px 28px;
+        border: 1px solid var(--rental-line);
+        border-radius: 14px;
+        background: linear-gradient(120deg, #f3f8f8, #fff 75%);
+
+        h2 {
+            margin: 5px 0 6px;
+            color: var(--rental-ink);
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        p {
+            max-width: 620px;
+            margin: 0;
+            color: var(--rental-muted);
+            line-height: 1.55;
+        }
+
+        .o_car_rental_toggle {
+            display: flex;
+            flex: 0 0 auto;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border: 1px solid #c8d9dc;
+            border-radius: 10px;
+            background: #fff;
+            font-weight: 600;
+
+            .o_field_widget, .o_field_boolean {
+                margin: 0;
+            }
+        }
+
+        // Keep the rental workspace compact while leaving other Odoo applications alone.
+        .o_car_rental_dashboard {
+            .o_car_dashboard_hero {
+                padding: 20px 22px;
+                border-radius: 10px;
+
+                h1 {
+                    margin-bottom: 6px;
+                    font-size: 1.5rem;
+                }
+            }
+
+            .o_car_metric {
+                min-height: 132px;
+                padding: 16px;
+                border-radius: 10px;
+
+                > i {
+                    margin-bottom: 8px;
+                    font-size: 18px;
+                }
+
+                .o_field_widget {
+                    font-size: 1.5rem;
+                    line-height: 1.2;
+                }
+
+                small {
+                    margin-top: 6px;
+                }
+            }
+
+            .o_car_dashboard_guide {
+                padding: 18px;
+                border-radius: 10px;
+
+                h3 {
+                    margin-bottom: 14px;
+                    font-size: 1.1rem;
+                }
+            }
+        }
+
+        .o_car_rental_gallery {
+            .o_kanban_record {
+                border: 1px solid #dce5e8;
+                border-radius: 10px;
+                box-shadow: 0 2px 8px #173a450d;
+            }
+
+            .o_car_photo {
+                height: 156px;
+
+                img {
+                    height: 156px;
+                }
+            }
+
+            .o_car_photo_placeholder i {
+                font-size: 36px;
+            }
+        }
+
+        .o_car_rental_form {
+            .o_form_sheet {
+                box-sizing: border-box;
+                width: 100%;
+                max-width: 1100px;
+                margin: 12px auto;
+                padding: clamp(14px, 2vw, 24px);
+                border-radius: 10px;
+                box-shadow: 0 3px 14px #173a450a;
+            }
+
+            .o_group {
+                row-gap: 12px;
+            }
+
+            .o_inner_group {
+                row-gap: 9px;
+                margin-bottom: 14px;
+                grid-template-columns: minmax(110px, 30%) minmax(0, 1fr);
+            }
+
+            .o_horizontal_separator {
+                padding: 8px 0 6px;
+                margin-bottom: 8px;
+                font-size: .95rem;
+            }
+
+            .o_field_widget :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, select).o_input {
+                min-height: 36px;
+                padding: 6px 9px;
+                border-radius: 6px;
+                font-size: .9rem;
+            }
+
+            .o_field_widget textarea.o_input {
+                min-height: 76px;
+            }
+
+            .o_form_statusbar .o_arrow_button,
+            .o_form_view_header .btn {
+                min-height: 34px;
+            }
+
+            .o_notebook .tab-pane {
+                padding-top: 14px;
+            }
+
+            .o_notebook .nav-tabs .nav-link {
+                padding: 8px 11px;
+            }
+
+            .o_list_view {
+                th, td {
+                    padding: 7px 9px;
+                    vertical-align: middle;
+                }
+            }
+
+            @media (max-width: 575px) {
+                .o_form_sheet {
+                    margin: 0;
+                    padding: 12px;
+                    border-radius: 0;
+                }
+
+                .o_inner_group {
+                    grid-template-columns: minmax(0, 1fr);
+                }
+            }
+        }
+
+        .o_car_rental_list {
+            .o_list_table {
+                th, td {
+                    padding: 8px 10px;
+                    vertical-align: middle;
+                }
+
+                thead th {
+                    color: #35545e;
+                    font-size: .82rem;
+                    font-weight: 650;
+                }
+            }
+        }
+
+        .o_form_view .o_car_rental_customer_form {
+            max-width: 1000px;
+
+            .o_car_rental_customer_intro {
+                gap: 16px;
+                padding: 18px 20px;
+                border-radius: 10px;
+
+                h2 {
+                    font-size: 1.25rem;
+                }
+            }
+
+            > .o_group {
+                grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+                gap: 14px;
+                margin: 14px 0;
+
+                > .o_inner_group {
+                    padding: 14px 16px;
+                    border-radius: 10px;
+                }
+
+                .o_inner_group {
+                    row-gap: 9px;
+                }
+
+                .o_field_widget :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, select).o_input {
+                    min-height: 36px;
+                    padding: 6px 9px;
+                }
+            }
+
+            .o_car_rental_customer_notice,
+            .o_car_rental_underage_notice {
+                margin: 12px 0;
+                padding: 11px 13px;
+            }
+
+            > .o_car_rental_document_grid > .o_inner_group {
+                min-height: 0;
+            }
+
+            .o_car_rental_customer_actions .btn {
+                min-height: 38px;
+                padding: 8px 14px;
+            }
+        }
+
+        .o_form_view .o_car_rental_fleet_details {
+            .o_group {
+                row-gap: 10px;
+            }
+
+            .o_inner_group {
+                row-gap: 8px;
+            }
+
+            .o_list_view th,
+            .o_list_view td {
+                padding: 6px 8px;
+            }
+
+            .o_field_many2many_binary {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .o_car_rental_dashboard {
+                .o_car_dashboard_hero {
+                    padding: 16px;
+                }
+
+                .o_car_metric {
+                    min-height: 116px;
+                    padding: 13px;
+                }
+            }
+
+            .o_car_rental_gallery .o_car_photo,
+            .o_car_rental_gallery .o_car_photo img {
+                height: 140px;
+            }
+        }
+    }
+
+    .o_car_rental_eyebrow {
+        color: var(--rental-accent);
+        font-size: .72rem;
+        font-weight: 750;
+        letter-spacing: .1em;
+    }
+
+    .o_car_rental_customer_notice,
+    .o_car_rental_underage_notice {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin: 16px 0;
+        padding: 13px 16px;
+        border: 1px solid #cfe0e3;
+        border-radius: 10px;
+        background: #f0f7f8;
+        color: #35545e;
+        line-height: 1.5;
+
+        > i {
+            margin-top: 2px;
+            color: var(--rental-accent);
+        }
+    }
+
+    .o_car_rental_underage_notice {
+        border-color: #efb4b8;
+        background: #fff1f2;
+        color: #8d2932;
+
+        > i { color: #b33340; }
+    }
+
+    > .o_group {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: stretch;
+        gap: 18px;
+        margin: 18px 0;
+
+        > .o_inner_group {
+            box-sizing: border-box;
+            width: 100%;
+            min-width: 0;
+            padding: 18px 20px 20px;
+            border: 1px solid var(--rental-line);
+            border-radius: 12px;
+            background: #fff;
+        }
+
+        .o_horizontal_separator {
+            margin: 0 0 12px;
+            padding: 0 0 12px;
+            border-bottom: 1px solid var(--rental-line);
+            color: var(--rental-ink);
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: none;
+        }
+
+        .o_inner_group {
+            grid-template-columns: minmax(120px, 34%) minmax(0, 1fr);
+            column-gap: 12px;
+            row-gap: 12px;
+        }
+
+        .o_wrap_label,
+        .o_form_label {
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+        }
+
+        .o_wrap_input,
+        .o_field_widget {
+            min-width: 0;
+        }
+
+        .o_field_widget :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, select).o_input {
+            box-sizing: border-box;
+            width: 100%;
+            min-width: 0;
+            min-height: 40px;
+            padding: 8px 10px;
+            border: 1px solid #b8c7cd !important;
+            border-radius: 7px;
+            background: #fff;
+
+            &:focus {
+                border-color: var(--rental-accent) !important;
+                outline: 2px solid #286a7026;
+                outline-offset: 1px;
+            }
+        }
+    }
+
+    > .o_car_rental_customer_notice,
+    > .o_car_rental_underage_notice {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    > .o_car_rental_document_grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+
+        > .o_inner_group {
+            min-height: 116px;
+            background: #f9fbfb;
+        }
+
+        .o_field_many2many_binary {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .o_file_input, .o_attach_label {
+            max-width: 100%;
+        }
+    }
+
+    .o_car_rental_customer_actions {
+        display: flex;
+        justify-content: flex-end;
+        padding-top: 8px;
+
+        .btn {
+            min-height: 42px;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 650;
+        }
+    }
+
+    @media (max-width: 900px) {
+        > .o_group {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .o_car_rental_customer_intro {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+    }
+
+    @media (max-width: 560px) {
+        padding-right: 0;
+        padding-left: 0;
+
+        .o_car_rental_customer_intro,
+        > .o_group > .o_inner_group {
+            padding: 16px;
+        }
+
+        > .o_car_rental_document_grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        > .o_group .o_inner_group {
+            grid-template-columns: minmax(0, 1fr);
+        }
     }
 }

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 from odoo import fields
 from odoo.exceptions import AccessError, ValidationError
-from odoo.tests import tagged
+from odoo.tests import Form, tagged
 
 from .common import RentalTestCommon, PNG_SIGNATURE
 
@@ -75,6 +75,43 @@ class TestBusinessRules(RentalTestCommon):
         with self.assertRaises(ValidationError), self.cr.savepoint():
             reservation.write({'expected_return_datetime': start})
 
+    def test_entering_rental_days_calculates_return_time(self):
+        start = datetime.combine(fields.Date.today() + timedelta(days=10), datetime.min.time()).replace(
+            hour=14, minute=30)
+        partner = self._make_partner()
+        vehicle = self._make_vehicle()
+        zone = self._make_zone()
+        self._make_rate_rule(vehicle.rental_category_id, zone)
+        reservation = self.env['car.rental.reservation'].create({
+            'company_id': self.company.id,
+            'partner_id': partner.id,
+            'category_id': vehicle.rental_category_id.id,
+            'destination_id': zone.id,
+            'vehicle_id': vehicle.id,
+            'pickup_datetime': start,
+            'number_of_days': 3,
+        })
+        self.assertEqual(reservation.expected_return_datetime, start + timedelta(days=3))
+        self.assertEqual(reservation.number_of_days, 3)
+        self.assertEqual(reservation.amount_untaxed, 300)
+
+        reservation.write({'number_of_days': 2})
+        self.assertEqual(reservation.expected_return_datetime, start + timedelta(days=2))
+
+        journey = self.env['car.rental.journey'].create({
+            'pickup_datetime': start,
+            'number_of_days': 4,
+        })
+        self.assertEqual(journey.expected_return_datetime, start + timedelta(days=4))
+        journey.write({'number_of_days': 1})
+        self.assertEqual(journey.expected_return_datetime, start + timedelta(days=1))
+
+        journey = self.env['car.rental.journey'].create({'details_started': True})
+        with Form(journey) as form:
+            form.pickup_datetime = start
+            form.number_of_days = 4
+            self.assertEqual(form.expected_return_datetime, start + timedelta(days=4))
+
     def test_adjacent_hour_allocations_same_day(self):
         start = datetime.combine(fields.Date.today() + timedelta(days=10), datetime.min.time()).replace(hour=10)
         partner = self._make_partner()
@@ -108,19 +145,92 @@ class TestBusinessRules(RentalTestCommon):
         reservation = self._make_reservation(confirm=False)
         pickup = reservation.pickup_datetime.date()
         partner = reservation.partner_id
-        partner.rental_date_of_birth = pickup.replace(year=pickup.year - 20)
         with self.assertRaisesRegex(ValidationError, '21'), self.cr.savepoint():
-            reservation.action_confirm()
-        partner.rental_date_of_birth = pickup.replace(year=pickup.year - 21)
-        partner.rental_omang_document_ids = False
-        partner.rental_passport_document_ids = False
-        with self.assertRaisesRegex(ValidationError, 'Omang or passport'), self.cr.savepoint():
-            reservation.action_confirm()
-        partner.write({
-            'rental_passport_document_ids': [(6, 0, partner.rental_license_document_ids.ids)],
-        })
+            partner.write({'rental_date_of_birth': pickup.replace(year=pickup.year - 20)})
+        partner.rental_date_of_birth = fields.Date.today().replace(year=fields.Date.today().year - 21)
         reservation.action_confirm()
         self.assertEqual(reservation.status, 'confirmed')
+
+    def test_rental_customer_requires_current_age_and_unexpired_license(self):
+        today = fields.Date.today()
+        profile = {
+            'name': self._unique('Prospective renter'),
+            'company_type': 'person',
+            'street': '1 Test Street',
+            'rental_postal_address': 'PO Box 1',
+            'rental_cin': '123456789',
+            'rental_date_of_birth': today.replace(year=today.year - 20),
+            'rental_driving_license': '12345678901234',
+            'rental_license_issue_date': today.replace(year=today.year - 3),
+            'rental_license_expiry': today.replace(year=today.year + 2),
+            'rental_enabled': True,
+            'rental_omang_document_ids': [(6, 0, [self._attachment('eligibility-omang.png').id])],
+            'rental_license_document_ids': [(6, 0, [self._attachment('eligibility-licence.png').id])],
+        }
+        with self.assertRaisesRegex(ValidationError, '21'), self.cr.savepoint():
+            self.env['res.partner'].create(profile)
+
+        profile.update({
+            'name': self._unique('Expired-license renter'),
+            'rental_date_of_birth': today.replace(year=today.year - 30),
+            'rental_license_expiry': today - timedelta(days=1),
+        })
+        with self.assertRaisesRegex(ValidationError, 'expired'), self.cr.savepoint():
+            self.env['res.partner'].create(profile)
+
+        contact = self.env['res.partner'].create({
+            key: value for key, value in profile.items() if key != 'rental_enabled'
+        })
+        with self.assertRaisesRegex(ValidationError, 'expired'), self.cr.savepoint():
+            contact.write({'rental_enabled': True})
+
+    def test_rental_customer_requires_selected_identity_and_licence_documents(self):
+        today = fields.Date.today()
+        with self.assertRaisesRegex(ValidationError, 'Upload the selected'), self.cr.savepoint():
+            self.env['res.partner'].create({
+                'name': self._unique('Missing documents'),
+                'company_type': 'person',
+                'street': '1 Test Street',
+                'rental_postal_address': 'PO Box 1',
+                'rental_identity_type': 'omang',
+                'rental_cin': '123456789',
+                'rental_date_of_birth': today.replace(year=today.year - 30),
+                'rental_driving_license': '12345678901234',
+                'rental_license_issue_date': today.replace(year=today.year - 3),
+                'rental_license_expiry': today.replace(year=today.year + 2),
+                'rental_enabled': True,
+            })
+
+    def test_identity_number_formats_and_selected_identity(self):
+        today = fields.Date.today()
+        partner = self.env['res.partner'].create({
+            'name': self._unique('Passport renter'),
+            'company_type': 'person',
+            'street': '1 Test Street',
+            'rental_postal_address': 'PO Box 1',
+            'rental_identity_type': 'passport',
+            'rental_passport_number': 'P12345678',
+            'rental_date_of_birth': today.replace(year=today.year - 30),
+            'rental_driving_license': '12345678901234',
+            'rental_license_issue_date': today.replace(year=today.year - 3),
+            'rental_license_expiry': today.replace(year=today.year + 2),
+            'rental_passport_document_ids': [(6, 0, [self._attachment('passport.png').id])],
+            'rental_license_document_ids': [(6, 0, [self._attachment('licence.png').id])],
+            'rental_enabled': True,
+        })
+        self.assertEqual(partner.rental_identity_number, 'P12345678')
+        with self.assertRaisesRegex(ValidationError, 'exactly 9 digits'), self.cr.savepoint():
+            self.env['res.partner'].create({
+                'name': self._unique('Invalid Omang'),
+                'rental_cin': '12345678A',
+            })
+        with self.assertRaisesRegex(ValidationError, 'exactly 9 digits'), self.cr.savepoint():
+            self.env['res.partner'].create({
+                'name': self._unique('Oversized Omang'),
+                'rental_cin': '1234567890',
+            })
+        with self.assertRaisesRegex(ValidationError, '6 to 20 letters or digits'), self.cr.savepoint():
+            partner.write({'rental_driving_license': 'LIC-123456'})
 
     def test_deposit_cannot_be_overridden_anywhere(self):
         reservation = self._make_reservation(confirm=False)

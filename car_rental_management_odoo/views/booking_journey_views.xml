@@ -10,7 +10,7 @@
     </record>
     <record id="booking_journey_list" model="ir.ui.view">
         <field name="name">Create a Booking</field><field name="model">car.rental.journey</field>
-        <field name="arch" type="xml"><list><field name="name"/><field name="partner_id"/><field name="pickup_datetime"/><field name="vehicle_id"/><field name="step" widget="badge"/></list></field>
+        <field name="arch" type="xml"><list class="o_car_rental_list" default_order="create_date desc, id desc"><field name="name"/><field name="partner_id"/><field name="pickup_datetime" string="Pickup Date"/><field name="create_date" string="Created On" optional="show"/><field name="vehicle_id"/><field name="step" string="Booking Stage" widget="badge"/></list></field>
     </record>
     <record id="booking_journey_form" model="ir.ui.view">
         <field name="name">Guided booking</field><field name="model">car.rental.journey</field>
@@ -38,15 +38,18 @@
                     <group string="Booking details" invisible="step != 'details'">
                         <field name="destination_id" domain="[('company_id', '=', company_id)]"/>
                         <field name="category_id"/>
-                        <field name="pickup_datetime"/><field name="expected_return_datetime"/>
+                        <field name="pickup_datetime"/>
+                        <field name="number_of_days" string="Rental Days (24-hour periods)" required="1"/>
+                        <field name="expected_return_datetime" readonly="1"/>
                         <field name="vehicle_id" domain="[('company_id', '=', company_id), ('rental_category_id', '=', category_id), ('rental_status', 'in', ['available', 'reserved', 'rented'])]"/>
                         <div colspan="2" class="text-muted">Leave vehicle empty to allocate an available vehicle automatically. Availability is checked against both pickup and return times.</div>
                     </group>
                     <group string="Booking summary" invisible="step in ['customer', 'details']">
                         <field name="partner_id" readonly="1"/><field name="vehicle_id" readonly="1"/>
                         <field name="destination_id" readonly="1"/><field name="pickup_datetime" readonly="1"/><field name="expected_return_datetime" readonly="1"/>
-                        <field name="number_of_days" string="24-hour Rental Days"/><field name="amount" string="Hire Total" widget="monetary"/>
+                        <field name="number_of_days" string="24-hour Rental Days" readonly="1"/><field name="amount" string="Hire Total" widget="monetary"/>
                         <field name="deposit_required" string="Refundable Security Deposit"/>
+                        <field name="customer_deposit_credit" string="Customer Deposit Credit Available"/>
                         <field name="cleaning_fee" string="One-time Fee if Returned Dirty"/>
                     </group>
                     <field name="vehicle_image" widget="image" class="oe_avatar" invisible="not vehicle_id"/>
@@ -55,10 +58,11 @@
                         <div colspan="2">Complete the agreement first. After it is signed, return here and click Continue to proceed to payment.</div>
                     </group>
                     <group string="Payment and security deposit" invisible="step != 'payment'">
+                        <field name="customer_deposit_credit" string="Prior Deposit Credit Available"/>
                         <button name="action_invoice" type="object" string="1. Create / Open Rental Invoice" groups="car_rental_management_odoo.group_rental_accountant"/>
                         <button name="action_payment" type="object" string="2. Record Rental Payment" groups="car_rental_management_odoo.group_rental_accountant"/>
                         <button name="action_deposit" type="object" string="3. Collect Security Deposit" groups="car_rental_management_odoo.group_rental_accountant"/>
-                        <div colspan="2">An accountant must post the invoice and deposit receipt. Return here and click Continue to refresh progress.</div>
+                        <div colspan="2">Prior refundable deposit credit from the customer's settled returns is shown above and will be applied by default during collection. An accountant can adjust the amount, then post any remaining cash deposit and rental payment. Return here and click Continue to refresh progress.</div>
                     </group>
                     <group string="Vehicle inspections" invisible="step not in ['pickup', 'handover', 'return']">
                         <button name="action_rental" type="object" string="Review Rental"/>
@@ -80,6 +84,13 @@
     <record id="action_booking_journeys" model="ir.actions.act_window">
         <field name="name">Create a Booking</field><field name="res_model">car.rental.journey</field><field name="view_mode">list,form</field>
         <field name="domain">[('company_id', '=', allowed_company_ids[0])]</field>
+    </record>
+    <record id="booking_journey_search" model="ir.ui.view">
+        <field name="name">Booking workspace search</field><field name="model">car.rental.journey</field>
+        <field name="arch" type="xml"><search string="Search Bookings"><field name="name"/><field name="partner_id"/><field name="vehicle_id"/><field name="pickup_datetime"/><filter name="confirmed" string="Confirmed Reservation" domain="[('reservation_id.status', '=', 'confirmed')]"/><filter name="cancelled" string="Cancelled Reservation" domain="[('reservation_id.status', '=', 'cancelled')]"/><filter name="by_pickup_month" string="Pickup Month" context="{'group_by': 'pickup_datetime:month'}"/><filter name="by_creation_month" string="Created Month" context="{'group_by': 'create_date:month'}"/></search></field>
+    </record>
+    <record id="action_booking_journeys" model="ir.actions.act_window">
+        <field name="search_view_id" ref="booking_journey_search"/>
     </record>
     <menuitem id="menu_booking_journeys" name="Create a Booking" parent="menu_rental_bookings" action="action_booking_journeys" sequence="1"/>
     <record id="reservation_journey_button" model="ir.ui.view">

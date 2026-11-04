@@ -6,9 +6,13 @@
 
 **Car Rental → Customers uses Odoo Contacts.** Enter the name, phone, email and physical street address once on the standard Contact form. Open **Rental Details**, enable rentals for the current company, and enter the postal address, ID, date of birth and licence details. Upload Omang or passport plus the licence. Save, then choose **Create a Booking**. Existing rental customers already have these details in the tab; there is no separate customer form to maintain. Booking customer selectors use Contacts directly. Rental identity documents remain scoped to the current company.
 
-**Car Rental → Fleet → Vehicles uses Odoo Fleet.** Enter the model and registration plate in Fleet. On **Rental Details**, select the rental category while the vehicle is in setup, then click **Enable Rentals** to activate it. The Fleet model category and rental category use the same category records, but the rental category is an independent vehicle-level assignment and may differ from the model's category. Complete compliance details after activation. After a return, use **Start Cleaning** and **Release after Cleaning**. Existing rental vehicles are already enabled. Fleet manages registration, model, VIN, colour, seats, transmission, fuel and odometer; the rental tab contains only rental-specific setup, availability, preview, documents and actions. Standard Fleet odometer entries update rental mileage. Rental allocation, inspections and payment rules continue to apply.
+**Car Rental → Fleet → Vehicles uses Odoo Fleet.** Enter the model, registration plate and category in Fleet. The native Fleet category is used for rental pricing, so you only set it once. On **Rental Details**, click **Enable Rentals** and use **Activate for Rental**. Vehicle road-licence contracts can be recorded here; requiring one before pickup is an optional company setting and is off by default. This is separate from the customer's driving licence. Insurance can also be recorded but is optional. After a return, use **Start Cleaning** and **Release after Cleaning**. Existing rental vehicles are already enabled. Fleet manages registration, model, VIN, colour, seats, transmission, fuel, category and odometer; the rental tab contains rental-specific setup, availability, preview, documents and actions. Pickup/return inspections synchronize odometer readings to Fleet, and the rental calculates the distance driven. Service intervals populate the next-service mileage and trigger a reminder as the vehicle approaches it.
 
 Existing customer and vehicle profile IDs are retained during upgrade, so reservations, rentals and accounting links remain intact. Existing Contact/Fleet links are preserved. Do not replace these links to change the customer or car behind historical bookings. Signed agreements retain their recorded particulars and PDFs when shared records change later.
+
+**Customer deposit credit:** At booking, the available prior-deposit balance is shown on the quote. During Payment & Security Deposit, settled and unrefunded deposits from that customer's returned rentals with completed inspections are shown and applied to the new deposit by default. The accountant can adjust the credit amount; any remaining deposit is collected in cash. Credits transfer the liability between rentals without recording another cash receipt. Deposits tied to unresolved damage or cleaning charges are not available.
+
+**Sort and group records:** Lists open with the newest relevant date first (vehicle and contact lists use Created On; reservations and rentals use their booking dates; maintenance requests use Request Date). The rental maintenance list also supports grouping by vehicle and request/creation month. Click any visible date or type/status column heading to sort ascending or descending. Use the search bar's Group By menu for booking/rental type, vehicle category, transaction type, or date/month. Choose Created On / Created Month when you need audit chronology rather than booking chronology.
 
 Sales orders, invoices, journal entries and reconciliation use the existing Odoo apps. The combined rental/deposit form remains a rental-specific allocation tool: hire receipts and refundable-deposit liabilities must be recorded separately in accounting. Odoo Sign is not installed in the validated local environment; the existing six-person digital agreement remains in use until a Sign integration can be tested against an available installation.
 
@@ -82,11 +86,11 @@ Deposit calculation: agreed daily rate × deposit ratio. It is calculated from o
 
 ### 1. Register or find the customer
 
-Open Customers and search before creating a duplicate. Enter the name, Omang/passport number, date of birth, physical and postal addresses, licence number, issue date and expiry. Upload either Omang or passport in its document section, plus the driving licence. The customer must be at least 21 on pickup and the licence must cover the full hire.
+Open Customers and search before creating a duplicate. Select Omang or Passport and enter that document's number, date of birth, physical and postal addresses, licence number, issue date and expiry. Omang numbers must be exactly 9 digits; passport and driving licence numbers accept 6 to 20 letters or digits. A customer must already be at least 21 and have an unexpired licence to enable rentals. Upload the selected identity document and driving licence before saving. Under-21 customers are flagged as soon as their date of birth is entered. Dates are also shown in full (day, month and year). At booking, the licence must remain valid through the full hire.
 
 ### 2. Prepare the reservation and quote
 
-Open Bookings → Reservations → New. Select the customer, destination, vehicle category, pickup and return date/time. Click Calculate Price. Each started 24-hour period is one rental day. Review the rental days, daily rate, tax, total, dirty-return fee and required deposit with the customer.
+Open Bookings → Reservations → New. Select the customer, destination and vehicle category, then enter the pickup date/time and number of 24-hour rental days. The expected return date/time is calculated from the pickup time; review it along with the daily rate, tax, total, dirty-return fee and required deposit. Older reservations with an explicit return timestamp remain supported and are billed by each started 24-hour period.
 
 Select an available vehicle or click Allocate Vehicle. You can also start from a vehicle's preview using its booking button. Allocation checks for overlapping bookings; a car currently rented may be booked for a future free period, but cannot be handed over until it is returned and cleared.
 
@@ -118,13 +122,13 @@ Click Pickup Inspection. Record the actual inspection time, inspector, odometer,
 
 ### 7. Start the rental
 
-Return to the rental and click Start Rental. Pickup requires a confirmed reservation, completed pickup inspection, acknowledged agreement, the required posted deposit, a ready vehicle and any compliance/tracker checks enabled in settings. If full payment is required, posted rental receipts must cover the rental total. The rental becomes Ongoing and the car becomes Rented.
+Return to the rental and click Start Rental. Pickup requires a confirmed reservation, completed pickup inspection, acknowledged agreement, the required posted deposit, a ready vehicle and any enabled Road Licence/tracker checks. Insurance is tracked but does not block pickup. If full payment is required, posted rental receipts must cover the rental total. The rental becomes Ongoing and the car becomes Rented.
 
 ## 3. Return and Finish
 
 ### 8. Inspect the returned car
 
-Open the ongoing rental and click Return Inspection. Record the actual return time, odometer, fuel and condition; compare with the pickup inspection. Attach return photos and obtain the customer's acknowledgement and signature. Describe any new damage and complete the inspection.
+Open the ongoing rental and click Return Inspection. Confirm the odometer reading (pre-filled from Fleet), actual return time, fuel and condition; compare with the pickup inspection. Attach return photos and obtain the customer's acknowledgement and signature. Describe any new damage and complete the inspection. The rental automatically calculates distance travelled from pickup and return mileage.
 
 Click Return Vehicle on the rental. Return mileage cannot be lower than pickup mileage. The rental becomes Returned; the vehicle moves into inspection or damage handling. Late charges are calculated using the actual return time and the configured grace period.
 

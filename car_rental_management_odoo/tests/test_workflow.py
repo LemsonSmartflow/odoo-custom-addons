@@ -142,9 +142,13 @@ class TestRentalWorkflow(RentalTestCommon):
         with self.assertRaises(ValidationError):
             self._complete_pickup_inspection(
                 rental, signature=False, acknowledged_by=False, photo_ids=[(6, 0, [])])
-        self._complete_pickup_inspection(rental)
+        pickup_mileage = rental.vehicle_id.odometer + 25
+        self._complete_pickup_inspection(rental, mileage=pickup_mileage, user=self.user_agent)
         self.assertTrue(rental.pickup_inspection_done)
-        self.assertEqual(rental.initial_mileage, rental.vehicle_id.odometer)
+        self.assertEqual(rental.initial_mileage, pickup_mileage)
+        self.assertEqual(rental.vehicle_id.odometer, pickup_mileage)
+        self.assertTrue(self.env['fleet.vehicle.odometer'].search_count([
+            ('vehicle_id', '=', rental.vehicle_id.id), ('value', '=', pickup_mileage)]))
 
     def test_pickup_inspection_mileage_cannot_trail_odometer(self):
         rental = self._make_rental(self._make_reservation())
@@ -195,8 +199,15 @@ class TestRentalWorkflow(RentalTestCommon):
         rental.action_return_vehicle()
         self.assertEqual(rental.status, 'returned')
         self.assertEqual(rental.final_mileage, mileage)
+        self.assertEqual(rental.distance_travelled, 400)
         self.assertEqual(rental.vehicle_id.odometer, mileage)
         self.assertIn(rental.vehicle_id.rental_status, ('inspection', 'damaged'))
+
+    def test_vehicle_service_interval_sets_next_mileage_and_due_alert(self):
+        vehicle = self._make_vehicle(odometer=12500, rental_service_interval=5000)
+        self.assertEqual(vehicle.rental_next_service_mileage, 17500)
+        vehicle._operational_update({'odometer': 17000})
+        self.assertTrue(vehicle.rental_service_due)
 
     def test_return_inspection_mileage_cannot_trail_pickup(self):
         rental = self._ready_to_handover()
@@ -238,6 +249,29 @@ class TestRentalWorkflow(RentalTestCommon):
         vehicle.write({'license_plate': False})
         with self.assertRaises(ValidationError):
             vehicle._check_ready()
+
+    def test_vehicle_contracts_are_optional_by_default(self):
+        self.assertFalse(self.env['res.company'].default_get(
+            ['rental_block_expired_documents'])['rental_block_expired_documents'])
+        vehicle = self._make_vehicle()
+        self.assertFalse(vehicle._rental_open_contract('Road Licence'))
+        vehicle._check_ready()
+
+    def test_insurance_is_optional_when_road_licence_is_valid(self):
+        self.company.rental_block_expired_documents = True
+        vehicle = self._make_vehicle()
+        road_licence_type = self.env['fleet.service.type'].search([
+            ('category', '=', 'contract'), ('name', '=', 'Road Licence')], limit=1)
+        self.assertTrue(road_licence_type, 'The rental module must provide a Road Licence contract type.')
+        with self.assertRaisesRegex(ValidationError, 'vehicle needs a current Road Licence contract'):
+            vehicle._check_ready()
+        self.env['fleet.vehicle.log.contract'].with_user(self.user_fleet).create({
+            'vehicle_id': vehicle.id,
+            'cost_subtype_id': road_licence_type.id,
+            'expiration_date': fields.Date.today() + timedelta(days=30),
+        })
+        self.assertFalse(vehicle._rental_open_contract('Insurance'))
+        vehicle._check_ready()
 
     def test_window_actions_return_act_window(self):
         vehicle = self._make_vehicle()

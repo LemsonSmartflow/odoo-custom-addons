@@ -10,13 +10,16 @@
         <field name="model">car.rental.reservation</field>
 
         <field name="arch" type="xml">
-            <list string="Reservations">
+            <list string="Reservations" class="o_car_rental_list" default_order="pickup_datetime desc, id desc">
 
                 <field name="reference" readonly="0" required="0" placeholder="Generated on save, or enter your reference"/>
                 <field name="partner_id"/>
                 <field name="vehicle_id"/>
+                <field name="destination_id" optional="hide"/>
+                <field name="category_id" optional="show"/>
                 <field name="pickup_datetime" string="Pickup Date and Time"/>
                 <field name="expected_return_datetime" string="Return Date and Time"/>
+                <field name="create_date" string="Created On" optional="show"/>
                 <field name="number_of_days"/>
                 <field name="amount"/>
                 <field name="status"/>
@@ -110,12 +113,19 @@
                 <field name="vehicle_id"/>
                 <field name="start_date"/>
                 <field name="end_date"/>
+                <field name="pickup_datetime"/>
+                <field name="create_date"/>
 
                 <filter name="draft" string="Draft" domain="[('status', '=', 'draft')]"/>
 
                 <filter name="confirmed" string="Confirmed" domain="[('status', '=', 'confirmed')]"/>
 
                 <filter name="cancelled" string="Cancelled" domain="[('status', '=', 'cancelled')]"/>
+                <filter name="by_status" string="Booking Status" context="{'group_by': 'status'}"/>
+                <filter name="by_category" string="Vehicle Category" context="{'group_by': 'category_id'}"/>
+                <filter name="by_destination" string="Destination" context="{'group_by': 'destination_id'}"/>
+                <filter name="by_pickup_month" string="Pickup Month" context="{'group_by': 'pickup_datetime:month'}"/>
+                <filter name="by_created_month" string="Created Month" context="{'group_by': 'create_date:month'}"/>
 
             </search>
 

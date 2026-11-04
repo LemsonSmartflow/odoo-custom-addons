@@ -1,6 +1,6 @@
 {
     'name': 'Car Rental Management',
-    'version': '19.0.8.0.0',
+    'version': '19.0.17.0.0',
     'summary': 'Car Rental Management Application',
     'category': 'Services',
     'author': 'Clinton Giri',
@@ -43,6 +43,7 @@
     ],
 
     'application': True,
+    'post_init_hook': 'post_init_hook',
     'assets': {
         'web.assets_backend': [
             'car_rental_management_odoo/static/src/scss/rental.scss',

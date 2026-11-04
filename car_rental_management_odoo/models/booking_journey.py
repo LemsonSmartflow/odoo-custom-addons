@@ -1,4 +1,7 @@
 """A resumable booking workspace. Operational records remain authoritative."""
+from datetime import timedelta
+from math import ceil
+
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 from .workflow import window
@@ -21,6 +24,7 @@ class Journey(models.Model):
     vehicle_id = fields.Many2one('fleet.vehicle', check_company=True)
     pickup_datetime = fields.Datetime()
     expected_return_datetime = fields.Datetime(string='Return Date and Time')
+    number_of_days = fields.Integer(string='Rental Days (24-hour periods)', default=1)
     reservation_id = fields.Many2one('car.rental.reservation', readonly=True, copy=False, check_company=True)
     rental_id = fields.Many2one('car.rental.rental', compute='_compute_progress')
     cancelled = fields.Boolean(readonly=True, copy=False)
@@ -28,8 +32,9 @@ class Journey(models.Model):
     currency_id = fields.Many2one(related='company_id.currency_id')
     amount = fields.Float(related='reservation_id.amount')
     deposit_required = fields.Monetary(related='reservation_id.deposit_required')
+    customer_deposit_credit = fields.Monetary(
+        compute='_compute_customer_deposit_credit', string='Customer Deposit Credit Available')
     cleaning_fee = fields.Monetary(related='reservation_id.cleaning_fee')
-    number_of_days = fields.Integer(related='reservation_id.number_of_days')
     vehicle_image = fields.Image(related='vehicle_id.rental_image')
     guidance = fields.Text(compute='_compute_progress')
     step = fields.Selection([(s, label) for s, label in [
@@ -37,6 +42,13 @@ class Journey(models.Model):
         ('confirm', '4 Confirm'), ('agreement', '5 Agreement'), ('payment', '6 Payment'), ('pickup', '7 Pickup Inspection'),
         ('handover', '8 Handover'), ('return', '9 Return'), ('settlement', '10 Settlement'),
         ('closed', '11 Closed'), ('cancelled', 'Cancelled')]], compute='_compute_progress')
+
+    @api.depends('partner_id', 'company_id')
+    def _compute_customer_deposit_credit(self):
+        Rentals = self.env['car.rental.rental']
+        for journey in self:
+            sources = Rentals._deposit_credit_sources(journey.partner_id, journey.company_id)
+            journey.customer_deposit_credit = sum(sources.mapped('deposit_held'))
 
     @api.depends('cancelled', 'partner_id', 'details_started', 'reservation_id.status', 'reservation_id.reference',
                  'reservation_id.rental_ids.status', 'reservation_id.rental_ids.agreement_state',
@@ -51,7 +63,7 @@ class Journey(models.Model):
             journey.name = reservation.reference or ('Booking: %s' % journey.partner_id.display_name if journey.partner_id else 'New Booking')
             step, guidance = 'customer', 'Select or create the customer. Complete identity, licence and address details.'
             if journey.details_started:
-                step, guidance = 'details', 'Choose destination, category, pickup and return times. Continue to calculate the quote.'
+                step, guidance = 'details', 'Choose destination and category, set pickup date/time and rental days. The return time is calculated in 24-hour periods.'
             if reservation:
                 step, guidance = 'quote', 'Review the calculated hire price, refundable deposit and one-time dirty return fee. Open the reservation for changes or a manager-approved rate override.'
             if reservation.status == 'confirmed':
@@ -79,9 +91,52 @@ class Journey(models.Model):
             raise ValidationError('Use Cancel Booking to cancel this booking.')
         if 'reservation_id' in vals:
             raise ValidationError('Use Continue to link the reservation.')
-        if {'partner_id', 'company_id', 'destination_id', 'category_id', 'vehicle_id', 'pickup_datetime', 'expected_return_datetime'}.intersection(vals) and any(self.mapped('reservation_id')):
+        duration_fields = {'pickup_datetime', 'expected_return_datetime', 'number_of_days'}
+        if ({'partner_id', 'company_id', 'destination_id', 'category_id', 'vehicle_id'} | duration_fields).intersection(vals) and any(self.mapped('reservation_id')):
             raise ValidationError('Edit the linked reservation to change booking details.')
+        if duration_fields.intersection(vals):
+            return_value = True
+            for journey in self:
+                journey_vals = dict(vals)
+                pickup = fields.Datetime.to_datetime(journey_vals['pickup_datetime']) if journey_vals.get('pickup_datetime') else (
+                    journey.pickup_datetime if 'pickup_datetime' not in journey_vals else False)
+                if 'number_of_days' in journey_vals:
+                    days = journey_vals['number_of_days']
+                    if pickup and days > 0:
+                        journey_vals['expected_return_datetime'] = pickup + timedelta(days=days)
+                elif journey_vals.get('expected_return_datetime'):
+                    expected = fields.Datetime.to_datetime(journey_vals['expected_return_datetime'])
+                    if pickup and expected > pickup:
+                        journey_vals['number_of_days'] = ceil((expected - pickup).total_seconds() / 86400)
+                elif 'pickup_datetime' in journey_vals and pickup and journey.number_of_days > 0:
+                    journey_vals['expected_return_datetime'] = pickup + timedelta(days=journey.number_of_days)
+                return_value = super(Journey, journey).write(journey_vals)
+            return return_value
         return super().write(vals)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        normalized = []
+        for values in vals_list:
+            vals = dict(values)
+            pickup = fields.Datetime.to_datetime(vals['pickup_datetime']) if vals.get('pickup_datetime') else False
+            if pickup and 'number_of_days' in vals and vals['number_of_days'] > 0:
+                vals['expected_return_datetime'] = pickup + timedelta(days=vals['number_of_days'])
+            elif pickup and vals.get('expected_return_datetime'):
+                expected = fields.Datetime.to_datetime(vals['expected_return_datetime'])
+                if expected > pickup:
+                    vals['number_of_days'] = ceil((expected - pickup).total_seconds() / 86400)
+            elif pickup and vals.get('number_of_days', 1) > 0:
+                vals['expected_return_datetime'] = pickup + timedelta(days=vals.get('number_of_days', 1))
+            normalized.append(vals)
+        return super().create(normalized)
+
+    @api.onchange('pickup_datetime', 'number_of_days')
+    def _onchange_booking_duration(self):
+        if self.pickup_datetime and self.number_of_days > 0:
+            self.expected_return_datetime = self.pickup_datetime + timedelta(days=self.number_of_days)
+        else:
+            self.expected_return_datetime = False
 
     def action_continue(self):
         self.ensure_one()
@@ -93,19 +148,22 @@ class Journey(models.Model):
                 raise ValidationError('Select a customer first.')
             self.details_started = True
         elif self.step == 'details':
-            if not all([self.partner_id, self.destination_id, self.category_id, self.pickup_datetime, self.expected_return_datetime]):
-                raise ValidationError('Complete customer, destination, category, pickup and return times.')
-            self.partner_id._check_rental_eligibility(self.pickup_datetime, self.expected_return_datetime)
+            if not all([self.partner_id, self.destination_id, self.category_id, self.pickup_datetime]) or self.number_of_days < 1:
+                raise ValidationError('Complete customer, destination, category, pickup time and a positive rental duration.')
+            expected_return = self.pickup_datetime + timedelta(days=self.number_of_days)
+            self.partner_id._check_rental_eligibility(self.pickup_datetime, expected_return)
             reservation = self.env['car.rental.reservation'].create({
                 'company_id': self.company_id.id, 'partner_id': self.partner_id.id,
                 'destination_id': self.destination_id.id, 'category_id': self.category_id.id,
                 'vehicle_id': self.vehicle_id.id, 'pickup_datetime': self.pickup_datetime,
-                'expected_return_datetime': self.expected_return_datetime})
+                'number_of_days': self.number_of_days})
             if not reservation.pricing_rule_id or reservation.quoted_daily_rate <= 0:
                 raise ValidationError('Approve a matching pricing rule before continuing.')
             if not reservation.vehicle_id:
                 reservation.action_allocate()
-            super().write({'reservation_id': reservation.id, 'vehicle_id': reservation.vehicle_id.id})
+            super().write({'reservation_id': reservation.id, 'vehicle_id': reservation.vehicle_id.id,
+                           'expected_return_datetime': reservation.expected_return_datetime,
+                           'number_of_days': reservation.number_of_days})
         elif self.step == 'quote':
             self.reservation_id.action_confirm()
         elif self.step == 'confirm':
@@ -275,7 +333,7 @@ class Reservation(models.Model):
 
     def write(self, vals):
         result = super().write(vals)
-        keys = {'partner_id', 'destination_id', 'category_id', 'vehicle_id', 'pickup_datetime', 'expected_return_datetime'}
+        keys = {'partner_id', 'destination_id', 'category_id', 'vehicle_id', 'pickup_datetime', 'expected_return_datetime', 'number_of_days'}
         if keys.intersection(vals):
             for reservation in self:
                 journeys = self.env['car.rental.journey'].search([('reservation_id', '=', reservation.id)])
@@ -292,5 +350,8 @@ class Reservation(models.Model):
                 'company_id': self.company_id.id, 'reservation_id': self.id,
                 'partner_id': self.partner_id.id, 'destination_id': self.destination_id.id,
                 'category_id': self.category_id.id, 'vehicle_id': self.vehicle_id.id,
-                'pickup_datetime': self.pickup_datetime, 'expected_return_datetime': self.expected_return_datetime})
+                'pickup_datetime': self.pickup_datetime, 'expected_return_datetime': self.expected_return_datetime,
+                'number_of_days': self.number_of_days})
+        elif journey.number_of_days != self.number_of_days:
+            super(Journey, journey).write({'number_of_days': self.number_of_days})
         return journey.action_open()

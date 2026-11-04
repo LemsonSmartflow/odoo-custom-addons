@@ -53,7 +53,7 @@ class Dashboard(models.Model):
             for field, state in [('available_vehicles', 'available'), ('rented_vehicles', 'rented'), ('reserved_vehicles', 'reserved'), ('maintenance_vehicles', 'maintenance'), ('damaged_vehicles', 'damaged')]:
                 dashboard[field] = len(vehicles.filtered(lambda v: v.rental_status == state))
             dashboard.inspection_vehicles = len(vehicles.filtered(lambda v: v.rental_status in ('returned', 'inspection', 'cleaning')))
-            dashboard.total_customers = self.env['res.partner'].search_count([('rental_cin', '!=', False)])
+            dashboard.total_customers = self.env['res.partner'].search_count([('rental_enabled', '=', True)])
             dashboard.confirmed_reservations = self.env['car.rental.reservation'].search_count(domain + [('status', '=', 'confirmed'), ('rental_ids', '=', False)])
             dashboard.ongoing_rentals = len(rentals.filtered(lambda r: r.status == 'ongoing'))
             dashboard.revenue = sum(rentals.mapped('paid_total'))
