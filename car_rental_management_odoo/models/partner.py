@@ -3,6 +3,7 @@ import re
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from odoo.tools.misc import format_date
 
 
 class Partner(models.Model):
@@ -43,6 +44,15 @@ class Partner(models.Model):
     rental_age = fields.Integer(
         compute='_compute_rental_age',
         groups='car_rental_management_odoo.group_car_rental_agent')
+    rental_birth_date_full = fields.Char(
+        compute='_compute_rental_full_dates',
+        groups='car_rental_management_odoo.group_car_rental_agent')
+    rental_license_issue_date_full = fields.Char(
+        compute='_compute_rental_full_dates',
+        groups='car_rental_management_odoo.group_car_rental_agent')
+    rental_license_expiry_full = fields.Char(
+        compute='_compute_rental_full_dates',
+        groups='car_rental_management_odoo.group_car_rental_agent')
     rental_omang_document_ids = fields.Many2many('ir.attachment', 'rental_partner_omang_rel', string='Omang Documents', groups='car_rental_management_odoo.group_car_rental_agent')
     rental_passport_document_ids = fields.Many2many('ir.attachment', 'rental_partner_passport_rel', string='Passport Documents', groups='car_rental_management_odoo.group_car_rental_agent')
     rental_license_document_ids = fields.Many2many('ir.attachment', 'rental_partner_licence_rel', string='Licence Documents', groups='car_rental_management_odoo.group_car_rental_agent')
@@ -77,6 +87,17 @@ class Partner(models.Model):
             )
             partner.rental_age = age
             partner.rental_is_underage = bool(birthday and age < 21)
+
+    @api.depends('rental_date_of_birth', 'rental_license_issue_date', 'rental_license_expiry')
+    def _compute_rental_full_dates(self):
+        for partner in self:
+            for field_name, display_name in (
+                    ('rental_date_of_birth', 'rental_birth_date_full'),
+                    ('rental_license_issue_date', 'rental_license_issue_date_full'),
+                    ('rental_license_expiry', 'rental_license_expiry_full')):
+                value = partner[field_name]
+                partner[display_name] = (
+                    format_date(self.env, value, date_format='d MMMM y') if value else False)
 
     @api.onchange('rental_identity_type')
     def _onchange_rental_identity_type(self):

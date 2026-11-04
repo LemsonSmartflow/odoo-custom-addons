@@ -143,6 +143,11 @@ class TestNativeScreens(RentalTestCommon):
         contact_arch = ElementTree.fromstring(contact_form)
         self.assertNotIn(
             'Full date', [node.get('string') for node in contact_arch.iter('field')])
+        self.assertTrue({
+            'rental_birth_date_full',
+            'rental_license_issue_date_full',
+            'rental_license_expiry_full',
+        }.issubset(self.env['res.partner']._fields))
         for date_field in (
                 'rental_date_of_birth',
                 'rental_license_issue_date',
@@ -150,6 +155,11 @@ class TestNativeScreens(RentalTestCommon):
             date_nodes = contact_arch.findall(".//field[@name='%s']" % date_field)
             self.assertEqual(len(date_nodes), 1)
             self.assertEqual(date_nodes[0].get('widget'), 'rental_full_date')
+        for legacy_field in (
+                'rental_birth_date_full',
+                'rental_license_issue_date_full',
+                'rental_license_expiry_full'):
+            self.assertFalse(contact_arch.findall(".//field[@name='%s']" % legacy_field))
         for field_name in (
                 'rental_omang_document_ids',
                 'rental_passport_document_ids',
@@ -183,7 +193,7 @@ class TestNativeScreens(RentalTestCommon):
             form.rental_license_document_ids.add(self._attachment('form-licence.png'))
         self.assertTrue(form.record.rental_enabled)
         self.assertEqual(form.record.rental_cin, '123456789')
-        self.assertNotIn('rental_birth_date_full', self.env['res.partner']._fields)
+        self.assertRegex(form.record.rental_birth_date_full, r'^\d{1,2} \w+ \d{4}$')
 
         with Form(form.record) as passport_form:
             passport_form.rental_identity_type = 'passport'
