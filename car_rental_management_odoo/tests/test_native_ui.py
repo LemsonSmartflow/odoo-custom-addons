@@ -143,16 +143,13 @@ class TestNativeScreens(RentalTestCommon):
         contact_arch = ElementTree.fromstring(contact_form)
         self.assertNotIn(
             'Full date', [node.get('string') for node in contact_arch.iter('field')])
-        for date_field, full_date_field, label in (
-                ('rental_date_of_birth', 'rental_birth_date_full', 'Date of Birth'),
-                ('rental_license_issue_date', 'rental_license_issue_date_full',
-                 'Licence Date of Issue'),
-                ('rental_license_expiry', 'rental_license_expiry_full', 'Licence Expiry')):
-            date_node = contact_arch.find(".//field[@name='%s']" % date_field)
-            full_date_node = contact_arch.find(".//field[@name='%s']" % full_date_field)
-            self.assertIn('oe_edit_only', date_node.get('class', '').split())
-            self.assertIn('oe_read_only', full_date_node.get('class', '').split())
-            self.assertEqual(full_date_node.get('string'), label)
+        for date_field in (
+                'rental_date_of_birth',
+                'rental_license_issue_date',
+                'rental_license_expiry'):
+            date_nodes = contact_arch.findall(".//field[@name='%s']" % date_field)
+            self.assertEqual(len(date_nodes), 1)
+            self.assertEqual(date_nodes[0].get('widget'), 'rental_full_date')
         for field_name in (
                 'rental_omang_document_ids',
                 'rental_passport_document_ids',
@@ -186,7 +183,7 @@ class TestNativeScreens(RentalTestCommon):
             form.rental_license_document_ids.add(self._attachment('form-licence.png'))
         self.assertTrue(form.record.rental_enabled)
         self.assertEqual(form.record.rental_cin, '123456789')
-        self.assertRegex(form.record.rental_birth_date_full, r'^\d{1,2} \w+ \d{4}$')
+        self.assertNotIn('rental_birth_date_full', self.env['res.partner']._fields)
 
         with Form(form.record) as passport_form:
             passport_form.rental_identity_type = 'passport'

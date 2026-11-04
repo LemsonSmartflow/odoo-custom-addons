@@ -46,6 +46,7 @@
     'post_init_hook': 'post_init_hook',
     'assets': {
         'web.assets_backend': [
+            'car_rental_management_odoo/static/src/js/rental_date_field.js',
             'car_rental_management_odoo/static/src/scss/rental.scss',
         ],
     },
