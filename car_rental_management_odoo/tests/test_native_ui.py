@@ -140,6 +140,19 @@ class TestNativeScreens(RentalTestCommon):
         self.assertIn('Created On', dashboard_form)
         self.assertIn("Require the vehicle's road licence at pickup", settings_form)
         self.assertIn("not the customer's driving licence", settings_form)
+        contact_arch = ElementTree.fromstring(contact_form)
+        self.assertNotIn(
+            'Full date', [node.get('string') for node in contact_arch.iter('field')])
+        for date_field, full_date_field, label in (
+                ('rental_date_of_birth', 'rental_birth_date_full', 'Date of Birth'),
+                ('rental_license_issue_date', 'rental_license_issue_date_full',
+                 'Licence Date of Issue'),
+                ('rental_license_expiry', 'rental_license_expiry_full', 'Licence Expiry')):
+            date_node = contact_arch.find(".//field[@name='%s']" % date_field)
+            full_date_node = contact_arch.find(".//field[@name='%s']" % full_date_field)
+            self.assertIn('oe_edit_only', date_node.get('class', '').split())
+            self.assertIn('oe_read_only', full_date_node.get('class', '').split())
+            self.assertEqual(full_date_node.get('string'), label)
         for field_name in (
                 'rental_omang_document_ids',
                 'rental_passport_document_ids',
