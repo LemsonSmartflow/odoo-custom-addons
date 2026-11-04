@@ -52,18 +52,15 @@
                                 <field name="rental_identity_type" required="rental_enabled"/>
                                 <field name="rental_cin" string="Omang Number" placeholder="9 digits" required="rental_enabled and rental_identity_type == 'omang'" invisible="rental_identity_type != 'omang'"/>
                                 <field name="rental_passport_number" placeholder="6–20 letters or digits" required="rental_enabled and rental_identity_type == 'passport'" invisible="rental_identity_type != 'passport'"/>
-                                <field name="rental_date_of_birth" required="rental_enabled" class="oe_edit_only"/>
-                                <field name="rental_birth_date_full" string="Date of Birth" readonly="1" invisible="not rental_date_of_birth" class="oe_read_only"/>
+                                <field name="rental_date_of_birth" required="rental_enabled" widget="rental_full_date"/>
                                 <field name="rental_age" invisible="1"/>
                                 <field name="rental_is_underage" invisible="1"/>
                                 <field name="rental_postal_address" string="Postal Address" required="rental_enabled"/>
                             </group>
                             <group string="Driving licence" class="o_car_rental_customer_card">
                                 <field name="rental_driving_license" placeholder="6–20 letters or digits" required="rental_enabled"/>
-                                <field name="rental_license_issue_date" required="rental_enabled" class="oe_edit_only"/>
-                                <field name="rental_license_issue_date_full" string="Licence Date of Issue" readonly="1" invisible="not rental_license_issue_date" class="oe_read_only"/>
-                                <field name="rental_license_expiry" required="rental_enabled" class="oe_edit_only"/>
-                                <field name="rental_license_expiry_full" string="Licence Expiry" readonly="1" invisible="not rental_license_expiry" class="oe_read_only"/>
+                                <field name="rental_license_issue_date" required="rental_enabled" widget="rental_full_date"/>
+                                <field name="rental_license_expiry" required="rental_enabled" widget="rental_full_date"/>
                             </group>
                         </group>
                         <div class="o_car_rental_underage_notice" role="alert" invisible="not rental_enabled or not rental_is_underage">
