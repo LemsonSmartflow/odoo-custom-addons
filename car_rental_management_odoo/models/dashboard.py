@@ -56,7 +56,7 @@ class CarRentalDashboard(models.Model):
             ('rental_status', '=', 'rented')
         ])
 
-        total_customers = Customer.search_count([('rental_cin', '!=', False)])
+        total_customers = Customer.search_count([('rental_enabled', '=', True)])
 
         ongoing_rentals = Rental.search_count([
             ('status', '=', 'ongoing')

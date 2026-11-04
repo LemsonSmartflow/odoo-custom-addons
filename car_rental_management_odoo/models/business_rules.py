@@ -1,4 +1,5 @@
 """Rental eligibility, monthly references and connected operational defaults."""
+from datetime import datetime, time, timedelta
 from math import ceil
 
 from odoo import api, fields, models
@@ -56,25 +57,36 @@ class Reservation(models.Model):
 
     cleaning_fee = fields.Monetary(string='Agreed Dirty Return Fee', readonly=True, copy=False)
     reference = fields.Char(default=False, required=True, copy=False, tracking=True)
+    number_of_days = fields.Integer(string='Rental Days (24-hour periods)', default=1)
+    customer_deposit_credit = fields.Monetary(
+        compute='_compute_customer_deposit_credit', string='Customer Deposit Credit Available')
+
+    @api.depends('partner_id', 'company_id')
+    def _compute_customer_deposit_credit(self):
+        Rentals = self.env['car.rental.rental']
+        for reservation in self:
+            sources = Rentals._deposit_credit_sources(
+                reservation.partner_id, reservation.company_id)
+            reservation.customer_deposit_credit = sum(sources.mapped('deposit_held'))
 
     @api.constrains('reference', 'company_id')
     def _check_reference(self):
         validate_reference(self)
 
-    @api.depends('pickup_datetime', 'expected_return_datetime')
-    def _compute_number_of_days(self):
-        for record in self:
-            seconds = (record.expected_return_datetime - record.pickup_datetime).total_seconds() if record.pickup_datetime and record.expected_return_datetime else 0
-            record.number_of_days = ceil(seconds / 86400) if seconds > 0 else 0
-
-    @api.constrains('pickup_datetime', 'expected_return_datetime')
+    @api.constrains('pickup_datetime', 'expected_return_datetime', 'number_of_days')
     def _check_dates(self):
         for record in self:
             if record.pickup_datetime and record.expected_return_datetime and record.expected_return_datetime <= record.pickup_datetime:
                 raise ValidationError('Return date and time must be after pickup date and time.')
+            if record.pickup_datetime and record.expected_return_datetime and record.number_of_days < 1:
+                raise ValidationError('A rental must be at least one 24-hour rental day.')
 
-    @api.onchange('pickup_datetime', 'expected_return_datetime')
+    @api.onchange('pickup_datetime', 'number_of_days')
     def _onchange_booking_times(self):
+        if self.pickup_datetime and self.number_of_days > 0:
+            self.expected_return_datetime = self.pickup_datetime + timedelta(days=self.number_of_days)
+        else:
+            self.expected_return_datetime = False
         self.start_date = self.pickup_datetime.date() if self.pickup_datetime else False
         self.end_date = self.expected_return_datetime.date() if self.expected_return_datetime else False
         self._onchange_pricing()
@@ -107,23 +119,50 @@ class Reservation(models.Model):
         return values
 
     @staticmethod
-    def _sync_times(vals):
-        for source, target in [('pickup_datetime', 'start_date'), ('expected_return_datetime', 'end_date')]:
-            if vals.get(source):
-                vals[target] = fields.Datetime.to_datetime(vals[source]).date()
+    def _sync_times(vals, current=None, creating=False):
+        vals = dict(vals)
+        if vals.get('start_date') and not vals.get('pickup_datetime'):
+            vals['pickup_datetime'] = datetime.combine(fields.Date.to_date(vals['start_date']), time(8))
+        if vals.get('end_date') and not vals.get('expected_return_datetime'):
+            vals['expected_return_datetime'] = datetime.combine(fields.Date.to_date(vals['end_date']), time(8))
+
+        pickup = fields.Datetime.to_datetime(vals.get('pickup_datetime')) if vals.get('pickup_datetime') else (
+            current.pickup_datetime if current else False)
+        if 'number_of_days' in vals:
+            days = vals['number_of_days']
+            if pickup and days and days > 0:
+                vals['expected_return_datetime'] = pickup + timedelta(days=days)
+        elif vals.get('expected_return_datetime'):
+            expected = fields.Datetime.to_datetime(vals['expected_return_datetime'])
+            if pickup and expected > pickup:
+                vals['number_of_days'] = ceil((expected - pickup).total_seconds() / 86400)
+        elif pickup and current and current.number_of_days > 0 and 'pickup_datetime' in vals:
+            vals['expected_return_datetime'] = pickup + timedelta(days=current.number_of_days)
+        elif creating and pickup:
+            days = vals.get('number_of_days', 1)
+            if days > 0:
+                vals['expected_return_datetime'] = pickup + timedelta(days=days)
+
+        if vals.get('pickup_datetime'):
+            vals['start_date'] = fields.Datetime.to_datetime(vals['pickup_datetime']).date()
+        if vals.get('expected_return_datetime'):
+            vals['end_date'] = fields.Datetime.to_datetime(vals['expected_return_datetime']).date()
+        return vals
 
     @api.model_create_multi
     def create(self, vals_list):
-        for vals in vals_list:
+        normalized = []
+        for values in vals_list:
+            vals = self._sync_times(values, creating=True)
             if {'deposit_required', 'deposit_ratio', 'cleaning_fee'}.intersection(vals):
                 raise ValidationError('Deposits and cleaning fees are calculated from the approved pricing rule.')
-            self._sync_times(vals)
             vals['reference'] = (vals.get('reference') or '').strip()
             if not vals['reference'] or vals['reference'].lower() == 'new':
                 company = self.env['res.company'].browse(vals.get('company_id')) or self.env.company
                 date = vals.get('start_date') or fields.Date.context_today(self)
                 vals['reference'] = monthly_reference(self.env, self._name, 'RES', company, date)
-        return super().create(vals_list)
+            normalized.append(vals)
+        return super().create(normalized)
 
     def write(self, vals):
         if {'deposit_required', 'deposit_ratio', 'cleaning_fee'}.intersection(vals):
@@ -131,7 +170,11 @@ class Reservation(models.Model):
         vals = dict(vals)
         if 'reference' in vals:
             vals['reference'] = (vals['reference'] or '').strip()
-        self._sync_times(vals)
+        if {'start_date', 'end_date', 'pickup_datetime', 'expected_return_datetime', 'number_of_days'}.intersection(vals):
+            for record in self:
+                record_vals = self._sync_times(vals, current=record)
+                super(Reservation, record).write(record_vals)
+            return True
         return super().write(vals)
 
     @api.constrains('quoted_daily_rate', 'deposit_ratio', 'status')
@@ -142,8 +185,8 @@ class Reservation(models.Model):
 
     def action_confirm(self):
         for record in self:
-            if not record.pickup_datetime or not record.expected_return_datetime:
-                raise ValidationError('Select pickup and return date and time.')
+            if not record.pickup_datetime or not record.expected_return_datetime or record.number_of_days < 1:
+                raise ValidationError('Select a pickup date and time and enter at least one rental day.')
             record.partner_id._check_rental_eligibility(record.pickup_datetime, record.expected_return_datetime)
         return super().action_confirm()
 
@@ -286,6 +329,11 @@ class Deposit(models.Model):
     def action_post(self):
         require_role(self.env, 'group_rental_accountant')
         for event in self:
-            if event.kind == 'collect' and event.rental_id.deposit_collected <= 0 and event.amount < event.rental_id.reservation_id.quoted_daily_rate * 0.5 - 0.005:
+            minimum = event.rental_id.reservation_id.quoted_daily_rate * 0.5
+            if (
+                event.kind == 'collect'
+                and event.rental_id.deposit_held < minimum
+                and event.rental_id.deposit_held + event.amount < minimum - 0.005
+            ):
                 raise ValidationError('Initial security deposit collection cannot be below 50% of the agreed daily rate.')
         return super().action_post()

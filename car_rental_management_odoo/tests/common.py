@@ -132,23 +132,21 @@ class RentalTestCommon(TransactionCase):
             'company_type': 'person',
             'street': '1 Test Street',
             'rental_postal_address': 'PO Box 1',
-            'rental_cin': 'OM%s' % uuid.uuid4().hex[:6].upper(),
+            'rental_identity_type': 'omang',
+            'rental_cin': '%09d' % (100000000 + type(self)._counter),
             'rental_date_of_birth': fields.Date.today() - timedelta(days=365 * 30),
-            'rental_driving_license': 'DL-%s' % uuid.uuid4().hex[:6].upper(),
+            'rental_driving_license': '%014d' % (10000000000000 + type(self)._counter),
             'rental_license_issue_date': fields.Date.today() - timedelta(days=365 * 3),
             'rental_license_expiry': fields.Date.today() + timedelta(days=365 * 2),
             'phone': '0810000000',
             'email': 'renter@example.com',
             'rental_enabled': True,
             'property_account_receivable_id': self.receivable_account.id,
-        }
-        values.update(overrides)
-        partner = self.env['res.partner'].create(values)
-        partner.write({
             'rental_omang_document_ids': [(6, 0, [self._attachment('omang.png').id])],
             'rental_license_document_ids': [(6, 0, [self._attachment('licence.png').id])],
-        })
-        return partner
+        }
+        values.update(overrides)
+        return self.env['res.partner'].create(values)
 
     def _make_category(self):
         return self.env['fleet.vehicle.model.category'].create({'name': self._unique('Category')})
@@ -164,7 +162,6 @@ class RentalTestCommon(TransactionCase):
             'license_plate': license_plate or 'B %s' % uuid.uuid4().hex[:5].upper(),
             'company_id': self.company.id,
             'odometer': odometer,
-            'rental_category_id': category.id,
             'rental_status': status,
         }
         values.update(overrides)
@@ -217,7 +214,7 @@ class RentalTestCommon(TransactionCase):
         return self.env['car.rental.rental'].create({'reservation_id': reservation.id})
 
     # ── workflow helpers ─────────────────────────────────────────────────────
-    def _complete_pickup_inspection(self, rental, mileage=None, **overrides):
+    def _complete_pickup_inspection(self, rental, mileage=None, user=None, **overrides):
         values = {
             'rental_id': rental.id,
             'kind': 'pickup',
@@ -234,7 +231,7 @@ class RentalTestCommon(TransactionCase):
         }
         values.update(overrides)
         check = self.env['car.rental.check'].create(values)
-        check.action_complete()
+        (check.with_user(user) if user else check).action_complete()
         return check
 
     def _complete_return_inspection(self, rental, mileage=None, **overrides):

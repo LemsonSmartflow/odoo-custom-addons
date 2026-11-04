@@ -241,7 +241,7 @@ class Contract(models.Model):
         if self.customer_details:
             return json.loads(self.customer_details)
         c = self.rental_id.partner_id
-        return {'full_name': c.display_name, 'identity': c.rental_cin, 'physical_address': c.street,
+        return {'full_name': c.display_name, 'identity': c.rental_identity_number, 'physical_address': c.street,
                 'postal_address': c.rental_postal_address, 'phone': c.phone, 'email': c.email, 'licence': c.rental_driving_license}
 
     def _pdf(self, include_signatures=True):

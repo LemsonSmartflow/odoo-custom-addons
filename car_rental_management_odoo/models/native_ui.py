@@ -96,7 +96,7 @@ class Fleet(models.Model):
         if not self.license_plate or not self.model_id:
             raise ValidationError('Enter the registration plate and vehicle model first.')
         if not self.rental_category_id:
-            raise ValidationError('Set the rental category first.')
+            raise ValidationError('Set the vehicle category in Fleet first.')
         if self.rental_status == 'setup':
             self.action_activate()
         return window('Vehicle', 'fleet.vehicle', res_id=self.id)

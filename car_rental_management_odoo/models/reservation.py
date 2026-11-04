@@ -44,8 +44,7 @@ class RentalReservation(models.Model):
 
     number_of_days = fields.Integer(
         string='Number of Days',
-        compute='_compute_number_of_days',
-        store=True
+        default=1
     )
 
     amount = fields.Float(
@@ -67,22 +66,6 @@ class RentalReservation(models.Model):
     # =========================
     # COMPUTED FIELDS
     # =========================
-
-    @api.depends('start_date', 'end_date')
-    def _compute_number_of_days(self):
-        for record in self:
-
-            if (
-                record.start_date
-                and record.end_date
-                and record.end_date > record.start_date
-            ):
-                record.number_of_days = (
-                    record.end_date - record.start_date
-                ).days
-
-            else:
-                record.number_of_days = 0
 
     @api.depends(
         'number_of_days',

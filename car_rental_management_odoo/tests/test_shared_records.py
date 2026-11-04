@@ -43,13 +43,12 @@ class TestSharedRecords(RentalTestCommon):
             'name': 'Existing Person', 'company_type': 'person',
             'street': 'Physical address', 'rental_postal_address': 'Postal address',
             'email': 'person@example.test', 'rental_enabled': True,
-            'rental_cin': 'EXISTING-ID',
+            'rental_identity_type': 'omang',
+            'rental_cin': '123456789',
             'rental_date_of_birth': fields.Date.today() - timedelta(days=365 * 30),
-            'rental_driving_license': 'DL-EXISTING',
+            'rental_driving_license': '12345678901234',
             'rental_license_issue_date': fields.Date.today() - timedelta(days=365 * 3),
             'rental_license_expiry': fields.Date.today() + timedelta(days=365 * 2),
-        })
-        existing.write({
             'rental_omang_document_ids': [(6, 0, [self._attachment('omang-existing.png').id])],
             'rental_license_document_ids': [(6, 0, [self._attachment('licence-existing.png').id])],
         })
@@ -95,7 +94,7 @@ class TestSharedRecords(RentalTestCommon):
         fleet = self.env['fleet.vehicle'].create({
             'model_id': base.model_id.id, 'license_plate': 'EXISTING-1',
             'company_id': self.company.id})
-        fleet.write({'rental_category_id': base.rental_category_id.id})
+        self.assertEqual(fleet.rental_category_id, fleet.category_id)
         fleet.action_activate()
         self.assertEqual(fleet.rental_status, 'available')
         reservation = self._make_reservation(vehicle=fleet)
@@ -125,12 +124,12 @@ class TestSharedRecords(RentalTestCommon):
         # The same reference text is valid in another company: uniqueness is company-scoped.
         other = self.env['res.company'].create({'name': 'Twin Rental Company'})
         ctx = dict(self.env.context, allowed_company_ids=[self.company.id, other.id])
-        category = self._make_category()
+        category = reservation.vehicle_id.category_id
         other_zone = self.env['car.rental.zone'].with_context(ctx).create({
             'name': 'Twin Destination', 'company_id': other.id})
         other_vehicle = self.env['fleet.vehicle'].with_context(ctx).create({
-            'model_id': self._make_vehicle().model_id.id, 'license_plate': 'TWIN-1',
-            'company_id': other.id, 'rental_category_id': category.id,
+            'model_id': reservation.vehicle_id.model_id.id, 'license_plate': 'TWIN-1',
+            'company_id': other.id,
             'rental_status': 'available'})
         start = (fields.Datetime.now() + timedelta(days=1)).replace(
             hour=8, minute=0, second=0, microsecond=0)

@@ -19,8 +19,8 @@ class TestCollection(RentalTestCommon):
     def _payments(self, rental):
         return self.env['account.payment'].search([('car_rental_id', '=', rental.id)])
 
-    def _open_rental(self):
-        return self._make_rental(self._make_reservation())
+    def _open_rental(self, partner=None, **reservation_values):
+        return self._make_rental(self._make_reservation(partner=partner, **reservation_values))
 
     # ── tests ───────────────────────────────────────────────────────────────
     def test_full_collection_invoice_deposit_and_idempotence(self):
@@ -93,3 +93,65 @@ class TestCollection(RentalTestCommon):
         self.assertFalse(rental.deposit_transaction_ids)
         self.assertFalse(self._payments(rental))
         self.assertFalse(wizard.posted)
+
+    def test_returned_deposit_credit_transfers_to_the_next_rental(self):
+        partner = self._make_partner()
+        prior_reservation = self._make_reservation(partner=partner, deposit_ratio=0.5)
+        prior_rental = self._make_rental(prior_reservation)
+        self._collect_deposit(prior_rental)
+        self._complete_pickup_inspection(prior_rental)
+        self._sign_agreement(prior_rental)
+        prior_rental.action_start_rental()
+        self._complete_return_inspection(prior_rental)
+        prior_rental.action_return_vehicle()
+
+        self.assertEqual(prior_rental.deposit_held, 50)
+        next_rental = self._open_rental(partner=partner)
+        defaults = self.env['car.rental.collection'].with_context(
+            default_rental_id=next_rental.id).default_get(
+                ['rental_id', 'amount', 'credit_to_apply'])
+        self.assertEqual(defaults['credit_to_apply'], 50)
+        self.assertEqual(defaults['amount'], next_rental.balance_due + 50)
+        wizard = self.env['car.rental.collection'].create({
+            **defaults, 'payment_method': 'bank_transfer', 'reference': 'BANK-CREDIT'})
+
+        self.assertEqual(wizard.deposit_credit_available, 50)
+        self.assertEqual(wizard.to_deposit, 50)
+        self.assertEqual(wizard.to_rental, next_rental.amount)
+        wizard.action_post()
+
+        prior_rental.invalidate_recordset()
+        next_rental.invalidate_recordset()
+        self.assertEqual(prior_rental.deposit_held, 0)
+        self.assertEqual(next_rental.deposit_credit_applied, 50)
+        self.assertEqual(next_rental.deposit_collected, 50)
+        self.assertEqual(next_rental.deposit_held, next_rental.deposit_required)
+        transfer = prior_rental.deposit_transaction_ids.filtered(
+            lambda event: event.kind == 'transfer')
+        self.assertEqual(len(transfer), 1)
+        self.assertEqual(transfer.transfer_target_id, next_rental)
+        self.assertEqual(transfer.state, 'posted')
+        self.assertEqual(
+            transfer.account_move_id.line_ids.mapped('account_id'),
+            self.company.cr_deposit_account_id,
+        )
+
+    def test_deposit_credit_with_unresolved_return_damage_is_not_available(self):
+        partner = self._make_partner()
+        reservation = self._make_reservation(partner=partner)
+        rental = self._make_rental(reservation)
+        self._collect_deposit(rental)
+        self._complete_pickup_inspection(rental)
+        self._sign_agreement(rental)
+        rental.action_start_rental()
+        self._complete_return_inspection(
+            rental, new_damage=True, damage_notes='Unsettled return damage')
+        rental.action_return_vehicle()
+
+        self.assertEqual(rental.deposit_held, rental.deposit_required)
+        self.assertTrue(rental.damage_ids.filtered(lambda damage: damage.state == 'draft'))
+        self.assertEqual(
+            sum(self.env['car.rental.rental']._deposit_credit_sources(
+                partner, self.company).mapped('deposit_held')),
+            0,
+        )

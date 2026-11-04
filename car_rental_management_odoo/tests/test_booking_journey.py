@@ -19,7 +19,7 @@ class TestBookingJourney(RentalTestCommon):
     def _collect_payment(self, rental, amount=None):
         """Post the combined collection: rental invoice, payment and deposit."""
         if amount is None:
-            amount = rental.balance_due + max(rental.deposit_required - rental.deposit_collected, 0.0)
+            amount = rental.balance_due + max(rental.deposit_required - rental.deposit_held, 0.0)
         wizard = self.env['car.rental.collection'].create({
             'rental_id': rental.id, 'amount': amount,
             'payment_method': 'bank_transfer', 'reference': 'BANK-JOURNEY'})

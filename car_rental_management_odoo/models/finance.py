@@ -19,7 +19,7 @@ class Company(models.Model):
     cr_tax_id = fields.Many2one('account.tax', string='Rental Sales Tax')
     rental_agreement_terms = fields.Text(string='Approved Rental Agreement Terms')
     rental_require_full_payment = fields.Boolean(default=True, string='Require Full Rental Payment Before Pickup')
-    rental_block_expired_documents = fields.Boolean(default=True, string='Require Valid Vehicle Compliance Documents')
+    rental_block_expired_documents = fields.Boolean(default=False, string='Require Valid Vehicle Compliance Documents')
     rental_block_tracker = fields.Boolean(default=False, string='Require an Operational Tracker')
     rental_late_grace_hours = fields.Float(default=2, string='Late Return Grace (hours)')
     rental_allow_direct_invoice = fields.Boolean(default=False, string='Allow Direct Rental Invoicing Without a Sales Order')
@@ -129,10 +129,13 @@ class Rental(models.Model):
     invoice_count = fields.Integer(compute='_compute_finance', compute_sudo=True)
     financial_balance = fields.Monetary(compute='_compute_finance', compute_sudo=True, string='Total Customer Balance')
     deposit_transaction_ids = fields.One2many('car.rental.deposit.transaction', 'rental_id')
+    deposit_transfer_in_ids = fields.One2many('car.rental.deposit.transaction', 'transfer_target_id')
     deposit_held = fields.Monetary(compute='_compute_deposits', string='Deposit Held')
     deposit_collected = fields.Monetary(compute='_compute_deposits')
     deposit_refunded = fields.Monetary(compute='_compute_deposits')
     deposit_retained = fields.Monetary(compute='_compute_deposits')
+    deposit_credit_applied = fields.Monetary(compute='_compute_deposits', string='Prior Deposit Credit Applied')
+    deposit_transferred_out = fields.Monetary(compute='_compute_deposits', string='Deposit Credit Transferred Out')
     deposit_required = fields.Monetary(related='reservation_id.deposit_required')
     sale_order_id = fields.Many2one('sale.order', string='Sales Quotation', readonly=True, copy=False)
 
@@ -144,17 +147,71 @@ class Rental(models.Model):
             rental.invoice_count = len(rental.invoice_ids)
             rental.financial_balance = sum(moves.mapped('amount_residual_signed')) + (0 if has_base else rental.balance_due)
 
-    @api.depends('deposit_transaction_ids.state', 'deposit_transaction_ids.kind', 'deposit_transaction_ids.amount', 'deposit_transaction_ids.account_move_id.state', 'deposit_transaction_ids.account_move_id.reversal_move_ids.state')
+    @api.depends(
+        'deposit_transaction_ids.state', 'deposit_transaction_ids.kind',
+        'deposit_transaction_ids.amount', 'deposit_transaction_ids.account_move_id.state',
+        'deposit_transaction_ids.account_move_id.reversal_move_ids.state',
+        'deposit_transfer_in_ids.state', 'deposit_transfer_in_ids.amount',
+        'deposit_transfer_in_ids.account_move_id.state',
+        'deposit_transfer_in_ids.account_move_id.reversal_move_ids.state')
     def _compute_deposits(self):
         for rental in self:
             events = rental.deposit_transaction_ids.filtered(lambda d: d.state == 'posted' and d.account_move_id.state == 'posted' and not d.account_move_id.reversal_move_ids.filtered(lambda m: m.state == 'posted'))
             collected = sum(events.filtered(lambda d: d.kind == 'collect').mapped('amount'))
             refunded = sum(events.filtered(lambda d: d.kind == 'refund').mapped('amount'))
             retained = sum(events.filtered(lambda d: d.kind == 'retain').mapped('amount'))
+            transferred_out = sum(events.filtered(lambda d: d.kind == 'transfer').mapped('amount'))
+            transferred_in = sum(rental.deposit_transfer_in_ids.filtered(
+                lambda d: d.kind == 'transfer' and d.state == 'posted'
+                and d.account_move_id.state == 'posted'
+                and not d.account_move_id.reversal_move_ids.filtered(lambda m: m.state == 'posted')
+            ).mapped('amount'))
             rental.deposit_collected = collected
             rental.deposit_refunded = refunded
             rental.deposit_retained = retained
-            rental.deposit_held = collected - refunded - retained
+            rental.deposit_credit_applied = transferred_in
+            rental.deposit_transferred_out = transferred_out
+            rental.deposit_held = collected + transferred_in - refunded - retained - transferred_out
+
+    @api.model
+    def _deposit_credit_sources(self, partner, company, exclude_rental=None):
+        if not partner or not company:
+            return self.browse()
+        domain = [
+            ('partner_id', '=', partner.id), ('company_id', '=', company.id),
+            ('status', '=', 'returned'),
+        ]
+        if exclude_rental:
+            domain.append(('id', '!=', exclude_rental.id))
+        sources = self.search(domain, order='actual_return_datetime asc, id asc')
+        return sources.filtered(
+            lambda source: source.return_inspection_done
+            and not source._deposit_settlement_pending()
+            and company.currency_id.compare_amounts(source.deposit_held, 0) > 0
+        )
+
+    def _deposit_settlement_pending(self):
+        self.ensure_one()
+        unresolved_damage = self.damage_ids.filtered(
+            lambda damage: damage.state == 'draft' or (
+                damage.cost > 0 and (
+                    not damage.invoice_id or damage.invoice_id.state != 'posted'
+                    or damage.invoice_id.amount_residual > 0
+                )
+            )
+        )
+        unresolved_cleaning = self.invoice_ids.filtered(
+            lambda move: move.rental_invoice_kind == 'cleaning'
+            and move.state != 'cancel'
+            and (move.state != 'posted' or move.amount_residual > 0)
+        )
+        return bool(unresolved_damage or unresolved_cleaning)
+
+    def _available_deposit_credit(self, partner=None, company=None):
+        self.ensure_one()
+        sources = self._deposit_credit_sources(
+            partner or self.partner_id, company or self.company_id, exclude_rental=self)
+        return sum(sources.mapped('deposit_held'))
 
     def _make_invoice(self, kind, account, lines):
         self.ensure_one()
@@ -206,11 +263,11 @@ class Rental(models.Model):
 
     def action_deposits(self):
         self.ensure_one()
-        return window('Deposit Transactions', 'car.rental.deposit.transaction', [('rental_id', '=', self.id)], {'default_rental_id': self.id, 'default_amount': max(self.deposit_required - self.deposit_collected, 0)})
+        return window('Deposit Transactions', 'car.rental.deposit.transaction', [('rental_id', '=', self.id)], {'default_rental_id': self.id, 'default_amount': max(self.deposit_required - self.deposit_held, 0)})
 
     def action_collect_deposit(self):
         self.ensure_one()
-        return dict(self.action_deposits(), view_mode='form', target='new', context={'default_rental_id': self.id, 'default_kind': 'collect', 'default_amount': max(self.deposit_required - self.deposit_collected, 0)})
+        return dict(self.action_deposits(), view_mode='form', target='new', context={'default_rental_id': self.id, 'default_kind': 'collect', 'default_amount': max(self.deposit_required - self.deposit_held, 0)})
 
     def action_refund_deposit(self):
         self.ensure_one()
@@ -260,14 +317,20 @@ class Deposit(models.Model):
     _description = 'Rental Security Deposit Transaction'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'rental_id'
+    _order = 'date desc, id desc'
 
     rental_id = fields.Many2one('car.rental.rental', required=True, ondelete='restrict')
     company_id = fields.Many2one(related='rental_id.company_id', store=True)
     currency_id = fields.Many2one(related='company_id.currency_id')
-    kind = fields.Selection([('collect', 'Collect Deposit'), ('refund', 'Refund Deposit'), ('retain', 'Apply to Damage Invoice')], required=True, default='collect')
+    kind = fields.Selection([
+        ('collect', 'Collect Deposit'), ('refund', 'Refund Deposit'),
+        ('retain', 'Apply to Damage Invoice'), ('transfer', 'Transfer to Another Rental'),
+    ], required=True, default='collect')
     amount = fields.Monetary(required=True)
     date = fields.Date(default=fields.Date.today, required=True)
     damage_id = fields.Many2one('car.rental.damage.case')
+    transfer_target_id = fields.Many2one(
+        'car.rental.rental', string='New Rental', check_company=True, ondelete='restrict')
     account_move_id = fields.Many2one('account.move', readonly=True, copy=False)
     state = fields.Selection([('draft', 'Draft'), ('posted', 'Posted')], default='draft', readonly=True, tracking=True)
 
@@ -276,6 +339,10 @@ class Deposit(models.Model):
         for event in self:
             if event.state != 'draft' or event.amount <= 0:
                 raise ValidationError('Post a draft transaction with a positive amount.')
+            if event.company_id.currency_id.compare_amounts(
+                event.amount, event.company_id.currency_id.round(event.amount)
+            ) != 0:
+                raise ValidationError('Use the company currency rounding for the deposit amount.')
             self.env.cr.execute('UPDATE car_rental_rental SET id = id WHERE id = %s', [event.rental_id.id])
             event.rental_id.deposit_transaction_ids.invalidate_recordset(['state', 'amount', 'kind'])
             event.rental_id._compute_deposits()
@@ -288,15 +355,27 @@ class Deposit(models.Model):
             bank = journal.default_account_id
             debit, credit = bank, liability
             if event.kind == 'collect':
-                if rental.status != 'draft' or event.amount > rental.deposit_required - rental.deposit_collected + 0.005:
+                if rental.status != 'draft' or event.amount > rental.deposit_required - rental.deposit_held + 0.005:
                     raise ValidationError('Collect deposits before pickup, up to the required deposit amount.')
+            elif event.kind == 'transfer':
+                target = event.transfer_target_id
+                if (
+                    not target or target == rental or rental.status != 'returned'
+                    or not rental.return_inspection_done or rental._deposit_settlement_pending()
+                    or target.company_id != rental.company_id or target.partner_id != partner
+                    or target.status != 'draft' or target.reservation_id.status != 'confirmed'
+                    or event.amount > rental.deposit_held + 0.005
+                ):
+                    raise ValidationError('Only settled, refundable deposit credit for the same customer and company can be transferred to a confirmed rental.')
+                target._compute_deposits()
+                if event.amount > target.deposit_required - target.deposit_held + 0.005:
+                    raise ValidationError('The transferred credit exceeds the new rental deposit balance.')
+                debit, credit = liability, liability
             else:
                 if rental.status != 'returned' or not rental.return_inspection_done or event.amount > rental.deposit_held + 0.005:
                     raise ValidationError('Settlement requires a returned and inspected rental, and cannot exceed the deposit held.')
                 if event.kind == 'refund':
-                    unresolved = rental.damage_ids.filtered(lambda d: d.state == 'draft' or (d.cost > 0 and (not d.invoice_id or d.invoice_id.state != 'posted' or d.invoice_id.amount_residual > 0)))
-                    cleaning = rental.invoice_ids.filtered(lambda m: m.rental_invoice_kind == 'cleaning' and m.state != 'cancel' and (m.state != 'posted' or m.amount_residual > 0))
-                    if unresolved or cleaning:
+                    if rental._deposit_settlement_pending():
                         raise ValidationError('Settle damage and cleaning charges before refunding the remaining deposit.')
                     debit, credit = liability, bank
                 else:
@@ -321,6 +400,15 @@ class Deposit(models.Model):
         if any(v.get('state', 'draft') != 'draft' or v.get('account_move_id') for v in vals_list):
             raise ValidationError('Create a draft deposit transaction first.')
         return super().create(vals_list)
+
+    @api.constrains('kind', 'rental_id', 'transfer_target_id')
+    def _check_transfer_target(self):
+        for event in self:
+            if event.kind == 'transfer':
+                if not event.transfer_target_id or event.transfer_target_id == event.rental_id:
+                    raise ValidationError('Choose a different target rental for a deposit credit transfer.')
+            elif event.transfer_target_id:
+                raise ValidationError('Only deposit credit transfers can have a target rental.')
 
     def write(self, vals):
         if {'state', 'account_move_id'}.intersection(vals) or any(d.state == 'posted' for d in self) and set(vals) - {'message_follower_ids'}:

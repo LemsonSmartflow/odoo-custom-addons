@@ -4,9 +4,10 @@
 <form string="Payment &amp; Security Deposit" class="o_car_rental_form">
 <field name="currency_id" invisible="1"/><field name="posted" invisible="1"/>
 <group string="Customer and booking"><field name="rental_id"/><field name="partner_id"/><field name="journal_id"/></group>
+<group string="Customer's deposit credit"><field name="deposit_credit_available"/><field name="credit_to_apply"/><div colspan="2" class="text-muted">Available credit comes from settled, unrefunded deposits on this customer's returned rentals. It is applied to this deposit by default; reduce it if the customer prefers a cash deposit.</div></group>
 <group string="Amount to collect"><field name="rental_due"/><field name="deposit_due"/><field name="total_due"/></group>
 <group string="Payment received"><field name="amount"/><field name="payment_method"/><field name="date"/><field name="reference"/></group>
-<div class="alert alert-info">For a partial payment, the security deposit is funded first; the remainder pays the rental invoice. The first deposit must be at least 50% of one daily rate. Recording this payment also creates and posts the rental invoice if needed.</div>
+<div class="alert alert-info">Prior deposit credit is transferred to this rental first. Cash received then funds any remaining deposit before the rental invoice. The deposit must total at least 50% of one daily rate. Recording this collection creates and posts the rental invoice if needed.</div>
 <group string="Automatic allocation"><field name="to_deposit"/><field name="to_rental"/><field name="remaining"/></group>
 <footer><button name="action_post" type="object" string="Record Payment &amp; Deposit" class="btn-primary" invisible="posted"/><button special="cancel" string="Cancel"/></footer>
 </form></field></record>

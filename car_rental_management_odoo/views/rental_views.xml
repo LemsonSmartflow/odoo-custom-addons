@@ -10,7 +10,7 @@
         <field name="model">car.rental.rental</field>
 
         <field name="arch" type="xml">
-            <list string="Rentals">
+            <list string="Rentals" class="o_car_rental_list" default_order="start_date desc, id desc">
 
                 <field name="reference" readonly="0" required="0" placeholder="Generated on save, or enter your reference"/>
                 <field name="reservation_id"/>
@@ -18,6 +18,7 @@
                 <field name="vehicle_id"/>
                 <field name="start_date"/>
                 <field name="return_date"/>
+                <field name="create_date" string="Created On" optional="show"/>
                 <field name="initial_mileage"/>
                 <field name="final_mileage"/>
                 <field name="amount"/>
@@ -96,6 +97,8 @@
 
                         </group>
 
+                        <field name="distance_travelled" readonly="1" invisible="status in ['draft', 'ongoing']"/>
+
                     </group>
 
 
@@ -132,12 +135,16 @@
                 <field name="reservation_id"/>
                 <field name="partner_id"/>
                 <field name="vehicle_id"/>
-
+                <field name="start_date"/>
+                <field name="create_date"/>
                 <filter name="draft" string="Draft" domain="[('status', '=', 'draft')]"/>
 
                 <filter name="ongoing" string="Ongoing" domain="[('status', '=', 'ongoing')]"/>
 
                 <filter name="returned" string="Returned" domain="[('status', '=', 'returned')]"/>
+                <filter name="by_status" string="Rental Status" context="{'group_by': 'status'}"/>
+                <filter name="by_pickup_month" string="Pickup Month" context="{'group_by': 'start_date:month'}"/>
+                <filter name="by_creation_month" string="Created Month" context="{'group_by': 'create_date:month'}"/>
 
             </search>
 
