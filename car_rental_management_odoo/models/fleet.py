@@ -201,6 +201,18 @@ class FleetVehicle(models.Model):
         return super().get_formview_action(access_uid=access_uid)
 
     @api.model
+    def _cron_rental_handover_reminders(self):
+        now = fields.Datetime.now()
+        rentals = self.env['car.rental.rental'].search([
+            ('status', '=', 'draft'),
+            ('reservation_id.status', '=', 'confirmed'),
+            ('reservation_id.pickup_datetime', '>', now),
+            ('reservation_id.pickup_datetime', '<=', now + timedelta(hours=4)),
+            ('handover_reminder_sent', '=', False),
+        ])
+        rentals._schedule_handover_reminder()
+
+    @api.model
     def _cron_rental_reminders(self):
         activity = self.env.ref('mail.mail_activity_data_todo')
         for company in self.env['res.company'].search([]):
@@ -222,14 +234,23 @@ class FleetVehicle(models.Model):
                             'company_id': company.id, 'maintenance_type': 'preventive'})
             rentals = self.env['car.rental.rental'].search([('company_id', '=', company.id)])
             for rental in rentals:
-                if rental.status == 'ongoing' and rental.expected_return_datetime and rental.expected_return_datetime < fields.Datetime.now():
-                    rental._schedule_once(activity, 'Overdue vehicle return', rental.responsible_id, fields.Date.today())
+                if rental.status == 'ongoing' and rental.expected_return_datetime:
+                    today = fields.Date.today()
+                    if rental.expected_return_datetime.date() == today + timedelta(days=1):
+                        rental._schedule_once(
+                            activity, 'Vehicle return due tomorrow',
+                            rental.responsible_id, today)
+                    if rental.expected_return_datetime < fields.Datetime.now():
+                        rental._schedule_once(
+                            activity, 'Overdue vehicle return',
+                            rental.responsible_id, today)
                 if rental.balance_due > 0 and rental.start_date <= fields.Date.today():
                     rental._schedule_once(activity, 'Outstanding rental payment', rental.responsible_id, fields.Date.today())
                 if rental.status == 'returned' and not rental.return_inspection_done:
                     rental._schedule_once(activity, 'Pending return inspection', rental.responsible_id, fields.Date.today())
             for damage in self.env['car.rental.damage.case'].search([('company_id', '=', company.id), ('state', '=', 'draft')]):
                 damage._schedule_once(activity, 'Pending damage assessment', damage.rental_id.responsible_id, fields.Date.today())
+        self.env['sale.order']._cron_cancel_expired_rental_quotes()
 
     def _schedule_once(self, activity, summary, user, deadline):
         if not self.activity_ids.filtered(lambda a: a.activity_type_id == activity and a.summary == summary):

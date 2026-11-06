@@ -13,5 +13,6 @@ from . import business_rules
 from . import booking_journey
 from . import digital_contract
 from . import collection
+from . import charge_wizards
 
 from . import native_ui

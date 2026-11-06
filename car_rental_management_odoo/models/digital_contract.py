@@ -1,10 +1,13 @@
 """Private, versioned contract packets and individual signature requests."""
 import base64
 import hashlib
+import ipaddress
 import io
 import json
+import logging
 import secrets
 from datetime import timedelta
+from urllib.parse import urlencode, urlsplit
 from xml.sax.saxutils import escape
 
 from PIL import Image
@@ -18,6 +21,8 @@ from odoo.exceptions import ValidationError
 from odoo.tools import file_open
 from odoo.tools.pdf import merge_pdf
 from .pricing import require_role
+
+_logger = logging.getLogger(__name__)
 
 ROLES = [('renter', 'Renter'), ('company', 'Company Representative'),
          ('company_witness_1', 'Company Witness 1'), ('company_witness_2', 'Company Witness 2'),
@@ -74,7 +79,7 @@ class Rental(models.Model):
 
     def action_start_rental(self):
         if any(c.state not in ('complete', 'cancelled') for c in self.mapped('contract_ids')):
-            raise ValidationError('Collect all six digital signatures before handover.')
+            raise ValidationError('Complete the signatures for all named agreement signers before handover.')
         return super().action_start_rental()
 
     def action_print_agreement(self):
@@ -94,14 +99,181 @@ class Journey(models.Model):
             raise ValidationError('Confirm the booking and create its rental first.')
         return self.rental_id.action_digital_contract()
 
+    def action_send_agreement(self):
+        self.ensure_one()
+        if self.step != 'agreement' or not self.rental_id:
+            raise ValidationError('The digital agreement is available at the Agreement step.')
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Send Signing Link',
+            'res_model': 'car.rental.agreement.send.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_journey_id': self.id},
+        }
 
-class Reservation(models.Model):
-    _inherit = 'car.rental.reservation'
+    def _send_agreement_email(self):
+        self.ensure_one()
+        self._public_signing_base_url()
+        contract = self._prepare_agreement_signing_link()
+        contract.action_send_customer_link()
+        self.message_post(body='Digital agreement signing link queued for the customer.')
+        return self.action_open()
 
-    def action_refresh_cleaning_fee(self):
-        if any(c.state not in ('draft', 'cancelled') for c in self.mapped('rental_ids.contract_ids')):
-            raise ValidationError('The issued digital agreement locks the agreed cleaning fee. Revoke it before changing the fee.')
-        return super().action_refresh_cleaning_fee()
+    def _public_signing_base_url(self):
+        self.ensure_one()
+        base_url = (
+            self.env['ir.config_parameter'].sudo()
+            .get_param('web.base.url', '')
+            .strip()
+            .rstrip('/')
+        )
+        parsed = urlsplit(base_url)
+        hostname = (parsed.hostname or '').lower().rstrip('.')
+        try:
+            address = ipaddress.ip_address(hostname)
+        except ValueError:
+            address = None
+        is_local = (
+            not hostname
+            or hostname == 'localhost'
+            or hostname.endswith(('.localhost', '.local', '.test', '.invalid'))
+            or '.' not in hostname
+            or bool(address and (
+                address.is_private or address.is_loopback or address.is_link_local
+                or address.is_reserved or address.is_unspecified
+            ))
+        )
+        if parsed.scheme != 'https' or is_local:
+            raise ValidationError(
+                'Customer signing links cannot be shared because Odoo is configured '
+                'with a local or non-secure address (%s). Set the web.base.url system '
+                'parameter to your publicly reachable HTTPS Odoo address, then try again.'
+                % (base_url or 'empty'))
+        return base_url
+
+    def action_renew_expired_agreement(self):
+        require_role(self.env, 'group_rental_manager')
+        self.ensure_one()
+        if self.step != 'agreement' or not self.rental_id or self.rental_id.status != 'draft':
+            raise ValidationError('Only an unsigned agreement awaiting pickup can be renewed.')
+        contract = self.rental_id.contract_ids.filtered(
+            lambda item: item.state in ('sent', 'signing'))[:1]
+        if (not contract or (contract.expires_on
+                and contract.expires_on > fields.Datetime.now())):
+            raise ValidationError('There is no expired unsigned agreement to renew.')
+        contract.action_revoke()
+        replacement = self.env['car.rental.contract'].create({
+            'rental_id': self.rental_id.id,
+            'delivery_place': contract.delivery_place,
+            'payment_advance_days': contract.payment_advance_days,
+            'company_email': contract.company_email,
+            'company_representative': contract.company_representative,
+            'company_witness_1': contract.company_witness_1,
+            'company_witness_2': contract.company_witness_2,
+            'renter_witness_1': contract.renter_witness_1,
+            'renter_witness_2': contract.renter_witness_2,
+        })
+        replacement.action_prepare()
+        self.message_post(body='An expired unsigned agreement was revoked and replaced. Send or share the new customer link.')
+        return self.action_open()
+
+    def _prepare_agreement_signing_link(self):
+        self.ensure_one()
+        if self.step != 'agreement' or not self.rental_id:
+            raise ValidationError('The digital agreement is available at the Agreement step.')
+        if not self.company_id.sudo().cr_contract_pdf:
+            raise ValidationError('Load the digital agreement PDF in Car Rental Settings first.')
+        contract = self.rental_id.contract_ids.filtered(
+            lambda item: item.state != 'cancelled')[:1]
+        if not contract:
+            contract = self.env['car.rental.contract'].create({
+                'rental_id': self.rental_id.id,
+            })
+        if contract.state == 'draft':
+            details = {
+                'delivery_place': (
+                    self.agreement_delivery_place
+                    or self.reservation_id.destination_id.name
+                ),
+                'payment_advance_days': self.agreement_payment_advance_days,
+                'company_email': (
+                    self.agreement_company_email or self.company_id.email
+                    or self.company_id.partner_id.email
+                ),
+                'company_representative': self.agreement_company_representative,
+                'company_witness_1': self.agreement_company_witness_1,
+                'company_witness_2': self.agreement_company_witness_2,
+                'renter_witness_1': self.agreement_renter_witness_1,
+                'renter_witness_2': self.agreement_renter_witness_2,
+            }
+            missing = [label for field, label in (
+                ('delivery_place', 'delivery place'),
+                ('company_email', 'company notices email'),
+            ) if not details[field] or not str(details[field]).strip()]
+            if missing:
+                raise ValidationError(
+                    'Complete these agreement details before sending: %s.'
+                    % ', '.join(missing))
+            contract.write(details)
+            contract.action_prepare()
+        elif contract.state not in ('sent', 'signing'):
+            raise ValidationError('This agreement cannot be sent in its current state.')
+        elif not contract.expires_on or contract.expires_on <= fields.Datetime.now():
+            raise ValidationError('This signing link has expired. Ask a rental manager to renew the agreement.')
+        renter = contract.signer_ids.filtered(lambda signer: signer.role == 'renter')
+        if len(renter) != 1 or not renter.link:
+            raise ValidationError('The agreement does not have exactly one customer signing link.')
+        return contract
+
+    def _action_share_agreement(self, service):
+        self.ensure_one()
+        self._public_signing_base_url()
+        contract = self._prepare_agreement_signing_link()
+        renter = contract.signer_ids.filtered(lambda signer: signer.role == 'renter')
+        message = 'Please review and sign the rental agreement for booking %s.\n\n%s' % (
+            self.rental_id.reference, renter.link)
+        if service == 'whatsapp':
+            url = 'https://wa.me/?%s' % urlencode({'text': message})
+        elif service == 'telegram':
+            url = 'https://t.me/share/url?%s' % urlencode({
+                'url': renter.link,
+                'text': 'Please review and sign the rental agreement for booking %s'
+                        % self.rental_id.reference,
+            })
+        else:
+            raise ValidationError('Unsupported agreement sharing service.')
+        return {
+            'type': 'ir.actions.act_url',
+            'url': url,
+            'target': 'new',
+        }
+
+    def action_share_agreement_whatsapp(self):
+        return self._action_share_agreement('whatsapp')
+
+    def action_share_agreement_telegram(self):
+        return self._action_share_agreement('telegram')
+
+
+class AgreementSendWizard(models.TransientModel):
+    _name = 'car.rental.agreement.send.wizard'
+    _description = 'Send Customer Agreement Link'
+
+    journey_id = fields.Many2one('car.rental.journey', required=True, readonly=True)
+    method = fields.Selection([
+        ('email', 'Email customer'),
+        ('whatsapp', 'Share via WhatsApp'),
+        ('telegram', 'Share via Telegram'),
+    ], string='Send option', required=True, default='email')
+
+    def action_send(self):
+        self.ensure_one()
+        if self.method == 'email':
+            return self.journey_id._send_agreement_email()
+        if self.method in ('whatsapp', 'telegram'):
+            return self.journey_id._action_share_agreement(self.method)
+        raise ValidationError('Choose a supported signing-link delivery option.')
 
 
 class Contract(models.Model):
@@ -130,6 +302,7 @@ class Contract(models.Model):
     source_hash = fields.Char(readonly=True)
     snapshot = fields.Text(readonly=True)
     customer_details = fields.Text(readonly=True)
+    customer_snapshot = fields.Text(readonly=True)
     submitted_on = fields.Datetime(readonly=True)
     document_hash = fields.Char(readonly=True, string='Signed Content SHA-256')
     completed_pdf = fields.Binary(attachment=True, readonly=True)
@@ -141,7 +314,7 @@ class Contract(models.Model):
     def _compute_particulars(self):
         for contract in self:
             items = list(json.loads(contract.snapshot or '{}').items())
-            submitted = json.loads(contract.customer_details or '{}')
+            submitted = json.loads(contract.customer_details or contract.customer_snapshot or '{}')
             items += [(label, submitted.get(key, '')) for key, label in CUSTOMER_FIELDS]
             contract.particulars_html = '<table class="table"><tbody>%s</tbody></table>' % ''.join(
                 '<tr><th>%s</th><td>%s</td></tr>' % (escape(label), escape(str('' if value is None or value is False else value)).replace('\n', '<br/>'))
@@ -149,7 +322,8 @@ class Contract(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        protected = {'state', 'source_pdf', 'source_hash', 'snapshot', 'customer_details', 'signer_ids',
+        protected = {'state', 'source_pdf', 'source_hash', 'snapshot', 'customer_details',
+                     'customer_snapshot', 'signer_ids',
                      'submitted_on', 'document_hash', 'completed_pdf', 'expires_on'}
         for vals in vals_list:
             if protected.intersection(vals):
@@ -197,13 +371,18 @@ class Contract(models.Model):
             raise ValidationError('The rental must still be unsigned and awaiting pickup.')
         if self.payment_advance_days < 0:
             raise ValidationError('Payment advance days cannot be negative.')
-        names = [self.company_representative, self.company_witness_1, self.company_witness_2, self.renter_witness_1, self.renter_witness_2]
-        if not all(name and name.strip() for name in names) or not self.delivery_place or not self.company_email:
-            raise ValidationError('Complete delivery place, notices email, company representative and all four witnesses.')
+        if not self.delivery_place or not self.company_email:
+            raise ValidationError('Complete the delivery place and company notices email.')
         raw = base64.b64decode(company.cr_contract_pdf)
         if not raw.startswith(b'%PDF'):
             raise ValidationError('The contract template must be a PDF.')
         booking = rental.reservation_id
+        cleaning_product = rental.company_id.cr_cleaning_product_id
+        cleaning_fee = (
+            cleaning_product.list_price if rental.sudo()._uses_single_invoice()
+            and cleaning_product
+            else booking.cleaning_fee
+        )
         snapshot = {'Rental reference': rental.reference, 'Reservation': booking.reference,
                     'Named renter': rental.partner_id.display_name,
                     'Registration': rental.vehicle_id.license_plate, 'Manufacturer': rental.vehicle_id.model_id.brand_id.name,
@@ -213,20 +392,80 @@ class Contract(models.Model):
                     'Permitted base / destination (clause 10.9)': booking.destination_id.name,
                     'Security deposit': booking.deposit_required, 'Daily rental': booking.quoted_daily_rate,
                     'Hire total including tax': booking.amount, 'Currency': rental.currency_id.name,
-                    'One-time dirty return cleaning fee': booking.cleaning_fee,
+                    'Customer delivery address': booking.delivery_address if booking.delivery_service else '',
+                    'Customer delivery charge': booking.delivery_fee if booking.delivery_service else 0,
+                    'Off-site collection address': booking.collection_address if booking.collection_service else '',
+                    'Off-site collection charge': booking.collection_fee if booking.collection_service else 0,
+                    'Dirty-return cleaning rate (confirmed at return)': cleaning_fee,
                     'Payment advance deadline, days (clause 6)': self.payment_advance_days,
                     'Company notices email (clause 23.1)': self.company_email,
                     'Company representative': self.company_representative,
                     'Company witness 1': self.company_witness_1, 'Company witness 2': self.company_witness_2,
                     'Renter witness 1': self.renter_witness_1, 'Renter witness 2': self.renter_witness_2}
+        customer_snapshot = self._prefill()
+        missing_customer_details = [
+            label for key, label in CUSTOMER_FIELDS
+            if key not in ('email', 'kin_email', 'signed_at_place')
+            and not customer_snapshot.get(key)
+        ]
+        if missing_customer_details:
+            raise ValidationError(
+                'Complete the customer Contact profile before issuing the agreement: %s.'
+                % ', '.join(missing_customer_details))
         self._store({'source_pdf': company.cr_contract_pdf, 'source_filename': company.cr_contract_filename,
                      'template_version': company.cr_contract_version, 'source_hash': hashlib.sha256(raw).hexdigest(),
                      'snapshot': json.dumps(snapshot, ensure_ascii=False), 'state': 'sent',
+                     'customer_snapshot': json.dumps(customer_snapshot, sort_keys=True, ensure_ascii=False),
                      'expires_on': fields.Datetime.now() + timedelta(days=30)})
-        names = dict(zip([r for r, label in ROLES], [rental.partner_id.display_name] + names))
-        for role, label in ROLES:
-            self.env['car.rental.contract.signer']._new_request(self, role, names[role])
-        self.message_post(body='Contract issued. Share each private link only with its named signer. No messages were sent automatically.')
+        signer_names = {
+            'renter': rental.partner_id.display_name,
+            'company': self.company_representative,
+            'company_witness_1': self.company_witness_1,
+            'company_witness_2': self.company_witness_2,
+            'renter_witness_1': self.renter_witness_1,
+            'renter_witness_2': self.renter_witness_2,
+        }
+        for role, name in signer_names.items():
+            if name and name.strip():
+                self.env['car.rental.contract.signer']._new_request(self, role, name.strip())
+        self.message_post(body='Contract issued. The renter link can be sent from the booking. Additional named signers can use their individual private links.')
+
+    def action_send_customer_link(self):
+        self.ensure_one()
+        if self.state not in ('sent', 'signing'):
+            raise ValidationError('Issue the agreement before sending a customer signing link.')
+        if not self.expires_on or self.expires_on <= fields.Datetime.now():
+            raise ValidationError('This signing link has expired. Ask a rental manager to renew the agreement.')
+        customer = self.rental_id.partner_id
+        email = (customer.email or '').strip()
+        if not email or '@' not in email:
+            raise ValidationError(
+                'Add a valid email address to the customer contact before sending the agreement.')
+        renter = self.signer_ids.filtered(lambda signer: signer.role == 'renter')
+        if len(renter) != 1:
+            raise ValidationError('The agreement does not have exactly one customer signing link.')
+        company_email = (self.company_email or self.company_id.email
+                         or self.company_id.partner_id.email or '').strip()
+        body = (
+            '<p>Hello %s,</p>'
+            '<p>Please review and sign the rental agreement for booking %s.</p>'
+            '<p><a href="%s">Review and sign your rental agreement</a></p>'
+            '<p>This private link expires on %s UTC. Please do not forward it.</p>'
+            '<p>Regards,<br/>%s</p>'
+        ) % (
+            escape(customer.display_name), escape(self.rental_id.reference),
+            escape(renter.link), escape(str(self.expires_on)),
+            escape(self.company_id.name),
+        )
+        self.env['mail.mail'].sudo().create({
+            'subject': 'Rental agreement for %s' % self.rental_id.reference,
+            'body_html': body,
+            'email_from': company_email,
+            'email_to': email,
+            'auto_delete': False,
+        })
+        self.message_post(body='Customer signing link queued for delivery to %s.' % escape(email))
+        return True
 
     def action_revoke(self):
         require_role(self.env, 'group_rental_manager')
@@ -240,9 +479,17 @@ class Contract(models.Model):
     def _prefill(self):
         if self.customer_details:
             return json.loads(self.customer_details)
+        if self.customer_snapshot:
+            return json.loads(self.customer_snapshot)
         c = self.rental_id.partner_id
         return {'full_name': c.display_name, 'identity': c.rental_identity_number, 'physical_address': c.street,
-                'postal_address': c.rental_postal_address, 'phone': c.phone, 'email': c.email, 'licence': c.rental_driving_license}
+                'postal_address': c.rental_postal_address, 'phone': c.phone, 'email': c.email,
+                'licence': c.rental_driving_license,
+                'next_of_kin': c.rental_next_of_kin_name,
+                'relationship': c.rental_next_of_kin_relationship,
+                'kin_phone': c.rental_next_of_kin_phone,
+                'kin_email': c.rental_next_of_kin_email,
+                'signed_at_place': ''}
 
     def _pdf(self, include_signatures=True):
         self.ensure_one()
@@ -307,16 +554,17 @@ class Contract(models.Model):
         return merge_pdf([base64.b64decode(self.source_pdf), output.getvalue()])
 
     def _finish(self):
-        if len(self.signer_ids) != 6 or any(not s.signed_on for s in self.signer_ids):
+        renter = self.signer_ids.filtered(lambda signer: signer.role == 'renter')
+        if len(renter) != 1 or not renter.signed_on or any(
+                not signer.signed_on for signer in self.signer_ids):
             return
-        renter = self.signer_ids.filtered(lambda s: s.role == 'renter')
         self._store({'state': 'complete', 'completed_pdf': base64.b64encode(self._pdf()),
                      'completed_filename': 'Signed agreement - %s.pdf' % self.rental_id.reference})
         rental = self.rental_id
         rental.write({'agreement_signature': renter.signature, 'agreement_signed_by': renter.name,
-                      'agreement_terms': 'Original contract: %s\nSHA-256: %s\nSigned digital completion schedule: %s\nAll six signatures are retained in Digital Agreements.' % (self.template_version, self.source_hash, self.document_hash)})
+                      'agreement_terms': 'Original contract: %s\nSHA-256: %s\nSigned digital completion schedule: %s\nAll signatures from the named signers are retained in Digital Agreements.' % (self.template_version, self.source_hash, self.document_hash)})
         rental.action_sign_agreement()
-        self.message_post(body='Customer, company representative and all four witnesses have signed. Signed PDF retained.')
+        self.message_post(body='All named signers have signed. Signed PDF retained.')
 
 
 class Signer(models.Model):
@@ -357,7 +605,9 @@ class Signer(models.Model):
         contract = self.contract_id
         contract._lock()
         self.invalidate_recordset()
-        if self.signed_on or contract.state not in ('sent', 'signing') or contract.expires_on < fields.Datetime.now() or contract.rental_id.status != 'draft':
+        if (self.signed_on or contract.state not in ('sent', 'signing')
+                or not contract.expires_on or contract.expires_on <= fields.Datetime.now()
+                or contract.rental_id.status != 'draft'):
             raise ValidationError('This signing request is no longer available.')
         try:
             raw = base64.b64decode(signature, validate=True)
@@ -376,7 +626,9 @@ class Signer(models.Model):
         except Exception as exc:
             raise ValidationError('Draw a signature before submitting.') from exc
         if self.role == 'renter':
-            cleaned = {key: str(values.get(key) or '').strip()[:2000] for key, label in CUSTOMER_FIELDS}
+            cleaned = contract._prefill()
+            cleaned['signed_at_place'] = str(
+                values.get('signed_at_place') or '').strip()[:2000]
             required = [k for k, label in CUSTOMER_FIELDS if k not in ('email', 'kin_email')]
             if any(not cleaned[k] for k in required):
                 raise ValidationError('Complete your identity, addresses, licence, contact, next-of-kin and signing place.')
@@ -388,4 +640,11 @@ class Signer(models.Model):
             raise ValidationError('The customer must complete and sign the agreement first.')
         super().write({'signature': signature, 'signed_on': fields.Datetime.now(), 'signed_hash': contract.document_hash})
         contract.message_post(body='%s signed as %s.' % (self.name, dict(ROLES)[self.role]))
-        contract._finish()
+        try:
+            contract._finish()
+        except Exception as exc:
+            _logger.exception('Could not complete digital agreement %s', contract.id)
+            raise ValidationError(
+                'We could not complete your signature because of a problem at the rental office. '
+                'Your signature was not saved. Please contact the rental office before trying again.'
+            ) from exc

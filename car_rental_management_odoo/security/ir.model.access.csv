@@ -21,3 +21,4 @@ access_damage_group_rental_manager,damage.group_rental_manager,model_car_rental_
 access_damage_fleet_group_fleet_manager,damage_fleet.group_fleet_manager,model_car_rental_damage_case,group_fleet_manager,1,1,1,0
 access_deposit_group_rental_accountant,deposit.group_rental_accountant,model_car_rental_deposit_transaction,group_rental_accountant,1,1,1,0
 access_dashboard_manager,dashboard.manager,model_car_rental_dashboard,group_rental_manager,1,1,0,0
+access_vehicle_accessory_user,vehicle.accessory.user,model_car_rental_accessory,base.group_user,1,0,0,0

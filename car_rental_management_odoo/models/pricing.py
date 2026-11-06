@@ -131,6 +131,7 @@ class Reservation(models.Model):
     pricing_rule_id = fields.Many2one('car.rental.rate.rule', readonly=True, copy=False)
     quoted_daily_rate = fields.Float(string='Agreed Daily Rate', readonly=True, copy=False)
     tax_id = fields.Many2one('account.tax', string='Agreed Sales Tax', readonly=True)
+    amount = fields.Monetary(compute='_compute_amount', store=True, currency_field='currency_id')
     amount_untaxed = fields.Monetary(compute='_compute_amount', store=True)
     tax_amount = fields.Monetary(compute='_compute_amount', store=True)
     standard_daily_rate = fields.Float(readonly=True, copy=False)
@@ -282,7 +283,8 @@ class Reservation(models.Model):
         self.check_access('write')
         vehicles = self.mapped('vehicle_id')
         for record in self:
-            record.rental_ids._cancel_before_pickup()
+            if not self.env.context.get('skip_rental_cancel'):
+                record.rental_ids._cancel_before_pickup()
             super(Reservation, record).write({'status': 'cancelled'})
         vehicles._refresh_reserved_status()
 

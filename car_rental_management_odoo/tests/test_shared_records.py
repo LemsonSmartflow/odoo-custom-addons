@@ -49,6 +49,9 @@ class TestSharedRecords(RentalTestCommon):
             'rental_driving_license': '12345678901234',
             'rental_license_issue_date': fields.Date.today() - timedelta(days=365 * 3),
             'rental_license_expiry': fields.Date.today() + timedelta(days=365 * 2),
+            'rental_next_of_kin_name': 'Existing Person Kin',
+            'rental_next_of_kin_relationship': 'Sibling',
+            'rental_next_of_kin_phone': '0811111111',
             'rental_omang_document_ids': [(6, 0, [self._attachment('omang-existing.png').id])],
             'rental_license_document_ids': [(6, 0, [self._attachment('licence-existing.png').id])],
         })

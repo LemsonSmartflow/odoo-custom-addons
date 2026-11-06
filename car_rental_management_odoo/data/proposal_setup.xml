@@ -1,8 +1,43 @@
 <?xml version='1.0' encoding='utf-8'?>
-<odoo noupdate="1"><record id="rental_service_product" model="product.product">
-    <field name="name">Vehicle Rental (per day)</field>
-    <field name="type">service</field>
-    <field name="invoice_policy">order</field>
-    <field name="list_price">0</field>
-  </record>
-  </odoo>
+<odoo>
+    <data noupdate="1">
+        <record id="rental_service_product" model="product.product">
+            <field name="name">Vehicle Rental (per day)</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="list_price">0</field>
+        </record>
+        <record id="rental_deposit_product" model="product.product">
+            <field name="name">Refundable Security Deposit</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="list_price">0</field>
+            <field name="taxes_id" eval="[(5, 0, 0)]"/>
+        </record>
+        <record id="rental_delivery_product" model="product.product">
+            <field name="name">Customer Vehicle Delivery</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="list_price">0</field>
+        </record>
+        <record id="rental_collection_product" model="product.product">
+            <field name="name">Off-site Vehicle Collection</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="list_price">0</field>
+        </record>
+        <record id="rental_cleaning_product" model="product.product">
+            <field name="name">Dirty-return Cleaning</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="list_price">0</field>
+        </record>
+        <record id="rental_late_product" model="product.product">
+            <field name="name">Late Vehicle Return</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="list_price">0</field>
+        </record>
+    </data>
+    <function model="res.company" name="_ensure_default_rental_products"/>
+</odoo>

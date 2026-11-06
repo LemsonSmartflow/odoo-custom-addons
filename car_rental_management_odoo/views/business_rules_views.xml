@@ -1,10 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
 <odoo>
-    <record id="reservation_cleaning_policy_business" model="ir.ui.view">
-        <field name="name">rental.reservation.cleaning.policy</field><field name="model">car.rental.reservation</field>
-        <field name="inherit_id" ref="reservation_form_proposal"/>
-        <field name="arch" type="xml"><xpath expr="//header" position="inside"><button name="action_refresh_cleaning_fee" type="object" string="Refresh Cleaning Fee" invisible="status != 'confirmed'" groups="car_rental_management_odoo.group_rental_manager"/></xpath></field>
-    </record>
     <record id="rental_schedule_business" model="ir.ui.view">
         <field name="name">rental.schedule.business</field>
         <field name="model">car.rental.rental</field>

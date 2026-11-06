@@ -39,27 +39,72 @@ def validate_reference(records):
             raise ValidationError('This reference is already used in the company. Choose a different reference.')
 
 
-class PricingRule(models.Model):
-    _inherit = 'car.rental.rate.rule'
-
-    cleaning_fee = fields.Monetary(string='Dirty Return Cleaning Fee', default=0, tracking=True,
-                                   help='Charge for a dirty return. Set a positive amount before hiring vehicles under this rule.')
-
-    @api.constrains('cleaning_fee')
-    def _check_cleaning_fee(self):
-        if any(rule.cleaning_fee < 0 for rule in self):
-            raise ValidationError('The cleaning fee cannot be negative.')
-
-
 class Reservation(models.Model):
     _inherit = 'car.rental.reservation'
     _order = 'pickup_datetime desc, id desc'
 
     cleaning_fee = fields.Monetary(string='Agreed Dirty Return Fee', readonly=True, copy=False)
+    delivery_service = fields.Boolean(string='Customer Delivery Requested', copy=False)
+    delivery_address = fields.Char(copy=False)
+    delivery_fee = fields.Monetary(copy=False)
+    collection_service = fields.Boolean(string='Off-site Collection Requested', copy=False)
+    collection_address = fields.Char(copy=False)
+    collection_fee = fields.Monetary(copy=False)
+    quote_service_total = fields.Monetary(
+        compute='_compute_quote_service_total', string='Optional Service Charges')
+    quote_total = fields.Monetary(compute='_compute_quote_total', string='Total Quotation')
     reference = fields.Char(default=False, required=True, copy=False, tracking=True)
     number_of_days = fields.Integer(string='Rental Days (24-hour periods)', default=1)
     customer_deposit_credit = fields.Monetary(
         compute='_compute_customer_deposit_credit', string='Customer Deposit Credit Available')
+
+    @api.depends(
+        'delivery_service', 'delivery_fee', 'collection_service', 'collection_fee',
+        'tax_id', 'currency_id')
+    def _compute_quote_service_total(self):
+        for reservation in self:
+            total = 0
+            for enabled, fee in (
+                (reservation.delivery_service, reservation.delivery_fee),
+                (reservation.collection_service, reservation.collection_fee),
+            ):
+                if not enabled:
+                    continue
+                totals = reservation.tax_id.compute_all(
+                    fee, currency=reservation.currency_id, quantity=1
+                ) if reservation.tax_id else {'total_included': fee}
+                total += totals['total_included']
+            reservation.quote_service_total = total
+
+    @api.depends('amount', 'quote_service_total', 'deposit_required')
+    def _compute_quote_total(self):
+        for reservation in self:
+            reservation.quote_total = (
+                reservation.amount + reservation.quote_service_total
+                + reservation.deposit_required
+            )
+
+    @api.constrains(
+        'delivery_service', 'delivery_address', 'delivery_fee',
+        'collection_service', 'collection_address', 'collection_fee')
+    def _check_quote_services(self):
+        for reservation in self:
+            for enabled, location, amount, label in (
+                (reservation.delivery_service, reservation.delivery_address,
+                 reservation.delivery_fee, 'Customer delivery'),
+                (reservation.collection_service, reservation.collection_address,
+                 reservation.collection_fee, 'Off-site collection'),
+            ):
+                if enabled and (not location or amount <= 0):
+                    raise ValidationError(
+                        '%s requires an address and a positive charge.' % label)
+                if amount < 0:
+                    raise ValidationError('Optional service charges cannot be negative.')
+            if reservation.status != 'draft' and (
+                not reservation.delivery_service and reservation.delivery_fee
+                or not reservation.collection_service and reservation.collection_fee
+            ):
+                raise ValidationError('Clear an optional service amount when that service is not selected.')
 
     @api.depends('partner_id', 'company_id')
     def _compute_customer_deposit_credit(self):
@@ -113,11 +158,6 @@ class Reservation(models.Model):
                                   ('pickup_datetime', '<', record.expected_return_datetime), ('expected_return_datetime', '>', record.pickup_datetime)]):
                 raise ValidationError('This vehicle is already allocated during these pickup/return times.')
 
-    def _price_values(self):
-        values = super()._price_values()
-        values['cleaning_fee'] = self._rate().cleaning_fee or 0
-        return values
-
     @staticmethod
     def _sync_times(vals, current=None, creating=False):
         vals = dict(vals)
@@ -167,6 +207,15 @@ class Reservation(models.Model):
     def write(self, vals):
         if {'deposit_required', 'deposit_ratio', 'cleaning_fee'}.intersection(vals):
             raise ValidationError('Deposits and cleaning fees are calculated from the approved pricing rule.')
+        quote_fields = {
+            'delivery_service', 'delivery_address', 'delivery_fee',
+            'collection_service', 'collection_address', 'collection_fee',
+        }
+        if quote_fields.intersection(vals) and any(
+            record.status != 'draft' or record.rental_ids for record in self
+        ):
+            raise ValidationError(
+                'Optional delivery and collection services are locked when the reservation is confirmed or rented.')
         vals = dict(vals)
         if 'reference' in vals:
             vals['reference'] = (vals['reference'] or '').strip()
@@ -187,18 +236,14 @@ class Reservation(models.Model):
         for record in self:
             if not record.pickup_datetime or not record.expected_return_datetime or record.number_of_days < 1:
                 raise ValidationError('Select a pickup date and time and enter at least one rental day.')
-            record.partner_id._check_rental_eligibility(record.pickup_datetime, record.expected_return_datetime)
+            record.partner_id.sudo()._check_rental_eligibility(
+                record.pickup_datetime, record.expected_return_datetime)
         return super().action_confirm()
 
     def action_refresh_cleaning_fee(self):
         require_role(self.env, 'group_rental_manager')
-        for record in self:
-            if record.status != 'confirmed' or any(r.status != 'draft' or r.agreement_state == 'signed' for r in record.rental_ids):
-                raise ValidationError('Update the cleaning fee before signing the agreement or handing over the vehicle.')
-            if record.pricing_rule_id.state != 'approved' or record.pricing_rule_id.cleaning_fee <= 0:
-                raise ValidationError('Set and approve a positive cleaning fee on the linked pricing rule first.')
-            super(Reservation, record).write({'cleaning_fee': record.pricing_rule_id.cleaning_fee})
-            record.message_post(body='Cleaning fee updated from the approved pricing rule before agreement signature: %s.' % record.cleaning_fee)
+        raise ValidationError(
+            'Pricing-rule cleaning fees are retired. Configure the cleaning product and enter new-flow charges at return.')
 
 
 class Rental(models.Model):
@@ -240,7 +285,8 @@ class Rental(models.Model):
     def action_start_rental(self):
         for rental in self:
             rental.reservation_id._check_deposit_policy()
-            rental.partner_id._check_rental_eligibility(rental.reservation_id.pickup_datetime, rental.expected_return_datetime)
+            rental.partner_id.sudo()._check_rental_eligibility(
+                rental.reservation_id.pickup_datetime, rental.expected_return_datetime)
         result = super().action_start_rental()
         for rental in self:
             pickup = rental.inspection_ids.filtered(lambda c: c.kind == 'pickup' and c.state == 'done')[:1]
@@ -249,27 +295,50 @@ class Rental(models.Model):
         return result
 
     def _operational_handover_time(self, date):
-        # Implemented via the original Rental class's parent to retain public guards.
-        from .operations import Rental as OperationalRental
-        super(OperationalRental, self).write({'actual_pickup_datetime': date})
+        self._workflow_write({'actual_pickup_datetime': date})
 
     def action_return_vehicle(self):
         for rental in self:
             check = rental.inspection_ids.filtered(lambda c: c.kind == 'return' and c.state == 'done')[:1]
-            if check and check.clean == 'no' and rental.reservation_id.cleaning_fee <= 0:
-                raise ValidationError('Configure a positive dirty-return fee in the booking pricing rule before completing this return.')
+            if rental._uses_single_invoice() and not rental.return_charges_confirmed:
+                details = rental._return_charge_details()
+                if details['late_days'] and not rental.company_id.cr_late_product_id:
+                    raise ValidationError('Configure the late-return service product in Car Rental Settings.')
+                if details['cleaning_required'] and not rental.company_id.cr_cleaning_product_id:
+                    raise ValidationError('Configure the dirty-return cleaning product in Car Rental Settings.')
+                if rental.return_collection_service and not rental.company_id.cr_collection_product_id:
+                    raise ValidationError('Configure the vehicle collection service product in Car Rental Settings.')
+                if details['late_days'] or details['cleaning_required'] or rental.return_collection_service:
+                    return rental.action_return_charge_wizard()
         result = super().action_return_vehicle()
-        from .operations import Rental as OperationalRental
         for rental in self:
             check = rental.inspection_ids.filtered(lambda c: c.kind == 'return' and c.state == 'done')[:1]
-            charge = rental.reservation_id.cleaning_fee if check.clean == 'no' else 0
-            super(OperationalRental, rental).write({'cleaning_charge': charge})
-            if charge:
+            if rental._uses_single_invoice():
+                charge = rental.cleaning_charge
+            else:
+                charge = rental.reservation_id.cleaning_fee if check and not check.clean else 0
+                rental._workflow_write({'cleaning_charge': charge})
+            if charge and not rental._uses_single_invoice():
                 rental.sudo().action_cleaning_invoice()
         return result
 
+    def action_return_charge_wizard(self):
+        self.ensure_one()
+        if self.status != 'ongoing' or not self.return_inspection_done:
+            raise ValidationError('Complete the return inspection before confirming return charges.')
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Confirm Return Charges',
+            'res_model': 'car.rental.return.charge.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_rental_id': self.id},
+        }
+
     def action_cleaning_invoice(self):
         self.ensure_one()
+        if self._uses_single_invoice():
+            raise ValidationError('Cleaning charges for this booking are included in its final settlement invoice.')
         require_role(self.env, 'group_rental_accountant')
         if self.status != 'returned' or self.cleaning_charge <= 0:
             raise ValidationError('Cleaning charges require a completed dirty return.')
@@ -293,7 +362,7 @@ class Rental(models.Model):
 class Inspection(models.Model):
     _inherit = 'car.rental.check'
 
-    clean = fields.Selection([('yes', 'Yes'), ('no', 'No')], string='Clean?', required=True, default='yes')
+    clean = fields.Boolean(string='Vehicle Clean', default=False)
     fuel_level = fields.Selection(selection_add=[('blinking', 'Blinking Bar')] +
                                   [('bar_%s' % i, '%s Bar%s' % (i, '' if i == 1 else 's')) for i in range(1, 9)],
                                   ondelete={key: 'set empty' for key in ['blinking'] + ['bar_%s' % i for i in range(1, 9)]})
@@ -310,13 +379,6 @@ class Inspection(models.Model):
                 vals.setdefault('acknowledged_by', rental.partner_id.display_name)
         return super().create(vals_list)
 
-    def action_complete(self):
-        for check in self:
-            if not check.clean:
-                raise ValidationError('Select whether the vehicle is clean: Yes or No.')
-        return super().action_complete()
-
-
 class Move(models.Model):
     _inherit = 'account.move'
     rental_invoice_kind = fields.Selection(selection_add=[('cleaning', 'Cleaning')])
@@ -324,7 +386,7 @@ class Move(models.Model):
 
 class Deposit(models.Model):
     _inherit = 'car.rental.deposit.transaction'
-    charge_invoice_id = fields.Many2one('account.move', string='Cleaning Invoice', check_company=True)
+    charge_invoice_id = fields.Many2one('account.move', string='Charge Invoice', check_company=True)
 
     def action_post(self):
         require_role(self.env, 'group_rental_accountant')

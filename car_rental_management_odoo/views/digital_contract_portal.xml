@@ -17,15 +17,15 @@
 <div t-if="signer.signed_on" class="notice">Thank you. Your signature was recorded on <span t-esc="signer.signed_on"/> UTC. <span t-if="contract.state != 'complete'">The agreement is awaiting the remaining signatures.</span></div>
 <div t-if="not can_sign and not signer.signed_on" class="notice">The customer must complete and sign their details first, or this agreement is no longer open for signing. Please contact the rental office.</div>
 <form method="post" id="contract-form" t-if="can_sign">
-<nav class="steps" aria-label="Agreement steps"><button type="button" data-step="0">1. Booking</button><button type="button" data-step="1">2. Customer details</button><button type="button" data-step="2">3. Sign</button></nav>
+<nav class="steps" aria-label="Agreement steps"><button type="button" data-step="0">1. Booking</button><button type="button" data-step="1">2. Confirm details</button><button type="button" data-step="2">3. Sign</button></nav>
 <section class="panel" data-panel="0"><h2>1. Review the booking</h2><dl class="details-grid"><t t-foreach="schedule.items()" t-as="item"><div class="detail"><dt t-esc="item[0]"/><dd t-esc="item[1]"/></div></t></dl><div class="actions"><button type="button" data-next="1">Continue to details</button></div></section>
 <section class="panel" data-panel="1">
 <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-<h2>2. Customer details</h2><p t-if="signer.role == 'renter'">Check the prefilled information and complete the remaining fields. Email addresses are optional.</p><p t-else="">These details were confirmed by the customer and are read-only. Contact the office if anything is incorrect.</p><div class="fields-grid">
+<h2>2. Confirm details</h2><p>These details come from the customer's Contact profile and are included in this agreement. Contact the rental office to correct them; only the place of signing is entered here.</p><div class="fields-grid">
 <t t-foreach="customer_fields" t-as="entry">
-<div class="field" t-if="signer.role == 'renter'"><label t-att-for="entry[0]" t-esc="entry[1]"/>
-<textarea t-if="entry[0] in ('physical_address','postal_address')" t-att-id="entry[0]" t-att-name="entry[0]" t-att-readonly="signer.role != 'renter'" required="required" maxlength="2000" t-esc="values.get(entry[0], '')"/>
-<input t-else="" t-att-id="entry[0]" t-att-name="entry[0]" t-att-type="'email' if entry[0] in ('email','kin_email') else 'text'" t-att-value="values.get(entry[0], '')" t-att-readonly="signer.role != 'renter'" t-att-required="entry[0] not in ('email','kin_email')" maxlength="2000"/>
+<div class="field" t-if="signer.role == 'renter' and entry[0] == 'signed_at_place'">
+<label t-att-for="entry[0]" t-esc="entry[1]"/>
+<input t-att-id="entry[0]" t-att-name="entry[0]" type="text" t-att-value="values.get(entry[0], '')" required="required" maxlength="2000"/>
 </div><div class="detail" t-else=""><dt t-esc="entry[1]"/><dd t-esc="values.get(entry[0]) or 'Not provided'"/></div></t></div>
 <div class="actions"><button type="button" class="secondary" data-back="0">Back</button><button type="button" data-next="2">Continue to signature</button></div></section>
 <section class="panel" data-panel="2"><div class="signature-area"><h2>3. Your signature — <span t-esc="role_label"/></h2>
@@ -39,7 +39,7 @@
 </form>
 <t t-if="not can_sign"><details><summary>Review vehicle and booking details</summary><div class="panel"><h2>1. Review the booking</h2><dl class="details-grid"><t t-foreach="schedule.items()" t-as="item"><div class="detail"><dt t-esc="item[0]"/><dd t-esc="item[1]"/></div></t></dl></div></details>
 <details t-if="contract.customer_details"><summary>Review customer details</summary><dl class="details-grid"><t t-foreach="customer_fields" t-as="entry"><div class="detail"><dt t-esc="entry[1]"/><dd t-esc="values.get(entry[0]) or 'Not provided'"/></div></t></dl></details></t>
-<details><summary>Signature progress: <t t-esc="len(contract.signer_ids.filtered('signed_on'))"/> of 6 completed</summary><ul class="progress-list"><t t-foreach="contract.signer_ids" t-as="person"><li><strong t-esc="person.name"/><small t-esc="dict(person._fields['role'].selection).get(person.role)"/><span t-esc="'Signed' if person.signed_on else 'Awaiting signature'"/></li></t></ul></details>
+<details><summary>Signature progress: <t t-esc="len(contract.signer_ids.filtered('signed_on'))"/> of <t t-esc="len(contract.signer_ids)"/> completed</summary><ul class="progress-list"><t t-foreach="contract.signer_ids" t-as="person"><li><strong t-esc="person.name"/><small t-esc="dict(person._fields['role'].selection).get(person.role)"/><span t-esc="'Signed' if person.signed_on else 'Awaiting signature'"/></li></t></ul></details>
 <script type="text/javascript"><![CDATA[
 const form=document.getElementById('contract-form');
 let showStep=()=>{};

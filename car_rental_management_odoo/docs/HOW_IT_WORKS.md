@@ -4,55 +4,57 @@
 
 ### Shared Contacts, Fleet and Accounting
 
-**Car Rental → Customers uses Odoo Contacts.** Enter the name, phone, email and physical street address once on the standard Contact form. Open **Rental Details**, enable rentals for the current company, and enter the postal address, ID, date of birth and licence details. Upload Omang or passport plus the licence. Save, then choose **Create a Booking**. Existing rental customers already have these details in the tab; there is no separate customer form to maintain. Booking customer selectors use Contacts directly. Rental identity documents remain scoped to the current company.
+**Car Rental → Customers uses Odoo Contacts.** Enter the name, phone, email and physical street address once on the standard Contact form. Open **Rental Details**, enable rentals for the current company, and enter the postal address, ID, date of birth, licence and next-of-kin name, relationship and phone. Upload Omang or passport plus the licence. Save, then choose **Create a Booking**. Existing rental customers already have these details in the tab; there is no separate customer form to maintain. Booking customer selectors use Contacts directly. Rental identity documents remain scoped to the current company.
 
 **Car Rental → Fleet → Vehicles uses Odoo Fleet.** Enter the model, registration plate and category in Fleet. The native Fleet category is used for rental pricing, so you only set it once. On **Rental Details**, click **Enable Rentals** and use **Activate for Rental**. Vehicle road-licence contracts can be recorded here; requiring one before pickup is an optional company setting and is off by default. This is separate from the customer's driving licence. Insurance can also be recorded but is optional. After a return, use **Start Cleaning** and **Release after Cleaning**. Existing rental vehicles are already enabled. Fleet manages registration, model, VIN, colour, seats, transmission, fuel, category and odometer; the rental tab contains rental-specific setup, availability, preview, documents and actions. Pickup/return inspections synchronize odometer readings to Fleet, and the rental calculates the distance driven. Service intervals populate the next-service mileage and trigger a reminder as the vehicle approaches it.
 
 Existing customer and vehicle profile IDs are retained during upgrade, so reservations, rentals and accounting links remain intact. Existing Contact/Fleet links are preserved. Do not replace these links to change the customer or car behind historical bookings. Signed agreements retain their recorded particulars and PDFs when shared records change later.
 
-**Customer deposit credit:** At booking, the available prior-deposit balance is shown on the quote. During Payment & Security Deposit, settled and unrefunded deposits from that customer's returned rentals with completed inspections are shown and applied to the new deposit by default. The accountant can adjust the credit amount; any remaining deposit is collected in cash. Credits transfer the liability between rentals without recording another cash receipt. Deposits tied to unresolved damage or cleaning charges are not available.
+**Customer deposit credit:** At booking, the available prior-deposit balance is shown on the quote. In the Payment step, settled and unrefunded deposits from that customer's returned rentals with completed inspections are applied to the new invoice by default. The accountant can adjust the credit amount; any remaining invoice balance is paid normally. Credits transfer the liability between rentals without recording another cash receipt. Deposits tied to unresolved damage or cleaning charges are not available.
 
 **Sort and group records:** Lists open with the newest relevant date first (vehicle and contact lists use Created On; reservations and rentals use their booking dates; maintenance requests use Request Date). The rental maintenance list also supports grouping by vehicle and request/creation month. Click any visible date or type/status column heading to sort ascending or descending. Use the search bar's Group By menu for booking/rental type, vehicle category, transaction type, or date/month. Choose Created On / Created Month when you need audit chronology rather than booking chronology.
 
-Sales orders, invoices, journal entries and reconciliation use the existing Odoo apps. The combined rental/deposit form remains a rental-specific allocation tool: hire receipts and refundable-deposit liabilities must be recorded separately in accounting. Odoo Sign is not installed in the validated local environment; the existing six-person digital agreement remains in use until a Sign integration can be tested against an available installation.
+Sales orders, invoices, journal entries and reconciliation use the existing Odoo apps. Configure the rental service product, untaxed security-deposit product, delivery product, off-site collection product, cleaning product and late-return product under Car Rental Settings, along with the customer deposit liability account and distinct unpaid-deposit clearing liability account. Posting the booking invoice first defers its unpaid deposit line to the clearing liability; as payments or prior-deposit credits settle the invoice, the corresponding amount is reclassified to the deposit liability. This keeps the deposit liability balance aligned with the actually held deposit. The delivery, off-site collection, cleaning and late-return product list prices are suggested amounts; staff may edit applicable charges in the booking or return popup. The agreement uses the module's private signing workflow, not Odoo Sign. Only the renter is required when no additional signers are named; each named representative or witness must sign.
 
 ### Collect rental payment and security deposit together
 
-Open **Payment & Security Deposit** from the rental or the booking's Payment step. The form shows the rental balance, deposit remaining and combined total. Enter the amount received, payment method, date and optional bank/receipt reference once. Check the allocation preview, then click **Record Payment & Deposit**.
+For new guided bookings, use **Record Payment** in the Payment step. Hire and refundable deposit are already on one posted invoice. The accountant can apply prior deposit credit and register one payment against that invoice; the deposit portion is treated as paid first. Payments registered from the standard invoice screen are also reflected in the journey automatically.
 
-Partial payments fund the security deposit first, then rent. The first deposit collection must cover at least 50% of the agreed daily rate; the full required deposit is still needed before handover. Subsequent collections default to the remaining amount only. Recording creates/posts the rental invoice if needed and posts both entries together. A failure rolls back the whole collection. Repeated clicks do not create duplicate receipts. The receiving journal shown is the company's configured receipt bank/cash journal.
+Pickup is blocked until the required deposit is held; when the company policy requires full payment, the hire balance must also be zero. Legacy rentals retain the previous split collection form and separate deposit transactions so their history remains usable.
 
-Rental income and refundable deposits remain separately traceable in accounting, but staff use one collection form. Deposit deductions and refunds remain part of return settlement.
+At return, one settlement invoice contains late, cleaning and approved damage charges. The accountant applies deposit up to the invoice balance; any shortfall is paid against that invoice and any remaining held deposit is refunded.
 
 ### City Delights digital agreement
 
 1. In Settings → Digital Rental Agreement, load the supplied City Delights contract (or upload the approved PDF) and give it a version. This setting applies only to the active company.
-2. Confirm the booking and create its rental. Open **Digital Agreement** from the rental, or **Customer Digital Agreement** in the booking's agreement step.
-3. Enter the delivery place, payment advance deadline from clause 6, company notices email, company representative and the four witness names. Click **Prepare Signing Links**.
-4. Share the **Renter** link with the customer first. The customer reads the original contract, checks the prefilled booking schedule, completes their identity/contact/address and next-of-kin particulars, and draws their signature. Prices and security deposit are read-only.
-5. Customer submission locks those particulars. Share each remaining link only with its named company representative or witness. They review and sign the same locked document. These are private bearer links: anyone with one can access that person's signing request. They expire after 30 days. No email is sent automatically.
-6. Once all six people have signed, Odoo marks the rental agreement acknowledged and saves a combined PDF containing the unchanged original contract plus the completed particulars and signatures. **Print Agreement** opens that signed document. Original contract wording and banking details are retained as supplied.
-7. Complete the pickup inspection and delivery acknowledgement at the actual handover. The contract's Third Schedule is not a declaration that the car was received when the customer booked it.
+2. In **Bookings → Create a Booking**, complete Booking and Quote, then continue to Agreement. Use **Review Customer Contact** to check or correct the customer's profile before issuing the agreement.
+3. Confirm the delivery place, payment advance deadline from clause 6 and company notices email. Add a company representative or witness only if your company requires that person to sign; all additional signer names are optional.
+4. Click **Send Signing Link to Customer**, then choose email, WhatsApp or Telegram in the popup. WhatsApp and Telegram open a prefilled message for staff to send; they do not send directly from Odoo. The renter reviews the original contract and the snapshotted Contact and booking details, enters only the place of signing, then signs. Prices and security deposit are read-only. You can also copy the clickable link from the Agreement step.
+5. Each additional named signer receives a separate private link and can sign after the renter. These are private bearer links: anyone with one can access that person's signing request. Links expire after 30 days; a rental manager can renew an expired unsigned agreement. A replacement keeps the old agreement and any existing signatures in the audit trail while disabling its links.
+6. Once the renter and every additional named signer have signed, Odoo marks the rental agreement acknowledged and saves a combined PDF containing the unchanged original contract plus the snapshotted particulars and signatures. **Print Agreement** opens that signed document. Original contract wording and banking details are retained as supplied.
+7. Complete the pickup inspection and delivery acknowledgement at the actual handover. The contract's Third Schedule is not a declaration that the car was received when the customer booked it. After **Hand Over Vehicle**, the booking pauses at **On Hire** with a success summary; use **Save & Exit** while the customer has the car. When the car is physically returned, reopen the booking and click **Begin Return Process** to start the return inspection.
 
 For corrections before all signatures are complete, a manager revokes the packet and prepares a replacement; old signatures remain in the audit trail and old links stop working. Issued documents retain their PDF version, booking particulars and content hash even if settings change later. Customer-entered details are retained on the agreement; they do not silently overwrite the customer profile.
 
-Local links starting with `127.0.0.1` work on this computer only. After deployment, use the Odoo.sh site's public HTTPS address for customer links. The application uses Odoo's configured `web.base.url`.
+Signing links use Odoo's configured `web.base.url`. It must be your publicly reachable HTTPS address: `localhost`, private-network addresses and HTTP links will not work for customers and are blocked before email or social sharing. Configure `web.base.url` after deployment (for example, the Odoo.sh site's public HTTPS address), and verify customers can open it outside your office network.
+
+The WhatsApp option opens WhatsApp with a prefilled message and link; the link appears on its own line so WhatsApp can recognize it. It still requires a public URL and staff must choose the recipient and send the message. Direct sending and receiving from Odoo requires the Odoo WhatsApp app connected to a Meta WhatsApp Business Account through the WhatsApp Business API; this is separate from the current click-to-chat option and needs Meta setup and approved templates. Social Marketing manages publishing to connected social accounts; it does not make a local Odoo URL public or replace WhatsApp Business messaging. Those integrations are not installed in the current local Odoo environment.
 
 ### Guided booking
 
-Open **Bookings → Create a Booking → New**. Use **Continue** to move through Customer, Booking, Quote, Confirm, Agreement, Payment, Pickup Inspection, Handover, Return, Settlement and Closed. Complete the agreement before collecting payment in the booking. Digital agreements require all six signatures. Previously paid rentals keep their financial records and remain at Agreement until it is signed.
+Open **Bookings → Create a Booking → New**. Use **Continue** to move through Booking, Quote, Agreement, Payment, Pickup, Return and Settlement. Booking captures the customer, destination, category and dates, then creates a draft reservation. Use **Choose Vehicle & Preview** to open the vehicle picker: it lists every vehicle available for the selected category and booking period in a scrollable list. Click **Select** on a car to preview its photo, then **Use This Vehicle** to apply the choice; **Preview Full Picture** opens the full-size image.
 
-Use **Save & Exit** at any stage and reopen the booking later. Existing reservations and rentals have an **Open Booking** button that resumes from their actual records. Back / Review Booking opens the reservation after a quote exists; confirmed booking details remain protected.
+Use **Save & Exit** at any stage and reopen the booking later. Existing reservations and rentals can resume the guided journey from their actual records. Back returns to the preceding journey step; it does not open the reservation. Sales validates the linked quotation before sending or confirming it. Cancelling an unconfirmed quotation from Sales also cancels its linked booking and releases its vehicle; bookings with financial records must be cancelled from Booking so Finance can reverse them safely.
 
-The quote shows the hire total, refundable security deposit and separate one-time dirty return fee. Payment actions belong to the accountant. Agreement acknowledgement and completed pickup inspection precede handover. On return, complete the return inspection before Continue. At settlement, post and settle all applicable charges, apply approved deposit deductions and refund the remainder. **Close Rental** is available to the accountant and validates that nothing remains outstanding.
+In Booking, select customer delivery if requested. Continue opens a popup for the delivery address and editable product price; saving proceeds to Quote. The quote lists delivery alongside hire, refundable deposit and prior deposit credit. Continuing confirms the quote and creates the sale order with matching product lines. Signing posts one invoice containing hire, deposit and delivery. An accountant records payment and applies eligible prior deposit credit against this invoice. The pickup inspection records whether the vehicle is clean using a checkbox. At Return, staff can select **Collect the vehicle from another location** and enter its address and editable product price in the return-charge popup. If the vehicle was clean at pickup and is returned dirty, or if it is late beyond the grace period, the same popup asks staff to confirm or edit those product charges. One final invoice contains late, cleaning, vehicle-collection and approved damage charges. The accountant settles it and refunds any remaining deposit. **Close Rental** validates that no charges, payments or deposits remain outstanding.
 
-Closing the customer rental does not release the car. Use **Vehicle / Fleet Follow-up** for cleaning, repairs and fleet release.
+Closing the customer rental does not release the car. Use **Vehicle / Fleet Follow-up** for cleaning, repairs and fleet release. The daily operations reminder creates an internal activity for the rental's responsible user on the calendar day before the scheduled return, then an overdue activity if the rental remains ongoing after its due time. It does not message the customer.
 
 ### Who does what?
 
-- Rental Staff: register customers, prepare bookings, obtain signatures, complete inspections and record handovers and returns.
+- Rental Staff: prepare bookings, obtain signatures, complete inspections and record handovers and returns.
 - Rental Manager: approve destination pricing and exceptional price overrides.
-- Rental Accountant: create and post invoices, post rental receipts, collect deposits, apply deposits to damage invoices and record refunds.
+- Rental Accountant: record payments, apply prior deposit credit, post settlement invoices, retain or refund deposits, and close rentals.
 - Fleet Manager: prepare vehicles, manage compliance and repairs, complete cleaning and release vehicles for hire.
 - Car Rental Admin: has the combined rental roles. An administrator configures company settings.
 
@@ -63,7 +65,7 @@ Customers holds customer identity and licence details. Bookings contains reserva
 ### What counts as a completed cycle?
 
 - The rental has completed return and is marked Closed by the accountant.
-- Rental, late-return, cleaning and damage invoices are posted and settled.
+- The hire invoice and, when there are return charges, one final settlement invoice are posted and settled. Legacy rentals may retain separate charge invoices.
 - The deposit has been refunded or applied to approved damage charges; the amount held is zero.
 - Damage and repairs are resolved, cleaning is complete and the vehicle has been released.
 
@@ -74,15 +76,17 @@ Returned describes the physical return. Closed records completion of customer fi
 ### Prepare the business once
 
 1. In Configuration → Vehicle Categories and Destinations, create the categories and destinations you actually serve.
-2. In Configuration → Pricing Rules, enter daily rates, duration bands, validity dates and the deposit ratio and dirty-return cleaning fee. A manager must click Approve Rate. Draft example rates cannot confirm bookings.
+2. In Configuration → Pricing Rules, enter daily rates, duration bands, validity dates and the deposit ratio. A manager must click Approve Rate. Draft example rates cannot confirm bookings.
 3. In Fleet → Vehicles, add the registration, category, photo, odometer and compliance documents/expiry dates. Use the number plate as Fleet ID; registration fills automatically. Activate the completed vehicle. Only real registered vehicles appear in dashboard totals.
-4. In Configuration → Settings, configure rental/damage income accounts, the deposit liability account, maintenance expense account, sales journal, bank/cash journal and rental service product. Configure sales tax if applicable and check the company's accounting currency and customer receivable account.
+4. In Configuration → Settings, configure rental/damage income accounts, the deposit liability and unpaid-deposit clearing liability accounts, maintenance expense account, sales journal, bank/cash journal, and rental, security-deposit, delivery, off-site collection, cleaning and late-return products. The deposit product must be untaxed; give the charge products their appropriate sales taxes if required. Configure sales tax if applicable and check the company's accounting currency and customer receivable account.
 5. Add approved agreement terms. Decide whether full rental payment, valid compliance documents and a working tracker are required at pickup, and set the late-return grace period.
 6. Assign users the appropriate rental roles. Buttons and financial menus depend on permissions.
 
 Deposit calculation: agreed daily rate × deposit ratio. It is calculated from one daily rate, separately from the rental total. The pricing screen shows the Pula deposit amount, defaulting to the full daily rate, with a 50% minimum. For example, a daily rate of 500 and a ratio of 1 require a 500 deposit, even for a three-day rental. These numbers are illustrative.
 
-## 1. Welcome and Book
+The following sections describe the manual reservation and rental forms, which remain available for existing and legacy records. For new bookings, use the **Guided booking** workflow above.
+
+## Legacy workflow: Welcome and Book
 
 ### 1. Register or find the customer
 
@@ -118,7 +122,7 @@ In the rental's Payments tab, click Collect Deposit, check the amount and click 
 
 In Agreement, review the terms, verify the automatically filled customer name, capture the signature and click Acknowledge Agreement. Use Print Agreement for the agreement document.
 
-Click Pickup Inspection. Record the actual inspection time, inspector, odometer, fuel, exterior/interior/tyres/accessories and existing damage. Attach photos, verify the automatically filled customer name and capture the signature. Save and click Complete Inspection.
+Click Pickup Inspection. Record the actual inspection time, inspector, odometer and fuel. Tick the accessories present in the vehicle, then confirm that you checked the list. Record any existing damage. Attach photos, verify the automatically filled customer name and capture the signature. Save and click Complete Inspection.
 
 ### 7. Start the rental
 
@@ -128,7 +132,7 @@ Return to the rental and click Start Rental. Pickup requires a confirmed reserva
 
 ### 8. Inspect the returned car
 
-Open the ongoing rental and click Return Inspection. Confirm the odometer reading (pre-filled from Fleet), actual return time, fuel and condition; compare with the pickup inspection. Attach return photos and obtain the customer's acknowledgement and signature. Describe any new damage and complete the inspection. The rental automatically calculates distance travelled from pickup and return mileage.
+Open the ongoing rental and click Return Inspection. Confirm the odometer reading (pre-filled from Fleet), actual return time and fuel. Compare the accessory checklist with pickup; missing items are automatically recorded as a damage assessment. Tick the accessories present at return, confirm that you checked the list, and record any other new damage. Attach return photos and obtain the customer's acknowledgement and signature, then complete the inspection. The rental automatically calculates distance travelled from pickup and return mileage.
 
 Click Return Vehicle on the rental. Return mileage cannot be lower than pickup mileage. The rental becomes Returned; the vehicle moves into inspection or damage handling. Late charges are calculated using the actual return time and the configured grace period.
 
@@ -136,7 +140,7 @@ Click Return Vehicle on the rental. Return mileage cannot be lower than pickup m
 
 For a late return, use Create / Open Late Return Invoice in the rental's Payments tab and post the invoice. New damage creates an assessment under Fleet → Damage Assessments. A manager reviews the evidence/cost and clicks Approve Charge. Finance creates and posts the Damage Invoice.
 
-For an existing confirmed booking without a cleaning fee, a manager can configure/approve the linked rule and use Refresh Cleaning Fee before the agreement is signed or the car is handed over. A dirty return automatically creates a draft cleaning invoice using the fee captured from the booking pricing rule. Post it, then use Apply Deposit to Cleaning in Payments; any fee above the deposit remains payable. Finance can use Apply Deposit on the approved damage case to settle its posted invoice, up to the deposit held and the invoice's outstanding balance. If damage exceeds the deposit, collect the remaining amount against that damage invoice using its standard accounting payment workflow. Settle late invoices through their standard invoice payment workflow too. Record Payment on the rental is for the base rental invoice.
+Legacy rentals retain their existing separate cleaning, late-return and damage invoices and deposit-application actions. New guided rentals capture cleaning and late-return charges in the return popup and include them with approved damage in one settlement invoice. Finance can use Apply Deposit on legacy approved damage cases to settle their posted invoice, up to the deposit held and the invoice's outstanding balance. Collect any remaining legacy charge through its standard accounting payment workflow.
 
 ### 10. Refund and reconcile
 
