@@ -96,6 +96,8 @@ class TestDigitalContract(RentalTestCommon):
                     type(contract), '_finish',
                     side_effect=ValidationError(
                         'Configure rental income accounts and the sales journal in Car Rental Settings first.'),
+                ), patch(
+                    'odoo.addons.car_rental_management_odoo.models.digital_contract._logger.exception'
                 ):
                     renter._submit(self.particulars(), PNG_SIGNATURE)
 
