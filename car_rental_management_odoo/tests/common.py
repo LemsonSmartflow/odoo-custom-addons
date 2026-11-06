@@ -81,12 +81,14 @@ class RentalTestCommon(TransactionCase):
         for index, (label, kind) in enumerate([
             ('Receivable', 'asset_receivable'), ('Payable', 'liability_payable'),
             ('Rental income', 'income'), ('Deposits', 'liability_current'),
+            ('Unpaid deposits', 'liability_current'),
             ('Bank', 'asset_cash'), ('Maintenance', 'expense')]):
-            accounts[kind] = cls.env['account.account'].create({
+            account = cls.env['account.account'].create({
                 'name': 'Rental test ' + label, 'code': 'CRT%03d' % index,
                 'account_type': kind, 'company_ids': [(6, 0, cls.company.ids)],
                 'reconcile': kind in ('asset_receivable', 'liability_payable'),
             })
+            accounts['pending_liability' if label == 'Unpaid deposits' else kind] = account
         bank = cls.env['account.journal'].create({
             'name': 'Rental test bank', 'code': 'CRTB', 'type': 'bank',
             'company_id': cls.company.id, 'default_account_id': accounts['asset_cash'].id})
@@ -94,13 +96,25 @@ class RentalTestCommon(TransactionCase):
         sales = cls.env['account.journal'].create({
             'name': 'Rental test sales', 'code': 'CRTS', 'type': 'sale',
             'company_id': cls.company.id, 'default_account_id': accounts['income'].id})
+        deposit_product = cls.env['product.product'].create({
+            'name': 'Rental test security deposit',
+            'type': 'service',
+            'company_id': cls.company.id,
+            'taxes_id': [(5, 0, 0)],
+        })
         cls.company.write({
             'cr_cash_journal_id': bank.id, 'cr_sales_journal_id': sales.id,
             'cr_income_account_id': accounts['income'].id,
             'cr_damage_account_id': accounts['income'].id,
             'cr_deposit_account_id': accounts['liability_current'].id,
+            'cr_deposit_pending_account_id': accounts['pending_liability'].id,
             'cr_expense_account_id': accounts['expense'].id,
             'cr_rental_product_id': cls.env.ref('car_rental_management_odoo.rental_service_product').id,
+            'cr_deposit_product_id': deposit_product.id,
+            'cr_delivery_product_id': cls.env.ref('car_rental_management_odoo.rental_delivery_product').id,
+            'cr_collection_product_id': cls.env.ref('car_rental_management_odoo.rental_collection_product').id,
+            'cr_cleaning_product_id': cls.env.ref('car_rental_management_odoo.rental_cleaning_product').id,
+            'cr_late_product_id': cls.env.ref('car_rental_management_odoo.rental_late_product').id,
             'cr_tax_id': False,
         })
 
@@ -140,6 +154,10 @@ class RentalTestCommon(TransactionCase):
             'rental_license_expiry': fields.Date.today() + timedelta(days=365 * 2),
             'phone': '0810000000',
             'email': 'renter@example.com',
+            'rental_next_of_kin_name': 'Test Next of Kin',
+            'rental_next_of_kin_relationship': 'Sibling',
+            'rental_next_of_kin_phone': '0811111111',
+            'rental_next_of_kin_email': 'kin@example.com',
             'rental_enabled': True,
             'property_account_receivable_id': self.receivable_account.id,
             'rental_omang_document_ids': [(6, 0, [self._attachment('omang.png').id])],
@@ -172,13 +190,12 @@ class RentalTestCommon(TransactionCase):
             'name': name or self._unique('Destination'), 'company_id': self.company.id})
 
     def _make_rate_rule(self, category, zone, daily_rate=100.0, deposit_ratio=1.0,
-                        cleaning_fee=0.0, min_days=1, max_days=0, approve=True):
+                        min_days=1, max_days=0, approve=True):
         rule = self.env['car.rental.rate.rule'].create({
             'name': self._unique('Rate'), 'company_id': self.company.id,
             'category_id': category.id, 'destination_id': zone.id,
             'min_days': min_days, 'max_days': max_days,
-            'daily_rate': daily_rate, 'deposit_ratio': deposit_ratio,
-            'cleaning_fee': cleaning_fee,
+            'daily_rate': daily_rate,             'deposit_ratio': deposit_ratio,
         })
         if approve:
             rule.action_approve()
@@ -190,8 +207,8 @@ class RentalTestCommon(TransactionCase):
         vehicle = vehicle or self._make_vehicle()
         zone = zone or self._make_zone()
         category = category or vehicle.rental_category_id
-        self._make_rate_rule(category, zone, cleaning_fee=overrides.pop('cleaning_fee', 0.0),
-                             daily_rate=overrides.pop('daily_rate', 100.0),
+        legacy_cleaning_fee = overrides.pop('cleaning_fee', 0.0)
+        self._make_rate_rule(category, zone, daily_rate=overrides.pop('daily_rate', 100.0),
                              deposit_ratio=overrides.pop('deposit_ratio', 1.0))
         start = start or (fields.Datetime.now() + timedelta(days=1)).replace(
             hour=8, minute=0, second=0, microsecond=0)
@@ -206,6 +223,11 @@ class RentalTestCommon(TransactionCase):
         }
         values.update(overrides)
         reservation = self.env['car.rental.reservation'].create(values)
+        if legacy_cleaning_fee:
+            self.env.cr.execute(
+                'UPDATE car_rental_reservation SET cleaning_fee = %s WHERE id = %s',
+                [legacy_cleaning_fee, reservation.id])
+            reservation.invalidate_recordset(['cleaning_fee'])
         if confirm:
             reservation.action_confirm()
         return reservation
@@ -220,13 +242,12 @@ class RentalTestCommon(TransactionCase):
             'kind': 'pickup',
             'mileage': mileage if mileage is not None else rental.vehicle_id.odometer,
             'fuel_level': 'full',
-            'exterior': 'Clean',
-            'interior': 'Clean',
-            'tyres': 'Good',
-            'accessories': 'Spare wheel',
+            'accessory_ids': [(6, 0, [self.env.ref(
+                'car_rental_management_odoo.accessory_spare_wheel').id])],
+            'accessories_checked': True,
             'signature': PNG_SIGNATURE,
             'acknowledged_by': rental.partner_id.display_name,
-            'clean': 'yes',
+            'clean': True,
             'photo_ids': [(6, 0, [self._attachment('pickup.png').id])],
         }
         values.update(overrides)
@@ -240,13 +261,12 @@ class RentalTestCommon(TransactionCase):
             'kind': 'return',
             'mileage': mileage if mileage is not None else rental.initial_mileage + 250,
             'fuel_level': 'half',
-            'exterior': 'Clean',
-            'interior': 'Clean',
-            'tyres': 'Good',
-            'accessories': 'Spare wheel',
+            'accessory_ids': [(6, 0, [self.env.ref(
+                'car_rental_management_odoo.accessory_spare_wheel').id])],
+            'accessories_checked': True,
             'signature': PNG_SIGNATURE,
             'acknowledged_by': rental.partner_id.display_name,
-            'clean': 'yes',
+            'clean': True,
             'photo_ids': [(6, 0, [self._attachment('return.png').id])],
         }
         values.update(overrides)

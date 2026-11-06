@@ -99,18 +99,18 @@ class TestBusinessRules(RentalTestCommon):
         self.assertEqual(reservation.expected_return_datetime, start + timedelta(days=2))
 
         journey = self.env['car.rental.journey'].create({
-            'pickup_datetime': start,
-            'number_of_days': 4,
+            'booking_pickup_datetime': start,
+            'booking_number_of_days': 4,
         })
-        self.assertEqual(journey.expected_return_datetime, start + timedelta(days=4))
-        journey.write({'number_of_days': 1})
-        self.assertEqual(journey.expected_return_datetime, start + timedelta(days=1))
+        self.assertEqual(journey.booking_return_datetime, start + timedelta(days=4))
+        journey.write({'booking_number_of_days': 1})
+        self.assertEqual(journey.booking_return_datetime, start + timedelta(days=1))
 
-        journey = self.env['car.rental.journey'].create({'details_started': True})
+        journey = self.env['car.rental.journey'].create({})
         with Form(journey) as form:
-            form.pickup_datetime = start
-            form.number_of_days = 4
-            self.assertEqual(form.expected_return_datetime, start + timedelta(days=4))
+            form.booking_pickup_datetime = start
+            form.booking_number_of_days = 4
+            self.assertEqual(form.booking_return_datetime, start + timedelta(days=4))
 
     def test_adjacent_hour_allocations_same_day(self):
         start = datetime.combine(fields.Date.today() + timedelta(days=10), datetime.min.time()).replace(hour=10)
@@ -163,6 +163,9 @@ class TestBusinessRules(RentalTestCommon):
             'rental_driving_license': '12345678901234',
             'rental_license_issue_date': today.replace(year=today.year - 3),
             'rental_license_expiry': today.replace(year=today.year + 2),
+            'rental_next_of_kin_name': 'Test Kin',
+            'rental_next_of_kin_relationship': 'Sibling',
+            'rental_next_of_kin_phone': '0811111111',
             'rental_enabled': True,
             'rental_omang_document_ids': [(6, 0, [self._attachment('eligibility-omang.png').id])],
             'rental_license_document_ids': [(6, 0, [self._attachment('eligibility-licence.png').id])],
@@ -198,6 +201,9 @@ class TestBusinessRules(RentalTestCommon):
                 'rental_driving_license': '12345678901234',
                 'rental_license_issue_date': today.replace(year=today.year - 3),
                 'rental_license_expiry': today.replace(year=today.year + 2),
+                'rental_next_of_kin_name': 'Test Kin',
+                'rental_next_of_kin_relationship': 'Sibling',
+                'rental_next_of_kin_phone': '0811111111',
                 'rental_enabled': True,
             })
 
@@ -214,6 +220,9 @@ class TestBusinessRules(RentalTestCommon):
             'rental_driving_license': '12345678901234',
             'rental_license_issue_date': today.replace(year=today.year - 3),
             'rental_license_expiry': today.replace(year=today.year + 2),
+            'rental_next_of_kin_name': 'Test Kin',
+            'rental_next_of_kin_relationship': 'Sibling',
+            'rental_next_of_kin_phone': '0811111111',
             'rental_passport_document_ids': [(6, 0, [self._attachment('passport.png').id])],
             'rental_license_document_ids': [(6, 0, [self._attachment('licence.png').id])],
             'rental_enabled': True,
@@ -260,20 +269,15 @@ class TestBusinessRules(RentalTestCommon):
             'kind': 'pickup',
             'mileage': rental.vehicle_id.odometer,
             'fuel_level': 'full',
-            'exterior': 'Good',
-            'interior': 'Good',
-            'tyres': 'Good',
-            'accessories': 'Good',
+            'accessory_ids': [(6, 0, [self.env.ref(
+                'car_rental_management_odoo.accessory_spare_wheel').id])],
+            'accessories_checked': True,
         })
         self.assertEqual(check.acknowledged_by, rental.partner_id.display_name)
 
     def test_dirty_return_invoice_and_deposit_settlement(self):
-        reservation = self._make_reservation(confirm=False, days=2)
-        rule = reservation.pricing_rule_id
-        rule.action_draft()
-        rule.cleaning_fee = 30
-        rule.action_approve()
-        reservation.action_reprice()
+        reservation = self._make_reservation(
+            confirm=False, days=2, cleaning_fee=30)
         reservation.action_confirm()
         rental = self._make_rental(reservation)
         self._complete_pickup_inspection(rental)
@@ -281,7 +285,7 @@ class TestBusinessRules(RentalTestCommon):
         self._collect_deposit(rental)
         rental.vehicle_id._refresh_reserved_status()
         rental.action_start_rental()
-        check = self._complete_return_inspection(rental, clean='no', fuel_level='bar_3')
+        check = self._complete_return_inspection(rental, clean=False, fuel_level='bar_3')
         rental.action_return_vehicle()
         invoice = rental.invoice_ids.filtered(lambda m: m.rental_invoice_kind == 'cleaning')
         self.assertEqual(len(invoice), 1)
@@ -327,16 +331,7 @@ class TestBusinessRules(RentalTestCommon):
         self.assertIn(dashboard, self.env['car.rental.dashboard'].search([('company_id', 'in', self.env.company.ids)]))
         self.assertFalse(self.env['car.rental.dashboard'].search([('company_id', '=', 0)]))
 
-    def test_existing_booking_cleaning_fee_can_be_set_before_signature(self):
+    def test_cleaning_fee_is_not_part_of_pricing_rules(self):
         reservation = self._make_reservation(confirm=True)
-        rule = reservation.pricing_rule_id
-        rule.action_draft()
-        rule.cleaning_fee = 40
-        rule.action_approve()
-        reservation.action_refresh_cleaning_fee()
-        self.assertEqual(reservation.cleaning_fee, 40)
-        rental = self._make_rental(reservation)
-        rental.write({'agreement_signature': PNG_SIGNATURE})
-        rental.action_sign_agreement()
-        with self.assertRaisesRegex(ValidationError, 'before signing'), self.cr.savepoint():
-            reservation.action_refresh_cleaning_fee()
+        self.assertNotIn('cleaning_fee', reservation.pricing_rule_id._fields)
+        self.assertEqual(reservation.cleaning_fee, 0)

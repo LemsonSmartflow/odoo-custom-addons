@@ -32,11 +32,11 @@ class TestReservationWorkflow(RentalTestCommon):
 
     def test_pricing_is_derived_from_the_approved_rule(self):
         reservation = self._make_reservation(
-            days=2, daily_rate=120.0, deposit_ratio=0.5, cleaning_fee=30.0)
+            days=2, daily_rate=120.0, deposit_ratio=0.5)
         self.assertTrue(reservation.pricing_rule_id)
         self.assertEqual(reservation.quoted_daily_rate, 120.0)
         self.assertEqual(reservation.deposit_required, 60.0)
-        self.assertEqual(reservation.cleaning_fee, 30.0)
+        self.assertEqual(reservation.cleaning_fee, 0)
         self.assertEqual(reservation.number_of_days, 2)
         self.assertEqual(reservation.amount_untaxed, 240.0)
 
@@ -142,6 +142,8 @@ class TestRentalWorkflow(RentalTestCommon):
         with self.assertRaises(ValidationError):
             self._complete_pickup_inspection(
                 rental, signature=False, acknowledged_by=False, photo_ids=[(6, 0, [])])
+        with self.assertRaisesRegex(ValidationError, 'Accessories Checklist Confirmation'):
+            self._complete_pickup_inspection(rental, accessories_checked=False)
         pickup_mileage = rental.vehicle_id.odometer + 25
         self._complete_pickup_inspection(rental, mileage=pickup_mileage, user=self.user_agent)
         self.assertTrue(rental.pickup_inspection_done)
@@ -149,6 +151,27 @@ class TestRentalWorkflow(RentalTestCommon):
         self.assertEqual(rental.vehicle_id.odometer, pickup_mileage)
         self.assertTrue(self.env['fleet.vehicle.odometer'].search_count([
             ('vehicle_id', '=', rental.vehicle_id.id), ('value', '=', pickup_mileage)]))
+
+    def test_return_inspection_flags_accessories_missing_since_pickup(self):
+        rental = self._make_rental(self._make_reservation())
+        spare_wheel = self.env.ref('car_rental_management_odoo.accessory_spare_wheel')
+        jack = self.env.ref('car_rental_management_odoo.accessory_jack')
+        self._complete_pickup_inspection(
+            rental, accessory_ids=[(6, 0, [spare_wheel.id, jack.id])])
+        self._sign_agreement(rental)
+        self._collect_deposit(rental)
+        rental.vehicle_id._refresh_reserved_status()
+        rental.action_start_rental()
+
+        returned = self._complete_return_inspection(
+            rental, accessory_ids=[(6, 0, [spare_wheel.id])])
+
+        self.assertEqual(returned.missing_accessory_ids, jack)
+        self.assertTrue(returned.new_damage)
+        self.assertIn('Accessories missing since pickup: Vehicle jack.', returned.damage_notes)
+        damage = rental.damage_ids.filtered(lambda case: case.inspection_id == returned)
+        self.assertEqual(len(damage), 1)
+        self.assertEqual(damage.name, returned.damage_notes)
 
     def test_pickup_inspection_mileage_cannot_trail_odometer(self):
         rental = self._make_rental(self._make_reservation())
@@ -208,6 +231,64 @@ class TestRentalWorkflow(RentalTestCommon):
         self.assertEqual(vehicle.rental_next_service_mileage, 17500)
         vehicle._operational_update({'odometer': 17000})
         self.assertTrue(vehicle.rental_service_due)
+
+    def test_return_reminders_are_scheduled_before_and_after_due_date(self):
+        tomorrow = (fields.Datetime.now() + timedelta(days=1)).replace(
+            hour=12, minute=0, second=0, microsecond=0)
+        due_tomorrow = self._make_reservation(
+            days=2, start=tomorrow - timedelta(days=2))
+        due_tomorrow_rental = self._ready_to_handover(due_tomorrow)
+        due_tomorrow_rental.action_start_rental()
+
+        overdue = fields.Datetime.now() - timedelta(days=1)
+        overdue_reservation = self._make_reservation(
+            days=3, start=overdue - timedelta(days=3))
+        overdue_rental = self._ready_to_handover(overdue_reservation)
+        overdue_rental.action_start_rental()
+
+        Vehicles = self.env['fleet.vehicle']
+        Vehicles._cron_rental_reminders()
+        Vehicles._cron_rental_reminders()
+
+        due_activities = due_tomorrow_rental.activity_ids.filtered(
+            lambda activity: activity.summary == 'Vehicle return due tomorrow')
+        self.assertEqual(len(due_activities), 1)
+        self.assertEqual(due_activities.date_deadline, fields.Date.today())
+        self.assertFalse(due_tomorrow_rental.activity_ids.filtered(
+            lambda activity: activity.summary == 'Overdue vehicle return'))
+
+        overdue_activities = overdue_rental.activity_ids.filtered(
+            lambda activity: activity.summary == 'Overdue vehicle return')
+        self.assertEqual(len(overdue_activities), 1)
+
+    def test_handover_reminder_is_scheduled_once_within_four_hours(self):
+        now = fields.Datetime.now()
+        later_today = now + timedelta(hours=4, minutes=5)
+        outside_reservation = self._make_reservation(
+            start=later_today, days=1)
+        outside_rental = self._make_rental(outside_reservation)
+
+        vehicles = self.env['fleet.vehicle']
+        vehicles._cron_rental_handover_reminders()
+        self.assertFalse(outside_rental.activity_ids.filtered(
+            lambda activity: activity.summary == 'Vehicle handover in 4 hours'))
+
+        upcoming_reservation = self._make_reservation(
+            start=now + timedelta(hours=3, minutes=55), days=1)
+        upcoming_rental = self._make_rental(upcoming_reservation)
+        vehicles._cron_rental_handover_reminders()
+        vehicles._cron_rental_handover_reminders()
+
+        reminder = upcoming_rental.activity_ids.filtered(
+            lambda activity: activity.summary == 'Vehicle handover in 4 hours')
+        self.assertEqual(len(reminder), 1)
+        self.assertEqual(reminder.user_id, upcoming_rental.responsible_id)
+        self.assertTrue(upcoming_rental.handover_reminder_sent)
+
+        dashboard = self.env.ref('car_rental_management_odoo.car_rental_dashboard_record')
+        dashboard.invalidate_recordset()
+        self.assertIn(upcoming_rental, dashboard.upcoming_handover_ids)
+        self.assertNotIn(outside_rental, dashboard.upcoming_handover_ids)
 
     def test_return_inspection_mileage_cannot_trail_pickup(self):
         rental = self._ready_to_handover()

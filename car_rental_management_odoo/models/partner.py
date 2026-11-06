@@ -10,6 +10,18 @@ class Partner(models.Model):
     _inherit = 'res.partner'
 
     rental_postal_address = fields.Text(string='Rental Postal Address')
+    rental_next_of_kin_name = fields.Char(
+        string='Next of Kin Full Name',
+        groups='car_rental_management_odoo.group_car_rental_agent')
+    rental_next_of_kin_relationship = fields.Char(
+        string='Next of Kin Relationship',
+        groups='car_rental_management_odoo.group_car_rental_agent')
+    rental_next_of_kin_phone = fields.Char(
+        string='Next of Kin Phone',
+        groups='car_rental_management_odoo.group_car_rental_agent')
+    rental_next_of_kin_email = fields.Char(
+        string='Next of Kin Email',
+        groups='car_rental_management_odoo.group_car_rental_agent')
     rental_enabled = fields.Boolean(string='Enable Rentals for This Company', groups='car_rental_management_odoo.group_car_rental_agent', copy=False)
     rental_identity_type = fields.Selection(
         [('omang', 'Omang'), ('passport', 'Passport')],
@@ -178,8 +190,10 @@ class Partner(models.Model):
         local_pickup = fields.Datetime.context_timestamp(self, pickup).date()
         local_return = fields.Datetime.context_timestamp(self, return_time).date()
         if not all([self.street, self.rental_postal_address, self.rental_date_of_birth,
-                    self.rental_license_issue_date, self.rental_driving_license, self.rental_license_expiry]):
-            raise ValidationError(_('Complete the contact address, rental postal address, date of birth and licence details before booking.'))
+                    self.rental_license_issue_date, self.rental_driving_license,
+                    self.rental_license_expiry, self.rental_next_of_kin_name,
+                    self.rental_next_of_kin_relationship, self.rental_next_of_kin_phone]):
+            raise ValidationError(_('Complete the contact address, rental postal address, date of birth, licence and next-of-kin details before booking.'))
         birthday = self.rental_date_of_birth
         age = local_pickup.year - birthday.year - ((local_pickup.month, local_pickup.day) < (birthday.month, birthday.day))
         if age < 21:
@@ -197,6 +211,8 @@ class Partner(models.Model):
         'rental_enabled', 'street', 'rental_postal_address', 'rental_identity_type',
         'rental_cin', 'rental_passport_number', 'rental_date_of_birth',
         'rental_driving_license', 'rental_license_issue_date', 'rental_license_expiry',
+        'rental_next_of_kin_name', 'rental_next_of_kin_relationship',
+        'rental_next_of_kin_phone', 'rental_next_of_kin_email',
         'rental_omang_document_ids', 'rental_passport_document_ids',
         'rental_license_document_ids')
     def _check_rental_enabled(self):
@@ -209,13 +225,15 @@ class Partner(models.Model):
         if not self.street or not self.rental_postal_address:
             raise ValidationError(_('Enter the physical street address and rental postal address on the Contact before booking.'))
         required = ('rental_cin', 'rental_date_of_birth', 'rental_driving_license',
-                    'rental_license_issue_date', 'rental_license_expiry')
+                    'rental_license_issue_date', 'rental_license_expiry',
+                    'rental_next_of_kin_name', 'rental_next_of_kin_relationship',
+                    'rental_next_of_kin_phone')
         identity_number = (
             self.rental_cin if self.rental_identity_type == 'omang'
             else self.rental_passport_number
         )
         if not identity_number or any(not self[f] for f in required[1:]):
-            raise ValidationError(_('Complete the ID number, date of birth, licence number, issue date and expiry on the Contact.'))
+            raise ValidationError(_('Complete the ID number, date of birth, licence, next-of-kin name, relationship and phone on the Contact.'))
         if self.rental_identity_type == 'omang' and self.rental_passport_number:
             raise ValidationError(_('Clear the passport number when Omang is selected.'))
         if self.rental_identity_type == 'passport' and self.rental_cin:

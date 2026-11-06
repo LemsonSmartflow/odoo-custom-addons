@@ -1,0 +1,42 @@
+<odoo>
+    <record id="accessory_spare_wheel" model="car.rental.accessory">
+        <field name="name">Spare wheel</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="accessory_jack" model="car.rental.accessory">
+        <field name="name">Vehicle jack</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="accessory_wheel_spanner" model="car.rental.accessory">
+        <field name="name">Wheel spanner</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="accessory_warning_triangle" model="car.rental.accessory">
+        <field name="name">Warning triangle</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="accessory_reflective_vest" model="car.rental.accessory">
+        <field name="name">Reflective vest</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="accessory_first_aid_kit" model="car.rental.accessory">
+        <field name="name">First-aid kit</field>
+        <field name="sequence">60</field>
+    </record>
+    <record id="accessory_fire_extinguisher" model="car.rental.accessory">
+        <field name="name">Fire extinguisher</field>
+        <field name="sequence">70</field>
+    </record>
+    <record id="accessory_tool_kit" model="car.rental.accessory">
+        <field name="name">Tool kit</field>
+        <field name="sequence">80</field>
+    </record>
+    <record id="accessory_floor_mats" model="car.rental.accessory">
+        <field name="name">Floor mats</field>
+        <field name="sequence">90</field>
+    </record>
+    <record id="accessory_wheel_lock_key" model="car.rental.accessory">
+        <field name="name">Wheel-lock key (if fitted)</field>
+        <field name="sequence">100</field>
+    </record>
+</odoo>

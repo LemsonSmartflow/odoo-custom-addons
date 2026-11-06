@@ -36,7 +36,7 @@
                             <div>
                                 <span class="o_car_rental_eyebrow">CUSTOMER ELIGIBILITY</span>
                                 <h2>Rental profile</h2>
-                                <p>Complete the customer's identity, licence and supporting documents. Details are checked as you enter them.</p>
+                                <p>Complete the customer's identity, licence, next-of-kin details and supporting documents before booking.</p>
                             </div>
                             <div class="o_car_rental_toggle">
                                 <span>Enable rental bookings</span>
@@ -61,6 +61,12 @@
                                 <field name="rental_driving_license" placeholder="6–20 letters or digits" required="rental_enabled"/>
                                 <field name="rental_license_issue_date" required="rental_enabled" widget="rental_full_date"/>
                                 <field name="rental_license_expiry" required="rental_enabled" widget="rental_full_date"/>
+                            </group>
+                            <group string="Next of kin" class="o_car_rental_customer_card">
+                                <field name="rental_next_of_kin_name" required="rental_enabled"/>
+                                <field name="rental_next_of_kin_relationship" required="rental_enabled"/>
+                                <field name="rental_next_of_kin_phone" required="rental_enabled"/>
+                                <field name="rental_next_of_kin_email"/>
                             </group>
                         </group>
                         <div class="o_car_rental_underage_notice" role="alert" invisible="not rental_enabled or not rental_is_underage">
@@ -155,7 +161,15 @@
                 <field name="category_id"/>
                 <field name="rental_status"/>
                 <field name="create_date"/>
+                <filter name="rental_available_now" string="Available Now"
+                        domain="[('rental_status', '=', 'available')]"/>
+                <filter name="rental_ready_to_reserve" string="Ready to Reserve"
+                        domain="[('rental_status', 'in', ['available', 'reserved'])]"/>
                 <group><filter name="rental_group_category" string="Vehicle Category" context="{'group_by': 'category_id'}"/><filter name="rental_group_status" string="Rental Status" context="{'group_by': 'rental_status'}"/><filter name="rental_group_created" string="Created Month" context="{'group_by': 'create_date:month'}"/></group>
+                <searchpanel>
+                    <field name="category_id" string="Vehicle Category"/>
+                    <field name="rental_status" string="Availability" select="multi"/>
+                </searchpanel>
             </xpath>
         </field>
     </record>

@@ -22,6 +22,8 @@ class Dashboard(models.Model):
     period_start = fields.Date(default=lambda self: fields.Date.today().replace(day=1), required=True)
     period_end = fields.Date(default=fields.Date.today, required=True)
     vehicle_ids = fields.Many2many('fleet.vehicle', compute='_compute_dashboard')
+    upcoming_handover_ids = fields.Many2many(
+        'car.rental.rental', compute='_compute_dashboard')
 
     @api.depends_context('company')
     def _compute_company(self):
@@ -63,6 +65,18 @@ class Dashboard(models.Model):
             dashboard.damage_recovery = sum(invoices.filtered(lambda m: m.rental_invoice_kind == 'damage').mapped('amount_untaxed_signed'))
             requests = self.env['maintenance.request'].sudo().search(domain + [('rental_vehicle_id', '!=', False)])
             dashboard.maintenance_costs = sum(requests.mapped('rental_cost'))
+            handover_window_start = fields.Datetime.now()
+            handover_deadline = handover_window_start + timedelta(hours=4)
+            dashboard.upcoming_handover_ids = self.env['car.rental.rental'].search(
+                domain + [
+                    ('status', '=', 'draft'),
+                    ('reservation_id.status', '=', 'confirmed'),
+                    ('scheduled_pickup_datetime', '>', handover_window_start),
+                    ('scheduled_pickup_datetime', '<=', handover_deadline),
+                ],
+                order='scheduled_pickup_datetime, id',
+                limit=10,
+            )
             start, end = dashboard.period_start, dashboard.period_end
             eligible = vehicles.filtered(lambda v: v.rental_status not in ('setup', 'decommissioned'))
             days = max((end - start).days + 1, 0) if start and end else 0

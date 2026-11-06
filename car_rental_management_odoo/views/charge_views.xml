@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="access_quote_charge_wizard" model="ir.model.access">
+        <field name="name">Booking staff quote charge wizard</field>
+        <field name="model_id" ref="model_car_rental_quote_charge_wizard"/>
+        <field name="group_id" ref="group_car_rental_agent"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="access_return_charge_wizard" model="ir.model.access">
+        <field name="name">Booking staff return charge wizard</field>
+        <field name="model_id" ref="model_car_rental_return_charge_wizard"/>
+        <field name="group_id" ref="group_car_rental_agent"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <record id="quote_charge_wizard_form" model="ir.ui.view">
+        <field name="name">booking.quote.charge.wizard.form</field>
+        <field name="model">car.rental.quote.charge.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Customer Delivery" class="o_car_rental_form">
+                <sheet>
+                    <field name="journey_id" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="delivery_service" invisible="1"/>
+                    <group string="Customer delivery" invisible="not delivery_service">
+                        <field name="delivery_address" invisible="not delivery_service"
+                               required="delivery_service"/>
+                        <field name="delivery_fee" widget="monetary"
+                               invisible="not delivery_service" required="delivery_service"/>
+                    </group>
+                    <div class="text-muted">
+                        Enter the delivery location and adjust the suggested product price if needed.
+                        The delivery service will be listed on the quotation.
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_confirm" type="object" string="Save and Continue to Quote"
+                            class="btn-primary"/>
+                    <button special="cancel" string="Cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="return_charge_wizard_form" model="ir.ui.view">
+        <field name="name">rental.return.charge.wizard.form</field>
+        <field name="model">car.rental.return.charge.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Confirm Return Charges" class="o_car_rental_form">
+                <sheet>
+                    <field name="rental_id" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <group string="Late return">
+                        <field name="late_days"/>
+                        <field name="late_unit_price" widget="monetary"
+                               invisible="late_days == 0"
+                               required="late_days &gt; 0"/>
+                        <field name="late_charge" widget="monetary"
+                               invisible="late_days == 0" readonly="1"/>
+                    </group>
+                    <group string="Vehicle cleaning">
+                        <field name="cleaning_required"/>
+                        <field name="cleaning_charge" widget="monetary"
+                               invisible="not cleaning_required"
+                               required="cleaning_required"/>
+                    </group>
+                    <group string="Vehicle collection">
+                        <field name="collection_service"/>
+                        <field name="collection_address" invisible="not collection_service"
+                               required="collection_service"/>
+                        <field name="collection_fee" widget="monetary"
+                               invisible="not collection_service" required="collection_service"/>
+                    </group>
+                    <div class="text-muted">
+                        Confirmed late, cleaning and vehicle-collection charges will appear as products on the final settlement invoice.
+                        The available security deposit is applied to that invoice first.
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_confirm" type="object" string="Confirm Charges and Return"
+                            class="btn-primary"/>
+                    <button special="cancel" string="Cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="rental_settings_charge_products" model="ir.ui.view">
+        <field name="name">car.rental.settings.charge.products</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="rental_settings_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='cr_deposit_product_id']" position="after">
+                <field name="cr_delivery_product_id"/>
+                <field name="cr_collection_product_id"/>
+                <field name="cr_cleaning_product_id"/>
+                <field name="cr_late_product_id"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="reservation_quote_services" model="ir.ui.view">
+        <field name="name">rental.reservation.quote.services</field>
+        <field name="model">car.rental.reservation</field>
+        <field name="inherit_id" ref="reservation_form_proposal"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='deposit_required']" position="after">
+                <field name="quote_service_total" string="Customer Delivery Charges" readonly="1"/>
+                <field name="quote_total" string="Total Including Deposit" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="rental_hide_legacy_charge_actions" model="ir.ui.view">
+        <field name="name">rental.hide.legacy.charge.actions</field>
+        <field name="model">car.rental.rental</field>
+        <field name="inherit_id" ref="rental_form_proposal"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='cleaning_charge']" position="after">
+                <field name="single_invoice_flow" invisible="1"/>
+            </xpath>
+            <xpath expr="//button[@name='action_late_invoice']" position="attributes">
+                <attribute name="invisible">single_invoice_flow or late_charge &lt;= 0</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_cleaning_invoice']" position="attributes">
+                <attribute name="invisible">single_invoice_flow or cleaning_charge &lt;= 0</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_apply_cleaning_deposit']" position="attributes">
+                <attribute name="invisible">single_invoice_flow or cleaning_charge &lt;= 0</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

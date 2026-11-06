@@ -1,107 +1,413 @@
 <odoo>
     <record id="access_booking_journey" model="ir.model.access">
-        <field name="name">Booking staff</field><field name="model_id" ref="model_car_rental_journey"/>
+        <field name="name">Booking staff</field>
+        <field name="model_id" ref="model_car_rental_journey"/>
         <field name="group_id" ref="group_car_rental_agent"/>
-        <field name="perm_read" eval="True"/><field name="perm_write" eval="True"/><field name="perm_create" eval="True"/><field name="perm_unlink" eval="True"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="access_vehicle_preview" model="ir.model.access">
+        <field name="name">Booking staff vehicle photo preview</field>
+        <field name="model_id" ref="model_car_rental_vehicle_preview"/>
+        <field name="group_id" ref="group_car_rental_agent"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="access_vehicle_preview_option" model="ir.model.access">
+        <field name="name">Booking staff vehicle preview choices</field>
+        <field name="model_id" ref="model_car_rental_vehicle_preview_option"/>
+        <field name="group_id" ref="group_car_rental_agent"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
     </record>
     <record id="rule_booking_journey_company" model="ir.rule">
-        <field name="name">Booking company isolation</field><field name="model_id" ref="model_car_rental_journey"/>
+        <field name="name">Booking company isolation</field>
+        <field name="model_id" ref="model_car_rental_journey"/>
         <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
-    <record id="booking_journey_list" model="ir.ui.view">
-        <field name="name">Create a Booking</field><field name="model">car.rental.journey</field>
-        <field name="arch" type="xml"><list class="o_car_rental_list" default_order="create_date desc, id desc"><field name="name"/><field name="partner_id"/><field name="pickup_datetime" string="Pickup Date"/><field name="create_date" string="Created On" optional="show"/><field name="vehicle_id"/><field name="step" string="Booking Stage" widget="badge"/></list></field>
-    </record>
-    <record id="booking_journey_form" model="ir.ui.view">
-        <field name="name">Guided booking</field><field name="model">car.rental.journey</field>
+    <record id="vehicle_photo_preview_form" model="ir.ui.view">
+        <field name="name">Choose a vehicle</field>
+        <field name="model">car.rental.vehicle.preview</field>
         <field name="arch" type="xml">
-            <form string="Create a Booking" class="o_car_rental_form">
-                <header>
-                    <button name="action_back" type="object" string="Back / Review Booking" invisible="step in ['customer', 'closed', 'cancelled']"/>
-                    <button name="action_continue" type="object" string="Continue" class="btn-primary" invisible="step in ['closed', 'cancelled', 'handover', 'settlement']"/>
-                    <button name="action_continue" type="object" string="Hand Over Vehicle" class="btn-primary" invisible="step != 'handover'" confirm="Confirm the keys and vehicle are being handed to the customer?"/>
-                    <button name="action_continue" type="object" string="Close Rental" class="btn-primary" invisible="step != 'settlement'" groups="car_rental_management_odoo.group_rental_accountant"/>
-                    <button name="action_cancel" type="object" string="Cancel Booking" invisible="step in ['return', 'settlement', 'closed', 'cancelled']" confirm="Cancel this booking and release its reservation? Existing records will be retained."/>
-                    <button name="action_end_early" type="object" string="End Rental Early" invisible="step != 'return'"/>
-                    <button name="action_save_exit" type="object" string="Save &amp; Exit"/>
-                    <field name="step" widget="statusbar" options="{'clickable': False}" statusbar_visible="customer,details,quote,confirm,agreement,payment,pickup,handover,return,settlement,closed"/>
-                </header>
+            <form string="Choose a Vehicle" create="0" delete="0"
+                  class="o_car_rental_form o_car_vehicle_picker">
                 <sheet>
-                    <field name="reservation_id" invisible="1"/><field name="rental_id" invisible="1"/><field name="currency_id" invisible="1"/>
-                    <div class="oe_title"><h1><field name="name"/></h1></div>
-                    <div class="alert alert-info"><field name="guidance" nolabel="1"/></div>
-                    <group string="Customer" invisible="step != 'customer'">
-                        <field name="company_id" readonly="reservation_id"/>
-                        <field name="partner_id" domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]" context="{'default_company_id': company_id}" options="{'no_quick_create': True}"/>
-                        <button name="action_customer" type="object" string="Review Customer Documents" invisible="not partner_id"/>
-                    </group>
-                    <group string="Booking details" invisible="step != 'details'">
-                        <field name="destination_id" domain="[('company_id', '=', company_id)]"/>
-                        <field name="category_id"/>
-                        <field name="pickup_datetime"/>
-                        <field name="number_of_days" string="Rental Days (24-hour periods)" required="1"/>
-                        <field name="expected_return_datetime" readonly="1"/>
-                        <field name="vehicle_id" domain="[('company_id', '=', company_id), ('rental_category_id', '=', category_id), ('rental_status', 'in', ['available', 'reserved', 'rented'])]"/>
-                        <div colspan="2" class="text-muted">Leave vehicle empty to allocate an available vehicle automatically. Availability is checked against both pickup and return times.</div>
-                    </group>
-                    <group string="Booking summary" invisible="step in ['customer', 'details']">
-                        <field name="partner_id" readonly="1"/><field name="vehicle_id" readonly="1"/>
-                        <field name="destination_id" readonly="1"/><field name="pickup_datetime" readonly="1"/><field name="expected_return_datetime" readonly="1"/>
-                        <field name="number_of_days" string="24-hour Rental Days" readonly="1"/><field name="amount" string="Hire Total" widget="monetary"/>
-                        <field name="deposit_required" string="Refundable Security Deposit"/>
-                        <field name="customer_deposit_credit" string="Customer Deposit Credit Available"/>
-                        <field name="cleaning_fee" string="One-time Fee if Returned Dirty"/>
-                    </group>
-                    <field name="vehicle_image" widget="image" class="oe_avatar" invisible="not vehicle_id"/>
-                    <group string="Agreement" invisible="step != 'agreement'">
-                        <button name="action_agreement" type="object" string="Prepare / Review Agreement" class="btn-primary"/>
-                        <div colspan="2">Complete the agreement first. After it is signed, return here and click Continue to proceed to payment.</div>
-                    </group>
-                    <group string="Payment and security deposit" invisible="step != 'payment'">
-                        <field name="customer_deposit_credit" string="Prior Deposit Credit Available"/>
-                        <button name="action_invoice" type="object" string="1. Create / Open Rental Invoice" groups="car_rental_management_odoo.group_rental_accountant"/>
-                        <button name="action_payment" type="object" string="2. Record Rental Payment" groups="car_rental_management_odoo.group_rental_accountant"/>
-                        <button name="action_deposit" type="object" string="3. Collect Security Deposit" groups="car_rental_management_odoo.group_rental_accountant"/>
-                        <div colspan="2">Prior refundable deposit credit from the customer's settled returns is shown above and will be applied by default during collection. An accountant can adjust the amount, then post any remaining cash deposit and rental payment. Return here and click Continue to refresh progress.</div>
-                    </group>
-                    <group string="Vehicle inspections" invisible="step not in ['pickup', 'handover', 'return']">
-                        <button name="action_rental" type="object" string="Review Rental"/>
-                        <button name="action_inspection" type="object" string="Open / Complete Inspection"/>
-                    </group>
-                    <group string="Settlement" invisible="step != 'settlement'">
-                        <button name="action_rental" type="object" string="Open Charges, Invoices and Deposit Refund"/>
-                        <div colspan="2">Post applicable late, cleaning and damage invoices. Apply approved deposit deductions, settle outstanding amounts and refund the remainder before closing.</div>
-                    </group>
-                    <group string="Linked records" invisible="not reservation_id">
-                        <button name="action_reservation" type="object" string="Reservation"/>
-                        <button name="action_rental" type="object" string="Rental and Payments" invisible="not rental_id"/>
-                        <button name="action_vehicle" type="object" string="Vehicle / Fleet Follow-up"/>
-                    </group>
-                </sheet><chatter/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="journey_id" invisible="1"/>
+                    <field name="category_id" invisible="1"/>
+                    <field name="vehicle_id" invisible="1"/>
+                    <field name="available_vehicle_ids" invisible="1"/>
+                    <div class="oe_title">
+                        <h2>Choose a Vehicle</h2>
+                    </div>
+                    <div class="o_car_vehicle_current" invisible="not vehicle_id">
+                        <div class="o_car_vehicle_current_photo">
+                            <field name="image" widget="image" options="{'size': [420, 260]}"
+                                   invisible="not image"/>
+                            <field name="image_1920" widget="image" options="{'size': [420, 260]}"
+                                   invisible="image or not image_1920"/>
+                        </div>
+                        <div class="o_car_vehicle_current_details">
+                            <span class="o_car_vehicle_selected_flag">
+                                <i class="fa fa-check-circle" title="Selected"/> Selected vehicle
+                            </span>
+                            <h3><field name="name"/></h3>
+                            <div class="text-muted">
+                                <field name="license_plate"/>
+                                <field name="rental_status" widget="badge"
+                                       decoration-success="rental_status == 'available'"
+                                       decoration-info="rental_status == 'reserved'"/>
+                            </div>
+                            <div class="text-muted" invisible="image or image_1920">
+                                No photo is available for this vehicle.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="o_car_vehicle_current_prompt" invisible="vehicle_id">
+                        <i class="fa fa-car" title="Vehicle"/>
+                        Select a vehicle from the list below to preview it, then confirm your choice.
+                    </div>
+                    <div class="o_horizontal_separator">Available vehicles</div>
+                    <field name="option_ids" nolabel="1" class="o_car_vehicle_choices" readonly="1">
+                        <list create="0" delete="0"
+                              default_order="license_plate, id" decoration-info="selected">
+                            <field name="selected" column_invisible="True"/>
+                            <field name="image" widget="image" options="{'size': [80, 56]}"/>
+                            <field name="name" string="Vehicle"/>
+                            <field name="license_plate" string="Plate"/>
+                            <field name="model_id" string="Model"/>
+                            <field name="category_id" string="Category" optional="hide"/>
+                            <field name="rental_status" string="Availability" widget="badge"/>
+                            <field name="selected_label" string="Choice"/>
+                            <button name="action_select" type="object" string="Select"
+                                    class="btn-primary btn-sm" icon="fa-check"/>
+                        </list>
+                    </field>
+                    <div class="text-muted mt-2">
+                        <i class="fa fa-info-circle" title="Availability"/>
+                        Only vehicles available for this booking period and category are shown.
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_full_picture" type="object" string="Preview Full Picture"
+                            invisible="not vehicle_id or (not image and not image_1920)"/>
+                    <button name="action_select_vehicle" type="object" string="Use This Vehicle"
+                            class="btn-primary" invisible="not vehicle_id"/>
+                    <button special="cancel" string="Close"/>
+                </footer>
             </form>
         </field>
     </record>
-    <record id="action_booking_journeys" model="ir.actions.act_window">
-        <field name="name">Create a Booking</field><field name="res_model">car.rental.journey</field><field name="view_mode">list,form</field>
-        <field name="domain">[('company_id', '=', allowed_company_ids[0])]</field>
-    </record>
-    <record id="booking_journey_search" model="ir.ui.view">
-        <field name="name">Booking workspace search</field><field name="model">car.rental.journey</field>
-        <field name="arch" type="xml"><search string="Search Bookings"><field name="name"/><field name="partner_id"/><field name="vehicle_id"/><field name="pickup_datetime"/><filter name="confirmed" string="Confirmed Reservation" domain="[('reservation_id.status', '=', 'confirmed')]"/><filter name="cancelled" string="Cancelled Reservation" domain="[('reservation_id.status', '=', 'cancelled')]"/><filter name="by_pickup_month" string="Pickup Month" context="{'group_by': 'pickup_datetime:month'}"/><filter name="by_creation_month" string="Created Month" context="{'group_by': 'create_date:month'}"/></search></field>
-    </record>
-    <record id="action_booking_journeys" model="ir.actions.act_window">
-        <field name="search_view_id" ref="booking_journey_search"/>
-    </record>
-    <menuitem id="menu_booking_journeys" name="Create a Booking" parent="menu_rental_bookings" action="action_booking_journeys" sequence="1"/>
-    <record id="reservation_journey_button" model="ir.ui.view">
-        <field name="name">Reservation booking</field><field name="model">car.rental.reservation</field><field name="inherit_id" ref="view_car_rental_reservation_form"/>
-        <field name="priority">100</field><field name="arch" type="xml"><xpath expr="//header" position="inside"><button name="action_booking_journey" type="object" string="Open Booking"/></xpath></field>
-    </record>
-    <record id="rental_journey_button" model="ir.ui.view">
-        <field name="name">Rental booking</field><field name="model">car.rental.rental</field><field name="inherit_id" ref="view_car_rental_rental_form"/>
-        <field name="priority">100</field><field name="arch" type="xml">
-            <xpath expr="//header" position="inside"><button name="action_booking_journey" type="object" string="Open Booking"/></xpath>
-            <xpath expr="//header/field[@name='status']" position="attributes"><attribute name="statusbar_visible">draft,ongoing,returned,closed</attribute></xpath>
+    <record id="booking_journey_list" model="ir.ui.view">
+        <field name="name">Bookings</field>
+        <field name="model">car.rental.journey</field>
+        <field name="arch" type="xml">
+            <list class="o_car_rental_list" default_order="create_date desc, id desc">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="pickup_datetime" string="Pickup Date"/>
+                <field name="create_date" string="Created On" optional="show"/>
+                <field name="vehicle_id"/>
+                <field name="step" string="Booking Stage" widget="badge"/>
+            </list>
         </field>
     </record>
+    <record id="booking_journey_form" model="ir.ui.view">
+        <field name="name">Guided booking</field>
+        <field name="model">car.rental.journey</field>
+        <field name="arch" type="xml">
+            <form string="Booking" class="o_car_rental_form">
+                <header>
+                    <button name="action_back" type="object" string="Back"
+                            invisible="step in ['booking', 'on_hire', 'closed', 'cancelled']"/>
+                    <button name="action_continue" type="object" string="Continue"
+                            class="btn-primary"
+                            invisible="step in ['quote', 'agreement', 'payment', 'on_hire', 'settlement', 'closed', 'cancelled'] or (step == 'pickup' and pickup_inspection_done) or (step == 'return' and rental_status == 'returned')"/>
+                    <button name="action_send_quotation" type="object" string="Send Quotation"
+                            invisible="step != 'quote' or (sales_order_state and sales_order_state not in ['draft', 'sent'])"/>
+                    <button name="action_open_quotation" type="object" string="View in Sales"
+                            groups="sales_team.group_sale_salesman"
+                            invisible="step != 'quote' or not sales_order_id"/>
+                    <button name="action_confirm_quotation" type="object" string="Confirm Quotation"
+                            class="btn-primary"
+                            invisible="step != 'quote' or (sales_order_state and sales_order_state not in ['draft', 'sent'])"/>
+                    <button name="action_confirm_quotation" type="object" string="Continue to Agreement"
+                            class="btn-primary"
+                            invisible="step != 'quote' or sales_order_state not in ['sale', 'done']"/>
+                    <button name="action_continue" type="object" string="Continue to Payment"
+                            class="btn-primary"
+                            invisible="step != 'agreement' or not agreement_signed"/>
+                    <button name="action_continue" type="object" string="Continue to Pickup"
+                            class="btn-primary"
+                            invisible="step != 'payment' or not payment_ready"/>
+                    <button name="action_handover" type="object" string="View Handover Summary"
+                            class="btn-primary"
+                            invisible="step != 'pickup' or rental_status != 'ongoing'"/>
+                    <button name="action_begin_return" type="object" string="Begin Return Process"
+                            class="btn-primary" invisible="step != 'on_hire'"/>
+                    <button name="action_continue" type="object" string="Continue to Settlement"
+                            class="btn-primary"
+                            invisible="step != 'return' or rental_status != 'returned'"/>
+                    <button name="action_handover" type="object" string="Hand Over Vehicle"
+                            class="btn-primary" invisible="step != 'pickup' or not pickup_inspection_done or rental_status != 'draft'"
+                            confirm="Confirm that the customer is receiving the vehicle now?"/>
+                    <button name="action_send_agreement" type="object" string="Send Signing Link to Customer"
+                            class="btn-primary" invisible="step != 'agreement' or agreement_contract_state in ['complete', 'cancelled', 'expired']"/>
+                    <button name="action_renew_expired_agreement" type="object"
+                            string="Renew Expired Signing Link" groups="car_rental_management_odoo.group_rental_manager"
+                            invisible="step != 'agreement' or agreement_contract_state != 'expired'"/>
+                    <button name="action_digital_contract" type="object" string="View Signing Progress"
+                            invisible="step != 'agreement' or agreement_contract_state == 'draft'"/>
+                    <button name="action_collect_payment" type="object" string="Record Payment"
+                            class="btn-primary" groups="car_rental_management_odoo.group_rental_accountant"
+                            invisible="step != 'payment' or payment_ready"/>
+                    <button name="action_continue" type="object" string="Prepare Settlement"
+                            class="btn-primary" groups="car_rental_management_odoo.group_rental_accountant"
+                            invisible="step != 'settlement'"/>
+                    <button name="action_close_rental" type="object" string="Close Rental"
+                            groups="car_rental_management_odoo.group_rental_accountant"
+                            invisible="step != 'settlement'"
+                            confirm="Confirm all settlement requirements are complete and close this rental?"/>
+                    <button name="action_cancel" type="object" string="Cancel Booking"
+                            invisible="step in ['closed', 'cancelled', 'on_hire', 'return', 'settlement']"
+                            confirm="Cancel this booking? Existing financial records will be reversed as required and retained for history."/>
+                    <button name="action_end_early" type="object" string="End Rental Early"
+                            invisible="step != 'return'"/>
+                    <button name="action_save_exit" type="object" string="Save &amp; Exit"/>
+                    <field name="step" widget="statusbar"
+                           statusbar_visible="booking,quote,agreement,payment,pickup,on_hire,return,settlement,closed"/>
+                </header>
+                <sheet>
+                    <field name="reservation_id" invisible="1"/>
+                    <field name="rental_id" invisible="1"/>
+                    <field name="sales_order_id" invisible="1"/>
+                    <field name="sales_order_state" invisible="1"/>
+                    <field name="pickup_inspection_done" invisible="1"/>
+                    <field name="rental_status" invisible="1"/>
+                    <field name="agreement_signed" invisible="1"/>
+                    <field name="payment_ready" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <div class="alert alert-info" role="status"><field name="guidance" nolabel="1"/></div>
+                    <div class="alert alert-success" role="status" invisible="step != 'on_hire'">
+                        <h2>Vehicle handed over successfully</h2>
+                        <p>The rental is now active. This booking will remain here while the customer has the vehicle.
+                            When the vehicle is returned, click <strong>Begin Return Process</strong>.</p>
+                    </div>
+                    <group string="Booking" col="2" class="o_car_rental_step_panel"
+                           invisible="step != 'booking'">
+                        <group string="Customer and destination" col="2">
+                            <field name="company_id"/>
+                            <field name="booking_partner_id" invisible="reservation_id"
+                                   domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]"
+                                   context="{'default_company_id': company_id}"
+                                   options="{'no_quick_create': True}"/>
+                            <field name="partner_id" invisible="not reservation_id"/>
+                            <field name="booking_destination_id" invisible="reservation_id"
+                                   domain="[('company_id', '=', company_id)]"/>
+                            <field name="destination_id" invisible="not reservation_id"/>
+                        </group>
+                        <group string="Vehicle" col="2">
+                            <field name="booking_category_id" invisible="reservation_id"/>
+                            <field name="category_id" invisible="not reservation_id"/>
+                            <field name="booking_vehicle_id" readonly="1" invisible="reservation_id"
+                                   domain="[('company_id', '=', company_id), ('rental_category_id', '=', booking_category_id), ('rental_status', 'in', ['available', 'reserved'])]"/>
+                            <field name="vehicle_id" readonly="1" invisible="not reservation_id"
+                                   domain="[('company_id', '=', company_id), ('rental_category_id', '=', category_id), ('rental_status', 'in', ['available', 'reserved'])]"/>
+                            <button name="action_vehicle_preview" type="object"
+                                    string="Choose Vehicle &amp; Preview"
+                                    invisible="reservation_id"/>
+                            <button name="action_vehicle_preview" type="object"
+                                    string="Choose Vehicle &amp; Preview"
+                                    invisible="not reservation_id or rental_id"/>
+                        </group>
+                        <group string="Rental dates" col="2">
+                            <field name="booking_pickup_datetime" invisible="reservation_id"/>
+                            <field name="pickup_datetime" invisible="not reservation_id"/>
+                            <field name="booking_number_of_days" invisible="reservation_id"/>
+                            <field name="number_of_days" string="Rental Days (24-hour periods)"
+                                   invisible="not reservation_id"/>
+                            <field name="booking_return_datetime" readonly="1" invisible="reservation_id"/>
+                            <field name="expected_return_datetime" readonly="1"
+                                   invisible="not reservation_id"/>
+                        </group>
+                        <group string="Customer delivery" col="2">
+                            <field name="booking_delivery_service"
+                                   readonly="reservation_id and reservation_status != 'draft'"/>
+                            <field name="booking_delivery_address" string="Delivery Address"
+                                   readonly="reservation_id and reservation_status != 'draft'"
+                                   invisible="not booking_delivery_service"
+                                   required="booking_delivery_service"/>
+                            <field name="booking_delivery_fee" string="Delivery Charge"
+                                   widget="monetary"
+                                   readonly="reservation_id and reservation_status != 'draft'"
+                                   invisible="not booking_delivery_service"
+                                   required="booking_delivery_service"/>
+                            <field name="reservation_status" invisible="1"/>
+                            <div class="text-muted" colspan="2">
+                                Enter the delivery address and charge. A suggested product price is filled in when available.
+                            </div>
+                        </group>
+                    </group>
+                    <group string="Quote" col="4" class="o_car_rental_step_panel"
+                           invisible="step != 'quote'">
+                        <group string="Booking details" col="2">
+                            <field name="partner_id" readonly="1"/>
+                            <field name="vehicle_id" readonly="1"/>
+                            <field name="destination_id" readonly="1"/>
+                            <field name="pickup_datetime" readonly="1"/>
+                            <field name="expected_return_datetime" readonly="1"/>
+                            <field name="number_of_days" string="Rental Days (24-hour periods)"
+                                   readonly="1"/>
+                        </group>
+                        <group string="Price summary" col="2">
+                            <field name="amount" string="Hire Total" widget="monetary" readonly="1"/>
+                            <field name="deposit_required" string="Refundable Security Deposit"
+                                   readonly="1"/>
+                            <field name="delivery_address" string="Customer Delivery Address"
+                                   readonly="1" invisible="not delivery_service"/>
+                            <field name="delivery_fee" string="Customer Delivery Charge"
+                                   widget="monetary" readonly="1" invisible="not delivery_service"/>
+                            <field name="customer_deposit_credit" readonly="1"/>
+                            <field name="quote_service_total" string="Customer Delivery Charges"
+                                   readonly="1"/>
+                            <field name="quote_total" string="Total Including Deposit" readonly="1"/>
+                            <div class="text-muted" colspan="2">
+                                This booking and the Sales app use the same quotation. Send or confirm it here; Sales users can open the same record in Sales.
+                            </div>
+                        </group>
+                    </group>
+                    <group string="Agreement" col="4" class="o_car_rental_step_panel"
+                           invisible="step != 'agreement'">
+                        <group string="Customer and signing" col="2">
+                            <field name="rental_id" readonly="1"/>
+                            <button name="action_customer" type="object"
+                                    string="Review Customer Contact" icon="fa-user"/>
+                            <field name="agreement_customer_email" readonly="1"/>
+                            <field name="agreement_contract_state" readonly="1"/>
+                            <field name="agreement_signature_count" string="Signatures Completed"
+                                   readonly="1" invisible="agreement_contract_state == 'draft'"/>
+                            <field name="agreement_signing_url" string="Customer Signing Link"
+                                   widget="url" readonly="1" options="{'website_path': True}"
+                                   invisible="not agreement_signing_url"/>
+                            <field name="agreement_signing_url"
+                                   string="Copy Customer Signing Link"
+                                   widget="CopyClipboardChar" readonly="1"
+                                   invisible="not agreement_signing_url"/>
+                        </group>
+                        <group string="Agreement particulars" col="2">
+                            <field name="agreement_delivery_place"
+                                   readonly="agreement_contract_state != 'draft'"/>
+                            <field name="agreement_payment_advance_days"
+                                   readonly="agreement_contract_state != 'draft'"/>
+                            <field name="agreement_company_email"
+                                   readonly="agreement_contract_state != 'draft'"/>
+                            <field name="agreement_company_representative"
+                                   readonly="agreement_contract_state != 'draft'"/>
+                            <field name="agreement_company_witness_1"
+                                   readonly="agreement_contract_state != 'draft'"/>
+                            <field name="agreement_company_witness_2"
+                                   readonly="agreement_contract_state != 'draft'"/>
+                            <field name="agreement_renter_witness_1"
+                                   readonly="agreement_contract_state != 'draft'"/>
+                            <field name="agreement_renter_witness_2"
+                                   readonly="agreement_contract_state != 'draft'"/>
+                        </group>
+                        <div class="text-muted" colspan="2">
+                            Customer identity, contact and next-of-kin details come from the Contact profile and are snapshotted when the agreement is issued. Review the Contact before sending; signing asks the renter only for their place of signing. Vehicle, dates, destination, hire and deposit details come from this booking.
+                            Enter any additional signers required by your company; representative and witness names
+                            are optional. Sending emails the renter's private link, and each additional named signer
+                            receives a separate private link in signing progress.
+                        </div>
+                    </group>
+                    <group string="Payment" col="4" class="o_car_rental_step_panel"
+                           invisible="step != 'payment'">
+                        <group string="Payment readiness">
+                            <field name="customer_deposit_credit" readonly="1"/>
+                        </group>
+                        <group string="Rental invoice">
+                            <field name="rental_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Pickup" class="o_car_rental_step_panel"
+                           invisible="step != 'pickup'">
+                        <field name="rental_id" readonly="1"/>
+                    </group>
+                    <group string="Handover Summary" col="4" class="o_car_rental_step_panel"
+                           invisible="step != 'on_hire'">
+                        <field name="partner_id" readonly="1"/>
+                        <field name="vehicle_id" readonly="1"/>
+                        <field name="pickup_datetime" readonly="1"/>
+                        <field name="expected_return_datetime" readonly="1"/>
+                        <field name="rental_id" readonly="1"/>
+                    </group>
+                    <group string="Return" col="4" class="o_car_rental_step_panel"
+                           invisible="step != 'return'">
+                        <group string="Vehicle being returned">
+                            <field name="rental_id" readonly="1"/>
+                        </group>
+                        <group string="Off-site collection">
+                            <field name="return_collection_service"
+                                   string="Collect the vehicle from another location"
+                                   readonly="return_charges_confirmed or rental_status != 'ongoing'"/>
+                            <field name="return_collection_address"
+                                   string="Vehicle Collection Address"
+                                   readonly="1" invisible="not return_collection_service"/>
+                            <field name="return_collection_fee"
+                                   string="Vehicle Collection Charge"
+                                   widget="monetary" readonly="1"
+                                   invisible="not return_collection_service"/>
+                        </group>
+                        <field name="return_charges_confirmed" invisible="1"/>
+                    </group>
+                    <group string="Settlement" class="o_car_rental_step_panel"
+                           invisible="step != 'settlement'">
+                        <field name="rental_id" readonly="1"/>
+                        <button name="action_approve_damage" type="object" string="Approve Damage"
+                                groups="car_rental_management_odoo.group_rental_manager"
+                                invisible="step != 'settlement'"/>
+                    </group>
+                    <group string="Linked records" invisible="not reservation_id">
+                        <button name="action_vehicle" type="object" string="Vehicle / Fleet Follow-up"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="booking_journey_search" model="ir.ui.view">
+        <field name="name">Booking workspace search</field>
+        <field name="model">car.rental.journey</field>
+        <field name="arch" type="xml">
+            <search string="Search Bookings">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="vehicle_id"/>
+                <field name="pickup_datetime"/>
+                <filter name="confirmed" string="Confirmed Reservation"
+                        domain="[('reservation_id.status', '=', 'confirmed')]"/>
+                <filter name="cancelled" string="Cancelled Reservation"
+                        domain="[('step', '=', 'cancelled')]"/>
+                <filter name="by_pickup_month" string="Pickup Month"
+                        context="{'group_by': 'pickup_datetime:month'}"/>
+                <filter name="by_creation_month" string="Created Month"
+                        context="{'group_by': 'create_date:month'}"/>
+            </search>
+        </field>
+    </record>
+    <record id="action_booking_journeys" model="ir.actions.act_window">
+        <field name="name">Bookings</field>
+        <field name="res_model">car.rental.journey</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="booking_journey_search"/>
+        <field name="domain">[('company_id', '=', allowed_company_ids[0])]</field>
+    </record>
+    <menuitem id="menu_booking_journeys" name="Bookings"
+              parent="menu_rental_bookings" action="action_booking_journeys" sequence="1"/>
 </odoo>

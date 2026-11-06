@@ -40,6 +40,9 @@ class TestNativeScreens(RentalTestCommon):
             'rental_driving_license': '12345678901234',
             'rental_license_issue_date': fields.Date.today() - timedelta(days=365 * 3),
             'rental_license_expiry': fields.Date.today() + timedelta(days=365 * 2),
+            'rental_next_of_kin_name': 'Native Customer Kin',
+            'rental_next_of_kin_relationship': 'Sibling',
+            'rental_next_of_kin_phone': '0811111111',
             'rental_omang_document_ids': [(6, 0, [self._attachment('native-omang.png').id])],
             'rental_license_document_ids': [(6, 0, [self._attachment('native-licence.png').id])],
         })
@@ -112,6 +115,30 @@ class TestNativeScreens(RentalTestCommon):
             self.assertEqual(
                 self.env.ref('car_rental_management_odoo.' + menu).action.res_model, model)
 
+    def test_booking_and_inspection_forms_are_sectioned(self):
+        booking_arch = ElementTree.fromstring(
+            self.env['car.rental.journey'].get_view(view_type='form')['arch'])
+        booking_panel = booking_arch.find(".//group[@string='Booking']")
+        self.assertIsNotNone(booking_panel)
+        self.assertEqual(booking_panel.get('col'), '2')
+        self.assertIn('o_car_rental_step_panel', booking_panel.get('class', ''))
+        self.assertIsNotNone(booking_panel.find("./group[@string='Customer and destination']"))
+        self.assertIsNotNone(booking_panel.find("./group[@string='Rental dates']"))
+        self.assertIsNotNone(booking_arch.find(".//group[@string='Handover Summary']"))
+
+        inspection_arch = ElementTree.fromstring(
+            self.env['car.rental.check'].get_view(view_type='form')['arch'])
+        self.assertIsNotNone(inspection_arch.find(
+            ".//group[@class='o_car_rental_inspection_summary']"))
+        confirmation = inspection_arch.find(
+            ".//div[@class='o_car_rental_accessory_confirmation']/field"
+            "[@name='accessories_checked']")
+        self.assertIsNotNone(confirmation)
+        confirmation_label = inspection_arch.find(
+            ".//div[@class='o_car_rental_accessory_confirmation']/label"
+            "[@for='accessories_checked']")
+        self.assertIsNotNone(confirmation_label)
+
     def test_customer_and_vehicle_lists_expose_date_and_type_sorting(self):
         contact_list = self.env['res.partner'].get_view(view_type='list')['arch']
         fleet_list = self.env['fleet.vehicle'].get_view(view_type='list')['arch']
@@ -131,12 +158,32 @@ class TestNativeScreens(RentalTestCommon):
         self.assertIn('default_order="create_date desc, id desc"', fleet_list)
         self.assertIn('rental_group_category', fleet_search)
         self.assertIn('rental_group_status', fleet_search)
+        fleet_search_arch = ElementTree.fromstring(fleet_search)
+        vehicle_searchpanel = fleet_search_arch.find(".//searchpanel")
+        self.assertIsNotNone(vehicle_searchpanel)
+        self.assertIsNotNone(vehicle_searchpanel.find("./field[@name='category_id']"))
+        self.assertEqual(
+            vehicle_searchpanel.find("./field[@name='rental_status']").get('select'),
+            'multi')
+        self.assertIsNotNone(fleet_search_arch.find(
+            ".//filter[@name='rental_available_now']"))
+        self.assertIsNotNone(fleet_search_arch.find(
+            ".//filter[@name='rental_ready_to_reserve']"))
         self.assertRegex(fleet_form, r'<field name="state_id"[^>]*invisible="(?:1|True)"')
         self.assertIn('default_order="request_date desc, id desc"', maintenance_list)
         self.assertIn('rental_vehicle_id', maintenance_list)
         self.assertIn('rental_group_vehicle', maintenance_search)
         self.assertIn('rental_group_request_month', maintenance_search)
         self.assertIn('default_order="create_date desc, id desc"', dashboard_form)
+        dashboard_arch = ElementTree.fromstring(dashboard_form)
+        handovers = dashboard_arch.find(
+            ".//group[@string='Handovers in the next 4 hours']"
+            "/field[@name='upcoming_handover_ids']/list")
+        self.assertIsNotNone(handovers)
+        self.assertIsNotNone(handovers.find("./field[@name='scheduled_pickup_datetime']"))
+        self.assertIsNotNone(handovers.find("./field[@name='partner_id']"))
+        self.assertIsNotNone(handovers.find("./field[@name='vehicle_id']"))
+        self.assertIsNotNone(handovers.find("./field[@name='handover_reminder_sent']"))
         self.assertIn('Created On', dashboard_form)
         self.assertIn("Require the vehicle's road licence at pickup", settings_form)
         self.assertIn("not the customer's driving licence", settings_form)
@@ -189,6 +236,9 @@ class TestNativeScreens(RentalTestCommon):
             form.rental_driving_license = '12345678901234'
             form.rental_license_issue_date = fields.Date.today() - timedelta(days=365 * 3)
             form.rental_license_expiry = fields.Date.today() + timedelta(days=365 * 2)
+            form.rental_next_of_kin_name = 'Form Customer Kin'
+            form.rental_next_of_kin_relationship = 'Sibling'
+            form.rental_next_of_kin_phone = '0811111111'
             form.rental_omang_document_ids.add(self._attachment('form-omang.png'))
             form.rental_license_document_ids.add(self._attachment('form-licence.png'))
         self.assertTrue(form.record.rental_enabled)
@@ -220,6 +270,9 @@ class TestNativeScreens(RentalTestCommon):
         customer.rental_driving_license = '12345678901234'
         customer.rental_license_issue_date = today - timedelta(days=365 * 3)
         customer.rental_license_expiry = today + timedelta(days=365 * 2)
+        customer.rental_next_of_kin_name = 'Missing Docs Kin'
+        customer.rental_next_of_kin_relationship = 'Sibling'
+        customer.rental_next_of_kin_phone = '0811111111'
         with self.assertRaisesRegex(ValidationError, 'Upload the selected Omang or passport document'):
             customer.save()
 
@@ -235,6 +288,9 @@ class TestNativeScreens(RentalTestCommon):
         underage.rental_driving_license = '98765432101234'
         underage.rental_license_issue_date = fields.Date.today() - timedelta(days=365 * 3)
         underage.rental_license_expiry = fields.Date.today() + timedelta(days=365 * 2)
+        underage.rental_next_of_kin_name = 'Underage Kin'
+        underage.rental_next_of_kin_relationship = 'Sibling'
+        underage.rental_next_of_kin_phone = '0811111111'
         underage.rental_omang_document_ids.add(self._attachment('underage-omang.png'))
         underage.rental_license_document_ids.add(self._attachment('underage-licence.png'))
         with self.assertRaisesRegex(ValidationError, '21'):

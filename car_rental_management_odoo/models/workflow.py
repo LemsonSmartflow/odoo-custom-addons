@@ -83,6 +83,13 @@ class Reservation(models.Model):
         return window('Rentals', 'car.rental.rental', [('reservation_id', '=', self.id)],
                       {'default_reservation_id': self.id})
 
+    def unlink(self):
+        if any(self.mapped('rental_ids')):
+            raise ValidationError(
+                'This reservation has linked rental history and cannot be deleted. '
+                'Cancel the booking to release the vehicle, then create a new booking to start over.')
+        return super().unlink()
+
     def write(self, vals):
         protected = {'partner_id', 'vehicle_id', 'start_date', 'end_date', 'status'}
         cancellation = vals == {'status': 'cancelled'} and all(r.status == 'cancelled' for r in self.mapped('rental_ids'))
@@ -97,29 +104,40 @@ class Rental(models.Model):
     vehicle_image = fields.Image(related='vehicle_id.rental_image', readonly=True)
     payment_ids = fields.One2many('account.payment', 'car_rental_id', string='Payments')
     payment_count = fields.Integer(compute='_compute_payment_totals', store=True)
-    paid_total = fields.Float(string='Total Paid', compute='_compute_payment_totals', store=True)
-    balance_due = fields.Float(string='Balance Due', compute='_compute_payment_totals', store=True)
+    paid_total = fields.Monetary(string='Total Paid', compute='_compute_payment_totals', store=True)
+    balance_due = fields.Monetary(string='Balance Due', compute='_compute_payment_totals', store=True)
     payment_status = fields.Selection([
         ('unpaid', 'Unpaid'), ('partial', 'Partially Paid'), ('paid', 'Paid'),
     ], compute='_compute_payment_totals', store=True, string='Payment Status')
 
     @api.depends('amount', 'currency_id', 'payment_ids.amount', 'payment_ids.state', 'payment_ids.rental_legacy', 'payment_ids.move_id.reversal_move_ids.state',
-                 'invoice_ids.state', 'invoice_ids.rental_invoice_kind', 'invoice_ids.move_type', 'invoice_ids.amount_total', 'invoice_ids.amount_residual')
+                 'invoice_ids.state', 'invoice_ids.rental_invoice_kind', 'invoice_ids.move_type',
+                 'invoice_ids.amount_total', 'invoice_ids.amount_residual',
+                 'invoice_ids.invoice_line_ids.rental_deposit_line', 'invoice_ids.invoice_line_ids.price_total',
+                 'reservation_id.deposit_required', 'reservation_id.quote_service_total')
     def _compute_payment_totals(self):
         for record in self:
             paid = sum(record.payment_ids.filtered(lambda p: p.rental_legacy or (p.state == 'paid' and not p.move_id.reversal_move_ids.filtered(lambda m: m.state == 'posted'))).mapped('amount'))
             invoices = record.invoice_ids.filtered(lambda m: m.state == 'posted' and m.move_type == 'out_invoice' and m.rental_invoice_kind == 'rental')
             if invoices:
-                # Both rental receipts and standard invoice payments reconcile the
-                # same receivable: use its settlement once, without double counting.
                 paid = sum(m.amount_total - m.amount_residual for m in invoices)
             record.payment_count = len(record.payment_ids)
             record.paid_total = paid
             currency = record.currency_id or self.env.company.currency_id
-            record.balance_due = currency.round(max(record.amount - paid, 0.0))
+            deposit_line_total = sum(
+                line.price_total
+                for move in invoices
+                for line in move.invoice_line_ids.filtered('rental_deposit_line')
+            )
+            deposit_paid = min(deposit_line_total, paid)
+            hire_paid = paid - deposit_paid if deposit_line_total else paid
+            charge_total = record.reservation_id.quote_service_total
+            record.balance_due = currency.round(
+                max(record.amount + charge_total - hire_paid, 0.0))
+            hire_paid = max(min(hire_paid, record.amount), 0.0)
             record.payment_status = (
-                'paid' if float_compare(paid, record.amount, precision_digits=2) >= 0
-                else 'unpaid' if float_is_zero(paid, precision_digits=2) else 'partial'
+                'paid' if float_compare(hire_paid, record.amount, precision_rounding=currency.rounding) >= 0
+                else 'unpaid' if float_is_zero(hire_paid, precision_rounding=currency.rounding) else 'partial'
             )
 
     @api.model_create_multi

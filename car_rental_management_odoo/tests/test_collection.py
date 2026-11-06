@@ -23,6 +23,15 @@ class TestCollection(RentalTestCommon):
         return self._make_rental(self._make_reservation(partner=partner, **reservation_values))
 
     # ── tests ───────────────────────────────────────────────────────────────
+    def test_collection_wizard_computes_invoice_flow_during_form_load(self):
+        rental = self._open_rental()
+        rental._ensure_sale_order(include_deposit=True)
+
+        wizard = self.env['car.rental.collection'].with_context(
+            default_rental_id=rental.id).new({'rental_id': rental.id})
+
+        self.assertTrue(wizard.single_invoice)
+
     def test_full_collection_invoice_deposit_and_idempotence(self):
         rental = self._open_rental()
         wizard = self._collection(rental, rental.amount + rental.deposit_required)

@@ -14,7 +14,7 @@ class DigitalContract(http.Controller):
         if not signer or not token or not secrets.compare_digest(signer.token or '', token):
             raise NotFound()
         contract = signer.contract_id
-        if contract.state == 'cancelled' or not contract.expires_on or contract.expires_on < fields.Datetime.now():
+        if contract.state == 'cancelled' or not contract.expires_on or contract.expires_on <= fields.Datetime.now():
             raise NotFound()
         return signer
 
@@ -40,7 +40,8 @@ class DigitalContract(http.Controller):
         import json
         values = contract._prefill()
         if error and signer.role == 'renter':
-            values.update({key: str(post.get(key, values.get(key, '')))[:2000] for key, label in CUSTOMER_FIELDS})
+            values['signed_at_place'] = str(
+                post.get('signed_at_place', values.get('signed_at_place', '')))[:2000]
         response = request.render('car_rental_management_odoo.digital_contract_page', {
             'signer': signer, 'contract': contract, 'token': token, 'error': error,
             'customer_fields': CUSTOMER_FIELDS, 'values': values,

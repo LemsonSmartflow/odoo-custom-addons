@@ -17,8 +17,11 @@ class Rental(models.Model):
     responsible_id = fields.Many2one('res.users', default=lambda self: self.env.user)
     destination_id = fields.Many2one(related='reservation_id.destination_id', store=True)
     expected_return_datetime = fields.Datetime(related='reservation_id.expected_return_datetime')
+    scheduled_pickup_datetime = fields.Datetime(
+        related='reservation_id.pickup_datetime', string='Scheduled Handover', store=True)
     actual_pickup_datetime = fields.Datetime(readonly=True, copy=False)
     actual_return_datetime = fields.Datetime(readonly=True, copy=False)
+    handover_reminder_sent = fields.Boolean(readonly=True, copy=False)
     distance_travelled = fields.Float(string='Distance Travelled (km)', compute='_compute_distance_travelled', store=True)
     inspection_ids = fields.One2many('car.rental.check', 'rental_id')
     pickup_inspection_done = fields.Boolean(compute='_compute_inspections')
@@ -32,6 +35,12 @@ class Rental(models.Model):
     document_ids = fields.Many2many('ir.attachment', string='Rental Documents')
     late_days = fields.Integer(readonly=True, copy=False)
     late_charge = fields.Monetary(readonly=True, copy=False)
+    late_unit_price = fields.Monetary(readonly=True, copy=False)
+    return_charges_confirmed = fields.Boolean(readonly=True, copy=False)
+    return_collection_service = fields.Boolean(
+        string='Collect the vehicle from another location', copy=False)
+    return_collection_address = fields.Char(readonly=True, copy=False)
+    return_collection_fee = fields.Monetary(readonly=True, copy=False)
 
     @api.depends('initial_mileage', 'final_mileage')
     def _compute_distance_travelled(self):
@@ -68,11 +77,45 @@ class Rental(models.Model):
                 raise ValidationError('Add approved terms, the customer name and customer signature first.')
             super(Rental, rental).write({'agreement_state': 'signed', 'agreement_signed_on': fields.Datetime.now()})
             rental.message_post(body='Agreement acknowledged by %s.' % rental.agreement_signed_by)
+            rental.sudo()._on_agreement_signed()
+            journey = self.env['car.rental.journey'].sudo().search(
+                [('reservation_id', '=', rental.reservation_id.id)], limit=1)
+            if journey:
+                return journey.action_open()
+
+    def _on_agreement_signed(self):
+        for rental in self:
+            rental = rental.sudo()
+            if rental._uses_single_invoice():
+                if rental.sale_order_id and rental.sale_order_id.state in ('draft', 'sent'):
+                    rental.sale_order_id.action_confirm()
+                action = rental.action_invoice()
+                invoice = self.env['account.move'].sudo().browse(action.get('res_id')).exists()
+                if invoice and invoice.state == 'draft':
+                    invoice.action_post()
+            journey = self.env['car.rental.journey'].sudo().search(
+                [('reservation_id', '=', rental.reservation_id.id)], limit=1)
+            if journey and journey.step == 'agreement':
+                journey._advance_to('payment')
+
+    def _workflow_write(self, vals):
+        for rental in self:
+            self.env.cr.execute(
+                'SELECT id FROM car_rental_rental WHERE id = %s FOR UPDATE', [rental.id])
+            super(Rental, rental).write(vals)
+        return True
 
     def write(self, vals):
         if {'status', 'agreement_state', 'agreement_signed_on', 'actual_pickup_datetime', 'actual_return_datetime',
-                'initial_mileage', 'final_mileage', 'late_days', 'late_charge'}.intersection(vals):
+                'initial_mileage', 'final_mileage', 'late_days', 'late_charge',
+                'late_unit_price', 'handover_reminder_sent',
+                'return_charges_confirmed', 'return_collection_address',
+                'return_collection_fee'}.intersection(vals):
             raise ValidationError('Use the handover, return, inspection or agreement actions to update workflow fields.')
+        if 'return_collection_service' in vals and any(
+                rental.status != 'ongoing' or rental.return_charges_confirmed
+                for rental in self):
+            raise ValidationError('Vehicle collection can only be selected before return charges are confirmed.')
         if {'agreement_terms', 'agreement_signature', 'agreement_signed_by'}.intersection(vals) and any(r.agreement_state == 'signed' for r in self):
             raise ValidationError('An acknowledged agreement is immutable.')
         return super().write(vals)
@@ -80,8 +123,10 @@ class Rental(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('status', 'draft') != 'draft' or vals.get('agreement_state', 'draft') != 'draft' or any(vals.get(k) for k in ['agreement_signed_on', 'actual_pickup_datetime', 'actual_return_datetime', 'late_charge']):
+            if vals.get('status', 'draft') != 'draft' or vals.get('agreement_state', 'draft') != 'draft' or any(vals.get(k) for k in ['agreement_signed_on', 'actual_pickup_datetime', 'actual_return_datetime', 'late_charge', 'late_unit_price', 'return_charges_confirmed', 'handover_reminder_sent']):
                 raise ValidationError('Create a draft rental and complete the handover workflow.')
+            if vals.get('return_collection_service') or vals.get('return_collection_address') or vals.get('return_collection_fee'):
+                raise ValidationError('Select vehicle collection during the return workflow.')
             if 'agreement_terms' not in vals:
                 company = self.env['car.rental.reservation'].browse(vals.get('reservation_id')).company_id or self.env.company
                 vals['agreement_terms'] = company.rental_agreement_terms
@@ -98,11 +143,23 @@ class Rental(models.Model):
                 continue
             if rental.status != 'draft':
                 raise ValidationError('The vehicle has already been handed over. Use End Rental Early, complete its return inspection, then settle and close the rental.')
-            if rental.sudo().invoice_ids.filtered(lambda m: m.state != 'cancel') or rental.sudo().payment_ids or rental.sudo().deposit_transaction_ids:
-                raise ValidationError('This booking has financial records. Have Finance settle or cancel its invoices and deposits before cancellation; recorded payments must be retained.')
+            if rental._uses_single_invoice():
+                if (
+                    rental.sudo().invoice_ids.filtered(lambda move: move.state != 'cancel')
+                    or rental.sudo().payment_ids
+                    or rental.sudo().deposit_transfer_in_ids.filtered(
+                        lambda event: event.kind == 'transfer' and event.state == 'posted')
+                ):
+                    require_role(self.env, 'group_rental_accountant')
+                rental.sudo()._cancel_single_invoice_booking()
+            elif rental.sudo().invoice_ids.filtered(lambda m: m.state != 'cancel') or rental.sudo().payment_ids or rental.sudo().deposit_transaction_ids:
+                raise ValidationError('This legacy booking has financial records. Have Finance settle or cancel them before cancellation.')
             if rental.sale_order_id and rental.sale_order_id.state != 'cancel':
-                raise ValidationError('Cancel the linked sales quotation/order in Sales first.')
-            super(Rental, rental).write({'status': 'cancelled'})
+                rental.sale_order_id.sudo().with_context(
+                    skip_rental_booking_cancel=True).action_cancel()
+            rental._workflow_write({'status': 'cancelled'})
+            if rental.reservation_id.status != 'cancelled':
+                rental.reservation_id.with_context(skip_rental_cancel=True).action_cancel()
             rental.message_post(body='Booking cancelled before vehicle handover. Agreement and inspection history retained.')
 
     def action_start_rental(self):
@@ -131,17 +188,76 @@ class Rental(models.Model):
             inspection = rental.inspection_ids.filtered(lambda c: c.kind == 'return' and c.state == 'done')[:1]
             if inspection.mileage < rental.initial_mileage:
                 raise ValidationError('Return mileage cannot be below pickup mileage.')
-            delay = (inspection.checked_on - rental.expected_return_datetime).total_seconds() / 3600 if rental.expected_return_datetime else 0
-            late_days = ceil(max(delay - rental.company_id.rental_late_grace_hours, 0) / 24)
-            super(Rental, rental).write({'status': 'returned', 'final_mileage': inspection.mileage, 'actual_return_datetime': inspection.checked_on, 'late_days': late_days, 'late_charge': late_days * rental.reservation_id.quoted_daily_rate})
+            return_charges = rental._return_charge_details()
+            late_charge = (
+                rental.late_charge
+                if rental._uses_single_invoice() and rental.return_charges_confirmed
+                else return_charges['late_days'] * rental.reservation_id.quoted_daily_rate
+            )
+            late_unit_price = (
+                rental.late_unit_price
+                if rental._uses_single_invoice() and rental.return_charges_confirmed
+                else rental.reservation_id.quoted_daily_rate
+            )
+            super(Rental, rental).write({
+                'status': 'returned',
+                'final_mileage': inspection.mileage,
+                'actual_return_datetime': inspection.checked_on,
+                'late_days': return_charges['late_days'],
+                'late_charge': late_charge,
+                'late_unit_price': late_unit_price,
+            })
             rental.vehicle_id._operational_update({'odometer': inspection.mileage, 'rental_status': 'damaged' if inspection.new_damage else 'inspection'})
+
+    def _return_charge_details(self):
+        self.ensure_one()
+        inspection = self.inspection_ids.filtered(
+            lambda check: check.kind == 'return' and check.state == 'done')[:1]
+        if not inspection:
+            raise ValidationError('Complete the return inspection before calculating return charges.')
+        delay = (
+            (inspection.checked_on - self.expected_return_datetime).total_seconds() / 3600
+            if self.expected_return_datetime else 0
+        )
+        late_days = ceil(max(delay - self.company_id.rental_late_grace_hours, 0) / 24)
+        pickup = self.inspection_ids.filtered(
+            lambda check: check.kind == 'pickup' and check.state == 'done')[:1]
+        return {
+            'late_days': late_days,
+            'cleaning_required': bool(pickup and pickup.clean and not inspection.clean),
+        }
 
     def _schedule_once(self, activity, summary, user, deadline):
         if not self.activity_ids.filtered(lambda a: a.activity_type_id == activity and a.summary == summary):
             self.activity_schedule('mail.mail_activity_data_todo', summary=summary, user_id=(user or self.env.user).id, date_deadline=deadline)
 
+    def _schedule_handover_reminder(self):
+        activity = self.env.ref('mail.mail_activity_data_todo')
+        for rental in self:
+            if rental.handover_reminder_sent:
+                continue
+            user = rental.responsible_id or self.env.user
+            rental._schedule_once(
+                activity, 'Vehicle handover in 4 hours',
+                user, fields.Date.today())
+            user._bus_send('simple_notification', {
+                'type': 'info',
+                'title': 'Upcoming vehicle handover',
+                'message': '%s is scheduled for handover within four hours.' % rental.display_name,
+            })
+            super(Rental, rental).write({'handover_reminder_sent': True})
+
     def action_print_agreement(self):
         return self.env.ref('car_rental_management_odoo.report_rental_agreement').report_action(self)
+
+
+class VehicleAccessory(models.Model):
+    _name = 'car.rental.accessory'
+    _description = 'Vehicle Inspection Accessory'
+    _order = 'sequence, id'
+
+    name = fields.Char(required=True)
+    sequence = fields.Integer(default=10)
 
 
 class Inspection(models.Model):
@@ -159,10 +275,14 @@ class Inspection(models.Model):
     inspector_id = fields.Many2one('res.users', default=lambda self: self.env.user, required=True)
     mileage = fields.Float(required=True)
     fuel_level = fields.Selection([('empty', 'Empty'), ('quarter', 'Quarter'), ('half', 'Half'), ('three_quarters', 'Three quarters'), ('full', 'Full')], required=True)
-    exterior = fields.Text(string='Exterior Condition', required=True)
-    interior = fields.Text(string='Interior Condition', required=True)
-    tyres = fields.Text(string='Tyre Condition', required=True)
-    accessories = fields.Text(string='Equipment / Accessories', required=True)
+    exterior = fields.Text(help='Legacy inspection note retained for existing records.')
+    interior = fields.Text(help='Legacy inspection note retained for existing records.')
+    tyres = fields.Text(help='Legacy inspection note retained for existing records.')
+    accessories = fields.Text(string='Legacy Accessory Notes')
+    accessory_ids = fields.Many2many(
+        'car.rental.accessory', 'car_rental_check_accessory_rel',
+        'check_id', 'accessory_id', string='Accessories Present')
+    accessories_checked = fields.Boolean(string='I checked the accessories above')
     existing_damage = fields.Text(string='Existing Damage')
     new_damage = fields.Boolean(string='New Damage Identified')
     damage_notes = fields.Text()
@@ -173,9 +293,18 @@ class Inspection(models.Model):
     state = fields.Selection([('draft', 'Draft'), ('done', 'Completed')], default='draft', readonly=True, tracking=True)
     pickup_check_id = fields.Many2one('car.rental.check', compute='_compute_pickup', store=True)
     pickup_fuel = fields.Selection(related='pickup_check_id.fuel_level')
-    pickup_exterior = fields.Text(related='pickup_check_id.exterior')
-    pickup_interior = fields.Text(related='pickup_check_id.interior')
+    pickup_accessory_ids = fields.Many2many(related='pickup_check_id.accessory_ids')
+    missing_accessory_ids = fields.Many2many(
+        'car.rental.accessory', compute='_compute_missing_accessories')
     pickup_existing_damage = fields.Text(related='pickup_check_id.existing_damage')
+
+    @api.depends('accessory_ids', 'pickup_check_id.accessory_ids', 'kind')
+    def _compute_missing_accessories(self):
+        for check in self:
+            pickup = check.pickup_check_id
+            check.missing_accessory_ids = (
+                pickup.accessory_ids - check.accessory_ids
+                if check.kind == 'return' and pickup else self.env['car.rental.accessory'])
 
     @api.depends('rental_id.inspection_ids.state', 'kind')
     def _compute_pickup(self):
@@ -189,14 +318,14 @@ class Inspection(models.Model):
             if check.kind == 'pickup' and check.rental_id.status != 'draft' or check.kind == 'return' and check.rental_id.status != 'ongoing':
                 raise ValidationError('Inspection type does not match the rental stage.')
             required = [
-                ('fuel_level', 'Fuel Level'), ('exterior', 'Exterior'),
-                ('interior', 'Interior'), ('tyres', 'Tyres'),
-                ('accessories', 'Accessories'), ('signature', 'Customer Signature'),
+                ('fuel_level', 'Fuel Level'), ('signature', 'Customer Signature'),
                 ('acknowledged_by', 'Acknowledged By (customer name)'),
                 ('photo_ids', 'Inspection Photographs'),
             ]
             missing = [label for field, label in required if not check[field] or
                        (isinstance(check[field], str) and not check[field].strip())]
+            if not check.accessories_checked:
+                missing.append('Accessories Checklist Confirmation')
             if missing:
                 raise ValidationError('Complete these inspection fields: %s.' % ', '.join(missing))
             minimum = check.vehicle_id.odometer if check.kind == 'pickup' else check.rental_id.initial_mileage
@@ -206,9 +335,22 @@ class Inspection(models.Model):
                 raise ValidationError('Inspection time cannot be in the future.')
             if self.search_count([('id', '!=', check.id), ('rental_id', '=', check.rental_id.id), ('kind', '=', check.kind), ('state', '=', 'done')]):
                 raise ValidationError('A completed inspection of this type already exists for the rental.')
-            if check.new_damage and not check.damage_notes:
+            damage_notes = (check.damage_notes or '').strip()
+            new_damage = check.new_damage
+            missing_accessories = check.missing_accessory_ids if check.kind == 'return' else self.env['car.rental.accessory']
+            if missing_accessories:
+                missing_note = 'Accessories missing since pickup: %s.' % ', '.join(
+                    missing_accessories.mapped('name'))
+                damage_notes = '\n'.join(filter(None, (damage_notes, missing_note)))
+                new_damage = True
+            if new_damage and not damage_notes:
                 raise ValidationError('Describe the new damage.')
-            super(Inspection, check).write({'state': 'done', 'inspector_id': self.env.user.id})
+            super(Inspection, check).write({
+                'state': 'done',
+                'inspector_id': self.env.user.id,
+                'new_damage': new_damage,
+                'damage_notes': damage_notes,
+            })
             if check.kind == 'pickup':
                 super(Rental, check.rental_id).write({'initial_mileage': check.mileage})
                 check.vehicle_id._operational_update({'odometer': check.mileage})
@@ -250,6 +392,15 @@ class Damage(models.Model):
     invoice_id = fields.Many2one('account.move', readonly=True, copy=False)
     deposit_retained = fields.Monetary(compute='_compute_settlement')
     additional_charge = fields.Monetary(compute='_compute_settlement')
+    shared_settlement = fields.Boolean(compute='_compute_shared_settlement')
+
+    @api.depends(
+        'rental_id.sale_order_id',
+        'rental_id.sale_order_id.order_line.rental_deposit_line',
+        'rental_id.invoice_ids.invoice_line_ids.rental_deposit_line')
+    def _compute_shared_settlement(self):
+        for damage in self:
+            damage.shared_settlement = damage.rental_id._uses_single_invoice()
 
     @api.depends('rental_id.deposit_transaction_ids.state', 'rental_id.deposit_transaction_ids.amount', 'cost')
     def _compute_settlement(self):
@@ -265,6 +416,10 @@ class Damage(models.Model):
                 raise ValidationError('Approve a valid damage assessment linked to the completed return inspection.')
             super(Damage, damage).write({'state': 'approved'})
             damage.vehicle_id.rental_status = 'damaged'
+            journey = self.env['car.rental.journey'].sudo().search(
+                [('reservation_id', '=', damage.rental_id.reservation_id.id)], limit=1)
+            if journey and journey.step == 'settlement':
+                return journey.action_open()
 
     def action_repair(self):
         require_role(self.env, 'group_fleet_manager')

@@ -10,11 +10,11 @@ Source: **Car Rental Management Proposal.pdf**, 26 pages, supplied on 8 October 
 | 5–6, 17: pricing | Approved company/category/destination/duration/effective-date rules; explicit priorities; ambiguous overlap protection; agreed-rate snapshots; reasoned, audited manager price overrides. |
 | 7, 12, 15: deposits/accounting | Native posted invoices, bank/cash receipt journal entries, receivable reconciliation, deposit liability entries, refunds, damage invoices and deposit applications. Deposits never credit rental revenue. |
 | 8: booking | Customer → destination → category/dates → price/deposit → allocation → confirmation → linked rental → agreement/payment → pickup. |
-| 10–11: inspections | Fuel, mileage, exterior/interior/tyres/accessories, existing/new damage, photos, inspector, time and customer acknowledgement; pickup/return comparison; immutable completed records. |
+| 10–11: inspections | Fuel, mileage, a tick-list of common vehicle accessories, existing/new damage, photos, inspector, time and customer acknowledgement; missing accessories are detected against pickup and recorded as damage; immutable completed records. |
 | 12: damage | Return inspection creates an assessment; manager approves the charge; repair request, customer damage invoice, deposit application/refund, outstanding balance and resolution. |
 | 13–14: maintenance | Native Maintenance requests with vehicle, supplier, mileage, work, parts, labour, cost, warranty, next service and supplier bill links. Daily service reminders can create preventive requests. |
 | 16: agreements | Printable QWeb rental agreement with agreed terms, customer/vehicle/pricing/deposit/inspection details and captured signature acknowledgement. Attachments hold ID, vehicle and rental documents. |
-| 18: reminders | Daily, deduplicated activities for upcoming compliance expiry, service thresholds, overdue returns, outstanding rental receipts, pending return inspections and damage assessments. |
+| 18: reminders | Daily, deduplicated activities for upcoming compliance expiry, service thresholds, return due the following day and overdue returns, outstanding rental receipts, pending return inspections and damage assessments. |
 | 19: management | Operational fleet counts, receipts versus invoiced rental income, deposits held, damage recovery, maintenance costs, customer balances, revenue per vehicle and period utilisation. |
 | 20: roles | Rental Staff, Rental Manager, Fleet Manager, Accountant, Administrator; restricted approvals/postings, immutable financial records and company record rules. |
 
@@ -63,7 +63,7 @@ Bank/cash posting represents a receipt or refund confirmed by the operator; it d
 
 This environment does not contain Odoo **Sign**, **Documents**, **Studio** or the Enterprise **Rental** app. The module provides native custom rental records, local signature acknowledgement, QWeb agreements and attachments instead. This is not an Odoo Sign integration or a certified remote/electronic-signature service. Installing/licensing those Enterprise apps and integrating formal signature requests is separate work.
 
-No SMS, WhatsApp, payment gateway, GPS or production hosting integration is installed; these are exclusions/future expansion in the proposal. Inventory is the standard Odoo dependency; the maintenance form records parts used, while actual stock consumption remains a standard Inventory transaction.
+The agreement's WhatsApp/Telegram options only open a prefilled message in the user's client; direct WhatsApp sending is not installed. Customer-facing agreement URLs require a publicly reachable HTTPS `web.base.url`. Odoo WhatsApp Business API and Social Marketing are separate integrations, requiring the corresponding Odoo apps and provider setup; neither is available in this local Odoo environment. Inventory is the standard Odoo dependency; the maintenance form records parts used, while actual stock consumption remains a standard Inventory transaction.
 
 ## Acceptance checklist
 

@@ -49,7 +49,7 @@
                     <sheet>
                         <div class="oe_button_box" name="button_box"><button name="action_rentals" type="object" class="oe_stat_button" icon="fa-key" invisible="rental_count == 0"><field name="rental_count" widget="statinfo" string="Rentals"/></button></div>
                         <div class="oe_title"><div class="text-muted">RESERVATION</div><h1><field name="reference" readonly="0" required="0" placeholder="Generated on save, or enter your reference"/></h1></div>
-                        <group col="1">
+                        <group col="4">
                             <group string="Customer &amp; vehicle"><field name="partner_id" readonly="rental_count &gt; 0"/><field name="vehicle_id" readonly="rental_count &gt; 0" domain="[('rental_status', '!=', 'maintenance')]"/><field name="vehicle_image" widget="image" nolabel="1" options="{'size': [320, 180]}" invisible="not vehicle_id"/></group>
                             <group string="Dates &amp; pricing"><field name="start_date" readonly="rental_count &gt; 0"/><field name="end_date" readonly="rental_count &gt; 0"/><field name="number_of_days"/><field name="daily_price"/><field name="amount" class="fw-bold"/></group>
                         </group>
@@ -79,7 +79,7 @@
                             <button name="action_payments" type="object" class="oe_stat_button" icon="fa-credit-card"><field name="payment_count" widget="statinfo" string="Payments"/></button>
                         </div>
                         <div class="oe_title"><div class="text-muted">RENTAL</div><h1><field name="reference" readonly="0" required="0" placeholder="Generated on save, or enter your reference"/></h1></div>
-                        <group col="1">
+                        <group col="4">
                             <group string="Booking"><field name="reservation_id" domain="[('status', '=', 'confirmed')]" readonly="status != 'draft' or payment_count &gt; 0"/><field name="partner_id"/><field name="vehicle_id"/><field name="vehicle_image" widget="image" nolabel="1" options="{'size': [320, 180]}" invisible="not vehicle_id"/></group>
                             <group string="Rental summary" name="rental_summary"><field name="start_date"/><field name="return_date"/><field name="amount"/><field name="paid_total"/><field name="balance_due" class="fw-bold"/><field name="payment_status" widget="badge" decoration-success="payment_status == 'paid'" decoration-warning="payment_status == 'partial'" decoration-danger="payment_status == 'unpaid'"/></group>
                         </group>
@@ -149,7 +149,18 @@
                             <div class="col-md-4"><button name="action_payments" type="object" class="o_car_metric"><i class="fa fa-credit-card" title="Payments"/><field name="revenue"/><span>Payments received</span><small>Review payments →</small></button></div>
                             <div class="col-md-4"><button name="action_balances" type="object" class="o_car_metric"><i class="fa fa-clock-o" title="Balance due"/><field name="outstanding_balance"/><span>Outstanding balance</span><small>Collect rental balances →</small></button></div>
                         </div>
-                        <div class="o_car_dashboard_guide"><h3>A connected rental workflow</h3><div class="row g-3"><div class="col-md-3"><strong>01 · Choose</strong><p>Open the vehicle gallery and reserve a car for your customer.</p></div><div class="col-md-3"><strong>02 · Confirm</strong><p>Confirm dates and pricing, then create the linked rental.</p></div><div class="col-md-3"><strong>03 · Drive</strong><p>Check pickup mileage and start the rental.</p></div><div class="col-md-3"><strong>04 · Settle</strong><p>Record payments from the rental and enter final mileage at return.</p></div></div></div>
+                        <group string="Handovers in the next 4 hours" class="o_car_dashboard_handovers">
+                            <field name="upcoming_handover_ids" nolabel="1" readonly="1">
+                                <list create="0" edit="0" delete="0" default_order="scheduled_pickup_datetime asc, id asc">
+                                    <field name="scheduled_pickup_datetime"/>
+                                    <field name="partner_id"/>
+                                    <field name="vehicle_id"/>
+                                    <field name="responsible_id"/>
+                                    <field name="handover_reminder_sent" string="Pop-up sent" widget="boolean"/>
+                                </list>
+                            </field>
+                        </group>
+                        <div class="o_car_dashboard_guide"><h3>A connected rental workflow</h3><div class="row g-3"><div class="col-md-3"><strong>01 · Plan</strong><p>Choose the customer, vehicle and dates, then review the quote.</p></div><div class="col-md-3"><strong>02 · Confirm</strong><p>Complete the agreement and collect the required payment and deposit.</p></div><div class="col-md-3"><strong>03 · Hand over</strong><p>Complete the pickup inspection. The booking pauses at On Hire while the customer has the car.</p></div><div class="col-md-3"><strong>04 · Return &amp; settle</strong><p>Inspect the return, resolve charges, settle the deposit and prepare the car for its next booking.</p></div></div></div>
                     </sheet>
                 </form>
             </xpath>
