@@ -255,35 +255,22 @@
                             </div>
                         </group>
                     </group>
-                    <group string="Quote" col="4" class="o_car_rental_step_panel"
+                    <group string="Quotation" class="o_car_rental_step_panel"
                            invisible="step != 'quote'">
-                        <group string="Booking details" col="2">
-                            <field name="partner_id" readonly="1"/>
-                            <field name="vehicle_id" readonly="1"/>
-                            <field name="destination_id" readonly="1"/>
-                            <field name="pickup_datetime" readonly="1"/>
-                            <field name="expected_return_datetime" readonly="1"/>
-                            <field name="number_of_days" string="Rental Days (24-hour periods)"
-                                   readonly="1"/>
+                        <div class="alert alert-info" role="status">
+                            This quote is a native Odoo Sales Quotation shared with the Sales app.
+                            Open it to review lines, prices and taxes, then send or confirm it there.
+                            Confirming it advances this booking automatically.
+                        </div>
+                        <group col="2">
+                            <field name="sales_order_id" readonly="1"/>
+                            <field name="sales_order_state" readonly="1"/>
                         </group>
-                        <group string="Price summary" col="2">
-                            <field name="amount" string="Hire Total" widget="monetary" readonly="1"/>
-                            <field name="deposit_required" string="Refundable Security Deposit"
-                                   readonly="1"/>
-                            <field name="delivery_address" string="Customer Delivery Address"
-                                   readonly="1" invisible="not delivery_service"/>
-                            <field name="delivery_fee" string="Customer Delivery Charge"
-                                   widget="monetary" readonly="1" invisible="not delivery_service"/>
-                            <field name="customer_deposit_credit" readonly="1"/>
-                            <field name="quote_service_total" string="Customer Delivery Charges"
-                                   readonly="1"/>
-                            <field name="quote_total" string="Total Including Deposit" readonly="1"/>
-                            <div class="text-muted" colspan="2">
-                                This booking and the Sales app use the same quotation. Send or confirm it here; Sales users can open the same record in Sales.
-                            </div>
-                        </group>
+                        <button name="action_open_quotation" type="object"
+                                string="Open Sales Quotation" class="btn-primary"
+                                invisible="not sales_order_id"/>
                     </group>
-                    <group string="Agreement" col="4" class="o_car_rental_step_panel"
+                    <group string="Agreement" class="o_car_rental_step_panel"
                            invisible="step != 'agreement'">
                         <group string="Customer and signing" col="2">
                             <field name="rental_id" readonly="1"/>
@@ -326,20 +313,35 @@
                             receives a separate private link in signing progress.
                         </div>
                     </group>
-                    <group string="Payment" col="4" class="o_car_rental_step_panel"
+                    <group string="Payment" class="o_car_rental_step_panel"
                            invisible="step != 'payment'">
+                        <div class="alert alert-info" role="status">
+                            Signing the agreement posted one Odoo customer invoice covering the hire
+                            and the refundable security deposit. Record payment against that invoice;
+                            the booking advances when the payment policy is met.
+                        </div>
+                        <group string="Rental invoice">
+                            <field name="invoice_id" readonly="1" options="{'no_open': False}"/>
+                            <field name="invoice_state" widget="badge" readonly="1"/>
+                            <field name="invoice_amount" widget="monetary" readonly="1"
+                                   string="Invoice Total"/>
+                            <field name="invoice_residual" widget="monetary" readonly="1"
+                                   string="Outstanding"/>
+                            <button name="action_open_invoice" type="object" string="Open Invoice"
+                                    class="btn-secondary" invisible="not invoice_id"/>
+                        </group>
                         <group string="Payment readiness">
                             <field name="customer_deposit_credit" readonly="1"/>
-                        </group>
-                        <group string="Rental invoice">
-                            <field name="rental_id" readonly="1"/>
+                            <field name="amount" string="Hire Total" widget="monetary" readonly="1"/>
+                            <field name="deposit_required" string="Refundable Security Deposit"
+                                   widget="monetary" readonly="1"/>
                         </group>
                     </group>
                     <group string="Pickup" class="o_car_rental_step_panel"
                            invisible="step != 'pickup'">
                         <field name="rental_id" readonly="1"/>
                     </group>
-                    <group string="Handover Summary" col="4" class="o_car_rental_step_panel"
+                    <group string="Handover Summary" class="o_car_rental_step_panel"
                            invisible="step != 'on_hire'">
                         <field name="partner_id" readonly="1"/>
                         <field name="vehicle_id" readonly="1"/>
@@ -347,7 +349,7 @@
                         <field name="expected_return_datetime" readonly="1"/>
                         <field name="rental_id" readonly="1"/>
                     </group>
-                    <group string="Return" col="4" class="o_car_rental_step_panel"
+                    <group string="Return" class="o_car_rental_step_panel"
                            invisible="step != 'return'">
                         <group string="Vehicle being returned">
                             <field name="rental_id" readonly="1"/>
@@ -406,7 +408,7 @@
         <field name="res_model">car.rental.journey</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="booking_journey_search"/>
-        <field name="domain">[('company_id', '=', allowed_company_ids[0])]</field>
+        <field name="domain">[('company_id', 'in', allowed_company_ids)]</field>
     </record>
     <menuitem id="menu_booking_journeys" name="Bookings"
               parent="menu_rental_bookings" action="action_booking_journeys" sequence="1"/>

@@ -33,11 +33,23 @@ class Dashboard(models.Model):
     def _search_company(self, operator, value):
         company = self.env.company.id
         if operator in ('in', 'not in'):
-            matches = company in value
+            # Odoo 19 passes an OrderedSet for 'in' domains, not a plain list.
+            if isinstance(value, (str, bytes)):
+                values = [value]
+            else:
+                try:
+                    values = list(value)
+                except TypeError:
+                    values = [value]
+            matches = company in [
+                int(item) if isinstance(item, (int, str)) and str(item).isdigit() else item
+                for item in values
+            ]
             if operator == 'not in':
                 matches = not matches
         elif operator in ('=', '!='):
-            matches = company == value
+            target = int(value) if isinstance(value, str) and value.isdigit() else value
+            matches = company == target
             if operator == '!=':
                 matches = not matches
         else:
@@ -61,8 +73,12 @@ class Dashboard(models.Model):
             dashboard.revenue = sum(rentals.mapped('paid_total'))
             dashboard.outstanding_balance = sum(rentals.mapped('financial_balance'))
             dashboard.deposits_held = sum(rentals.mapped('deposit_held'))
-            dashboard.rental_income = sum(invoices.filtered(lambda m: m.rental_invoice_kind in ('rental', 'late', 'cleaning')).mapped('amount_untaxed_signed'))
-            dashboard.damage_recovery = sum(invoices.filtered(lambda m: m.rental_invoice_kind == 'damage').mapped('amount_untaxed_signed'))
+            dashboard.rental_income = sum(invoices.filtered(
+                lambda m: m.rental_invoice_kind in ('rental', 'late', 'cleaning', 'settlement')
+            ).mapped('amount_untaxed_signed'))
+            dashboard.damage_recovery = sum(invoices.filtered(
+                lambda m: m.rental_invoice_kind == 'damage'
+            ).mapped('amount_untaxed_signed'))
             requests = self.env['maintenance.request'].sudo().search(domain + [('rental_vehicle_id', '!=', False)])
             dashboard.maintenance_costs = sum(requests.mapped('rental_cost'))
             handover_window_start = fields.Datetime.now()
@@ -100,7 +116,10 @@ class Dashboard(models.Model):
         return dict(window('Reserved Vehicles', 'fleet.vehicle', [('rental_status', '=', 'reserved')]), view_mode='kanban,list,form')
 
     def action_maintenance(self):
-        return window('Fleet Maintenance', 'maintenance.request', [('rental_vehicle_id', '!=', False)])
+        return window(
+            'Fleet Maintenance', 'maintenance.request',
+            ['|', ('rental_vehicle_id', '!=', False), ('equipment_id', '!=', False)],
+            {'search_default_active': True})
 
     def action_damage(self):
         return window('Damage Assessments', 'car.rental.damage.case')

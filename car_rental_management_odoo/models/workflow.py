@@ -74,6 +74,9 @@ class Reservation(models.Model):
             rental = self.env['car.rental.rental'].create({
                 'reservation_id': self.id, 'initial_mileage': self.vehicle_id.odometer,
             })
+        # Reservation-first bookings must join the guided journey so every
+        # later transition stays visible in Bookings.
+        self._get_or_create_journey()
         return window('Rental', 'car.rental.rental', res_id=rental.id)
 
     def action_rentals(self):
@@ -118,9 +121,13 @@ class Rental(models.Model):
     def _compute_payment_totals(self):
         for record in self:
             paid = sum(record.payment_ids.filtered(lambda p: p.rental_legacy or (p.state == 'paid' and not p.move_id.reversal_move_ids.filtered(lambda m: m.state == 'posted'))).mapped('amount'))
-            invoices = record.invoice_ids.filtered(lambda m: m.state == 'posted' and m.move_type == 'out_invoice' and m.rental_invoice_kind == 'rental')
-            if invoices:
-                paid = sum(m.amount_total - m.amount_residual for m in invoices)
+            posted_sales = record.invoice_ids.filtered(
+                lambda m: m.state == 'posted' and m.move_type == 'out_invoice')
+            # Settlement/damage invoices are money received for this booking too;
+            # count them in Total Paid even when paid from the native invoice form.
+            if posted_sales:
+                paid = sum(m.amount_total - m.amount_residual for m in posted_sales)
+            invoices = posted_sales.filtered(lambda m: m.rental_invoice_kind == 'rental')
             record.payment_count = len(record.payment_ids)
             record.paid_total = paid
             currency = record.currency_id or self.env.company.currency_id

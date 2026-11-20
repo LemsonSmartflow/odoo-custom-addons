@@ -240,11 +240,6 @@ class Reservation(models.Model):
                 record.pickup_datetime, record.expected_return_datetime)
         return super().action_confirm()
 
-    def action_refresh_cleaning_fee(self):
-        require_role(self.env, 'group_rental_manager')
-        raise ValidationError(
-            'Pricing-rule cleaning fees are retired. Configure the cleaning product and enter new-flow charges at return.')
-
 
 class Rental(models.Model):
     _inherit = 'car.rental.rental'

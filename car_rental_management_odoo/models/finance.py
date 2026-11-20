@@ -1,6 +1,10 @@
+import logging
+
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools.float_utils import float_compare
+
+_logger = logging.getLogger(__name__)
 
 from .pricing import require_role
 from .workflow import window
@@ -240,21 +244,29 @@ class SaleOrder(models.Model):
                 'The rental quotation must use the booking customer, company and currency.')
 
         product_lines = self.order_line.filtered(lambda line: not line.display_type)
+        if any(line.discount for line in product_lines):
+            raise ValidationError(
+                'Discounts are not allowed on rental quotation lines. Use a '
+                'manager-approved price override on the booking instead.')
         hire_lines = product_lines.filtered(
             lambda line: not line.rental_deposit_line and not line.rental_charge_kind)
         deposit_lines = product_lines.filtered('rental_deposit_line')
         services = product_lines.filtered(
             lambda line: line.rental_charge_kind in ('delivery', 'collection'))
+        # Legacy rental quotations created from the rental form do not carry a
+        # deposit line; single-invoice bookings do.  Accept both, but require
+        # exactly one deposit line when one is present.
+        expected_services = int(bool(reservation.delivery_service)) + int(
+            bool(reservation.collection_service))
         if (
             len(hire_lines) != 1
-            or len(deposit_lines) != 1
-            or len(services) != int(bool(reservation.delivery_service))
-                    + int(bool(reservation.collection_service))
-            or len(product_lines) != 2 + len(services)
+            or len(deposit_lines) > 1
+            or len(services) != expected_services
+            or len(product_lines) != 1 + len(deposit_lines) + len(services)
         ):
             raise ValidationError(
-                'The rental quotation must contain one hire line, one security deposit '
-                'and only the selected booking services.')
+                'The rental quotation must contain one hire line, at most one '
+                'security deposit line and only the selected booking services.')
 
         hire = hire_lines
         if (
@@ -272,18 +284,19 @@ class SaleOrder(models.Model):
                 'duration and taxes.')
 
         deposit = deposit_lines
-        if (
-            deposit.product_id != rental.company_id.cr_deposit_product_id
-            or float_compare(
-                deposit.product_uom_qty, 1,
-                precision_rounding=deposit.product_uom_id.rounding)
-            or float_compare(
-                deposit.price_unit, reservation.deposit_required,
-                precision_rounding=currency.rounding)
-            or deposit.tax_ids
-        ):
-            raise ValidationError(
-                'The rental quotation security deposit must match the booking and have no taxes.')
+        if deposit:
+            if (
+                deposit.product_id != rental.company_id.cr_deposit_product_id
+                or float_compare(
+                    deposit.product_uom_qty, 1,
+                    precision_rounding=deposit.product_uom_id.rounding)
+                or float_compare(
+                    deposit.price_unit, reservation.deposit_required,
+                    precision_rounding=currency.rounding)
+                or deposit.tax_ids
+            ):
+                raise ValidationError(
+                    'The rental quotation security deposit must match the booking and have no taxes.')
 
         expected_services = (
             ('delivery', reservation.delivery_service, reservation.delivery_fee,
@@ -313,18 +326,19 @@ class SaleOrder(models.Model):
                     line.price_unit, fee,
                     precision_rounding=currency.rounding)
                 or set(line.tax_ids.ids) != set(reservation.tax_id.ids)
-                or line.name != '%s — %s' % (label, address)
             ):
                 raise ValidationError(
                     'The rental quotation %s line must match the selected product, '
-                    'address, charge and taxes.' % label.lower())
+                    'charge and taxes.' % label.lower())
 
+        expected_total = reservation.quote_total if deposit else (
+            reservation.quote_total - reservation.deposit_required)
         if float_compare(
-                self.amount_total, reservation.quote_total,
+                self.amount_total, expected_total,
                 precision_rounding=currency.rounding):
             raise ValidationError(
                 'The rental quotation total must equal the approved hire, selected services '
-                'and security deposit.')
+                'and any security deposit.')
 
     def action_confirm(self):
         rental_orders = self.filtered(
@@ -338,6 +352,13 @@ class SaleOrder(models.Model):
             if journey and journey.step == 'quote':
                 journey._advance_to('agreement')
         return result
+
+    def action_booking_journey(self):
+        """Return to the guided booking that owns this rental quotation."""
+        self.ensure_one()
+        if not self.car_rental_id:
+            return {'type': 'ir.actions.act_window_close'}
+        return self.car_rental_id.action_booking_journey()
 
     def action_quotation_send(self):
         for order in self.filtered('car_rental_id'):
@@ -372,6 +393,11 @@ class SaleOrder(models.Model):
             journey = journeys.search(
                 [('reservation_id', '=', order.car_rental_id.reservation_id.id)], limit=1)
             if journey and journey.step != 'cancelled':
+                # Record who initiated the cross-app cancellation before the
+                # sudo journey action runs, so the audit trail keeps the actor.
+                journey.sudo().message_post(
+                    body='Cancelled from Sales quotation %s by %s.' % (
+                        order.name, self.env.user.name))
                 journey.action_cancel()
         return result
 
@@ -380,9 +406,13 @@ class SaleOrder(models.Model):
         expired = self.sudo().search([
             ('car_rental_id', '!=', False),
             ('state', 'in', ('draft', 'sent')),
-            ('validity_date', '<', fields.Date.today()),
+            ('validity_date', '<', fields.Date.context_today(self)),
         ])
         for order in expired:
+            # Re-check in the order's own timezone before cancelling: a UTC
+            # cron can otherwise cancel a quote that is still valid locally.
+            if order.validity_date >= fields.Date.context_today(order):
+                continue
             rental = order.car_rental_id
             journey = self.env['car.rental.journey'].sudo().search(
                 [('reservation_id', '=', rental.reservation_id.id)], limit=1)
@@ -415,8 +445,8 @@ class SaleOrder(models.Model):
                 lambda line: line.rental_charge_kind in ('delivery', 'collection'))
             expected_total = (
                 rental.amount + rental.reservation_id.quote_service_total
-                + rental.reservation_id.deposit_required)
-            if deposit_lines and (
+                + (rental.reservation_id.deposit_required if deposit_lines else 0))
+            if (
                 float_compare(
                     hire_total, rental.amount,
                     precision_rounding=self.currency_id.rounding)
@@ -424,19 +454,17 @@ class SaleOrder(models.Model):
                     sum(service_lines.mapped('price_total')),
                     rental.reservation_id.quote_service_total,
                     precision_rounding=self.currency_id.rounding)
-                or float_compare(
+                or (deposit_lines and float_compare(
                     sum(deposit_lines.mapped('price_total')),
                     rental.reservation_id.deposit_required,
-                    precision_rounding=self.currency_id.rounding)
+                    precision_rounding=self.currency_id.rounding))
                 or float_compare(
                     self.amount_total, expected_total,
                     precision_rounding=self.currency_id.rounding)
             ):
-                raise ValidationError('The booking sales order must equal the approved hire total plus the required deposit.')
-            if self.partner_id != rental.partner_id or self.company_id != rental.company_id or self.currency_id != rental.currency_id or float_compare(self.amount_total, expected_total if deposit_lines else rental.amount, precision_rounding=self.currency_id.rounding):
-                raise ValidationError('The rental quotation must match the agreed booking amount and currency. Request a pricing override on the booking rather than changing its quotation.')
-            if deposit_lines:
-                raise ValidationError('Invoice from the booking.')
+                raise ValidationError('The booking sales order must equal the approved hire total, selected services and any required deposit.')
+            if self.partner_id != rental.partner_id or self.company_id != rental.company_id or self.currency_id != rental.currency_id:
+                raise ValidationError('The rental quotation must use the agreed booking customer, company and currency.')
             values.update({'car_rental_id': self.car_rental_id.id, 'rental_invoice_kind': 'rental', 'journal_id': self.company_id.cr_sales_journal_id.id})
         return values
 
@@ -488,6 +516,29 @@ class PartialReconcile(models.Model):
         reconciles = super().create(vals_list)
         rentals = reconciles.mapped('debit_move_id.move_id.car_rental_id') | reconciles.mapped(
             'credit_move_id.move_id.car_rental_id')
+        # A payment registered from the native invoice screen has no rental link.
+        # Attach it when it is reconciled against a rental-linked invoice so the
+        # rental's Payments tab and totals show the money actually received.
+        # During create() the payment is only present on the counterpart line,
+        # whose move itself has no car_rental_id, so inspect both lines.
+        for reconcile in reconciles:
+            debit, credit = reconcile.debit_move_id, reconcile.credit_move_id
+            rental = debit.move_id.car_rental_id or credit.move_id.car_rental_id
+            if not rental:
+                continue
+            payments = self.env['account.payment']
+            for line in (debit, credit):
+                payments |= line.payment_id | line.move_id.origin_payment_id
+            kind = (debit.move_id.car_rental_id and debit.move_id.rental_invoice_kind) or (
+                credit.move_id.car_rental_id and credit.move_id.rental_invoice_kind)
+            for payment in payments:
+                if payment.car_rental_id:
+                    continue
+                payment.sudo().write({
+                    'car_rental_id': rental.id,
+                    'rental_invoice_kind': kind if kind in (
+                        'rental', 'settlement', 'damage', 'late', 'cleaning') else 'rental',
+                })
         rentals._on_invoice_payment_changed()
         return reconciles
 
@@ -503,7 +554,10 @@ class AccountPayment(models.Model):
     _inherit = 'account.payment'
 
     car_rental_id = fields.Many2one('car.rental.rental', string='Car Rental', ondelete='restrict', copy=False, index=True)
-    rental_invoice_kind = fields.Selection([('rental', 'Rental'), ('damage', 'Damage Recovery'), ('late', 'Late Return')], copy=False)
+    rental_invoice_kind = fields.Selection([
+        ('rental', 'Rental'), ('damage', 'Damage Recovery'), ('late', 'Late Return'),
+        ('cleaning', 'Cleaning'), ('settlement', 'Settlement'),
+    ], copy=False)
     collection_reference = fields.Char(string='Bank / Receipt Reference', copy=False)
     rental_legacy = fields.Boolean(string='Legacy Receipt', default=False, copy=False, readonly=True)
     rental_refund_of_id = fields.Many2one('account.payment', copy=False, readonly=True)
@@ -578,6 +632,8 @@ class Rental(models.Model):
                 default_values_list=[{
                     'ref': 'Booking cancelled: %s' % self.reference,
                     'invoice_date': fields.Date.today(),
+                    'car_rental_id': self.id,
+                    'rental_invoice_kind': 'rental',
                 }],
             )
             credit_note.action_post()
@@ -615,9 +671,27 @@ class Rental(models.Model):
                 lambda line: line.account_id.account_type == 'asset_receivable')
             (receivable_lines + refund_lines).filtered(
                 lambda line: not line.reconciled).reconcile()
+        self._reverse_incoming_deposit_transfers(credit_notes)
+        # Do not rely on the reconcile side-effect to reverse the deposit
+        # reclassification entries: a fully reconciled invoice produces no
+        # partial reconcile and the JVs would otherwise stay posted.
+        for invoice in invoices:
+            self._sync_deposit_liability_reclass(invoice)
+
+    def _reverse_incoming_deposit_transfers(self, credit_notes=None):
+        """Restore deposit credit transferred in from earlier rentals.
+
+        Used when a booking is cancelled in either the single-invoice or the
+        legacy flow.  Without this, a transferred credit stays booked against a
+        cancelled rental and the customer's deposit is effectively lost.
+        """
+        self.ensure_one()
+        credit_notes = credit_notes or self.env['account.move']
         for transfer in self.sudo().deposit_transfer_in_ids.filtered(
                 lambda event: event.kind == 'transfer' and event.state == 'posted'
-                and event.account_move_id.state == 'posted'):
+                and event.account_move_id.state == 'posted'
+                and not event.account_move_id.reversal_move_ids.filtered(
+                    lambda move: move.state == 'posted')):
             reversed_moves = transfer.account_move_id._reverse_moves(
                 default_values_list=[{
                     'ref': 'Restore deposit credit for cancelled booking %s' % self.reference,
@@ -630,7 +704,8 @@ class Rental(models.Model):
                 + reversed_moves.line_ids
             ).filtered(lambda line: line.account_id.account_type == 'asset_receivable'
                        and not line.reconciled)
-            receivable_lines.reconcile()
+            if receivable_lines:
+                receivable_lines.reconcile()
 
     @api.depends('invoice_ids.state', 'invoice_ids.amount_residual', 'balance_due')
     def _compute_finance(self):
@@ -671,11 +746,13 @@ class Rental(models.Model):
                 and d.account_move_id.state == 'posted'
                 and not d.account_move_id.reversal_move_ids.filtered(lambda m: m.state == 'posted')
             ).mapped('amount'))
-            if deposit_lines:
-                transferred_in = 0
             collected_total = deposit_paid + collected
             held = collected_total - refunded - retained - transferred_out
             if not deposit_lines:
+                # Prior credit is only added to the held balance in the legacy
+                # flow.  In the single-invoice flow it reduces the receivable
+                # instead, so it must not be counted twice.  It is still shown
+                # in ``deposit_credit_applied`` for the accountant.
                 held += transferred_in
             rental.deposit_line_total = deposit_line_total
             rental.deposit_paid = deposit_paid
@@ -696,11 +773,11 @@ class Rental(models.Model):
                 company = rental.company_id
                 liability = company.cr_deposit_account_id
                 pending = company.cr_deposit_pending_account_id
-                journal = company.cr_cash_journal_id
+                journal = _reclass_journal(self.env, company)
                 if not liability or not pending or not journal:
                     raise ValidationError(
                         'Configure the deposit liability account, unpaid-deposit clearing liability account, '
-                        'and receiving journal before posting the booking invoice.')
+                        'and a journal before posting the booking invoice.')
                 if liability == pending:
                     raise ValidationError('The deposit clearing account must differ from the deposit liability account.')
                 existing = self.env['account.move'].search([
@@ -717,7 +794,7 @@ class Rental(models.Model):
                     deferred_amount - deferred_reversed)
                 is_reversed = move.state == 'cancel' or bool(
                     move.reversal_move_ids.filtered(lambda reverse: reverse.state == 'posted'))
-                if not is_reversed and company.currency_id.is_zero(deferred_amount):
+                if not is_reversed and company.currency_id.is_zero(deferred_balance):
                     deposit_total = sum(deposit_lines.mapped('price_total'))
                     if not company.currency_id.is_zero(deposit_total):
                         _journal_entry(
@@ -766,7 +843,17 @@ class Rental(models.Model):
 
     def _on_invoice_payment_changed(self):
         for rental in self:
-            rental.invalidate_recordset(['balance_due', 'deposit_held'])
+            # Raw-SQL postings bypass ORM dependency tracking; invalidate every
+            # stored field derived from payments and deposits, not just two.
+            rental.invalidate_recordset([
+                field for field in (
+                    'balance_due', 'paid_total', 'payment_status', 'payment_count',
+                    'financial_balance', 'deposit_held', 'deposit_paid',
+                    'deposit_collected', 'deposit_line_total', 'deposit_refunded',
+                    'deposit_retained', 'deposit_credit_applied',
+                    'deposit_transferred_out', 'invoice_count', 'single_invoice_flow',
+                ) if field in rental._fields
+            ])
             for invoice in rental.invoice_ids.filtered(
                     lambda move: move.rental_invoice_kind == 'rental'
                     and move.invoice_line_ids.filtered('rental_deposit_line')):
@@ -1016,7 +1103,13 @@ class Rental(models.Model):
                 and event.charge_invoice_id == invoice)
             retain_amount = min(self.deposit_held, invoice.amount_residual)
             if existing_retain.filtered(lambda event: event.state == 'draft'):
-                existing_retain.filtered(lambda event: event.state == 'draft').action_post()
+                # Refresh the draft against the current residual before posting;
+                # the balance may have changed since the draft was prepared.
+                pending = existing_retain.filtered(lambda event: event.state == 'draft')
+                pending.write({'amount': self.currency_id.round(retain_amount)})
+                pending.filtered(
+                    lambda event: self.currency_id.compare_amounts(event.amount, 0) > 0
+                ).action_post()
             elif (not existing_retain
                     and self.currency_id.compare_amounts(retain_amount, 0) > 0):
                 retain = self.env['car.rental.deposit.transaction'].create({
@@ -1061,6 +1154,14 @@ class Rental(models.Model):
     def _ensure_sale_order(self, include_deposit=False):
         self.ensure_one()
         if self.sale_order_id:
+            if self.sale_order_id.state not in ('draft', 'sent'):
+                # Never mutate a confirmed commercial document.  A resumed
+                # booking that needs a different quote must be revised in Sales.
+                if (include_deposit and not self.sale_order_id.order_line.filtered('rental_deposit_line')):
+                    raise ValidationError(
+                        'The linked sales quotation is already confirmed and has no '
+                        'deposit line. Create a new quotation in Sales instead.')
+                return self.sale_order_id
             if include_deposit and not self.sale_order_id.order_line.filtered('rental_deposit_line'):
                 self._add_deposit_sale_line(self.sale_order_id)
             self._add_quote_service_sale_lines(self.sale_order_id)
@@ -1166,6 +1267,19 @@ class Rental(models.Model):
         return window('Rental Quotation', 'sale.order', res_id=order.id)
 
 
+def _reclass_journal(env, company):
+    """Journal for non-cash liability-to-liability deposit reclassifications.
+
+    These entries move money between two liability accounts; no bank or cash
+    moves.  Posting them to the bank journal pollutes bank reconciliation.
+    Fall back to the configured cash journal only when no misc journal exists
+    so existing installations keep working.
+    """
+    journal = env['account.journal'].sudo().search([
+        ('type', '=', 'misc'), ('company_id', '=', company.id)], limit=1)
+    return journal or company.cr_cash_journal_id
+
+
 def _journal_entry(
         env, company, journal, reference, date, debit_account, credit_account,
         amount, partner, deposit_invoice=None, reclass_type=None):
@@ -1227,6 +1341,14 @@ class Deposit(models.Model):
             bank = journal.default_account_id
             debit, credit = bank, liability
             if event.kind == 'collect':
+                # Single-invoice bookings carry the hire and the deposit on one
+                # invoice.  A manual collect JV would create bank money that was
+                # never received and double-count the deposit liability.  All
+                # collection for these bookings goes through the booking payment.
+                if rental._uses_single_invoice():
+                    raise ValidationError(
+                        'Single-invoice bookings collect the deposit through the '
+                        'booking payment. Use Record Payment instead.')
                 if rental.status != 'draft' or event.amount > rental.deposit_required - rental.deposit_held + 0.005:
                     raise ValidationError('Collect deposits before pickup, up to the required deposit amount.')
             elif event.kind == 'transfer':
@@ -1289,6 +1411,14 @@ class Deposit(models.Model):
     def create(self, vals_list):
         if any(v.get('state', 'draft') != 'draft' or v.get('account_move_id') for v in vals_list):
             raise ValidationError('Create a draft deposit transaction first.')
+        for vals in vals_list:
+            if vals.get('kind', 'collect') != 'collect':
+                continue
+            rental = self.env['car.rental.rental'].browse(vals.get('rental_id'))
+            if rental and rental._uses_single_invoice():
+                raise ValidationError(
+                    'Single-invoice bookings collect the deposit through the '
+                    'booking payment. Use Record Payment instead.')
         return super().create(vals_list)
 
     @api.constrains('kind', 'rental_id', 'transfer_target_id')
@@ -1342,10 +1472,29 @@ class Maintenance(models.Model):
         self.ensure_one()
         if not self.rental_vehicle_id or not self.rental_supplier_id or self.rental_cost <= 0 or not self.company_id.cr_expense_account_id:
             raise ValidationError('Select the vehicle, supplier, cost and maintenance expense account first.')
-        if not self.rental_bill_id:
-            self.rental_bill_id = self.env['account.move'].with_company(self.company_id).create({
-                'move_type': 'in_invoice', 'partner_id': self.rental_supplier_id.id, 'company_id': self.company_id.id,
-                'invoice_date': fields.Date.today(), 'ref': self.name,
-                'invoice_line_ids': [fields.Command.create({'name': self.rental_work or self.name, 'quantity': 1, 'price_unit': self.rental_cost, 'account_id': self.company_id.cr_expense_account_id.id})],
-            })
-        return window('Maintenance Supplier Bill', 'account.move', res_id=self.rental_bill_id.id)
+        supplier = self.rental_supplier_id.with_company(self.company_id)
+        if supplier.supplier_rank <= 0:
+            raise ValidationError('The selected service partner is not a supplier.')
+        bill = self.rental_bill_id.exists()
+        if bill and (bill.state == 'cancel' or bill.partner_id != supplier):
+            bill = self.env['account.move']
+        if not bill:
+            tax = supplier.supplier_taxes_id[:1] or self.company_id.account_purchase_tax_id
+            journal = self.env['account.journal'].search([
+                ('type', '=', 'purchase'), ('company_id', '=', self.company_id.id)], limit=1)
+            values = {
+                'move_type': 'in_invoice', 'partner_id': supplier.id,
+                'company_id': self.company_id.id,
+                'invoice_date': fields.Date.context_today(self), 'ref': self.name,
+                'invoice_line_ids': [fields.Command.create({
+                    'name': self.rental_work or self.name, 'quantity': 1,
+                    'price_unit': self.rental_cost,
+                    'account_id': self.company_id.cr_expense_account_id.id,
+                    'tax_ids': [fields.Command.set(tax.ids)] if tax else [],
+                })],
+            }
+            if journal:
+                values['journal_id'] = journal.id
+            bill = self.env['account.move'].with_company(self.company_id).create(values)
+            self.rental_bill_id = bill
+        return window('Maintenance Supplier Bill', 'account.move', res_id=bill.id)
