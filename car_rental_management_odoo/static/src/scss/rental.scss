@@ -235,9 +235,11 @@
 .o_car_rental_form {
     .o_form_sheet {
         box-sizing: border-box;
-        width: 100%;
-        max-width: 1100px;
-        margin: 12px auto;
+        width: calc(100% - 32px);
+        // Use the full available width: long addresses, notes and monetary
+        // widgets were clipped by the old fixed 1100px sheet.
+        max-width: none;
+        margin: 12px 16px;
         padding: clamp(14px, 2vw, 24px);
         border-radius: 10px;
         box-shadow: 0 3px 14px #173a450a;
@@ -246,8 +248,15 @@
     .o_inner_group {
         row-gap: 9px;
         margin-bottom: 14px;
-        grid-template-columns: minmax(110px, 30%) minmax(0, 1fr);
+        grid-template-columns: minmax(120px, 18%) minmax(0, 1fr);
+        .o_wrap_label { white-space: normal; overflow-wrap: anywhere; }
+        .o_wrap_input { min-width: 0; }
     }
+    // Long values must wrap instead of being visually cut off on narrow sheets.
+    .o_field_char:not(.o_input),
+    .o_field_text,
+    .o_form_uri > span:first-child { white-space: normal !important; overflow-wrap: anywhere; text-overflow: clip; }
+    .o_field_widget:not(.o_field_boolean):not(.o_field_image) { max-width: 100%; }
     .o_horizontal_separator {
         padding: 8px 0 6px;
         margin-bottom: 8px;
@@ -282,7 +291,19 @@
         border-radius: 10px;
         background: #fbfcfc;
         color: var(--rental-ink, #173a45);
+        grid-template-columns: minmax(140px, 18%) minmax(0, 1fr);
+        .o_wrap_label { white-space: normal; overflow-wrap: anywhere; }
+        .o_wrap_input { min-width: 0; }
+        .o_field_widget { max-width: 100%; }
     }
+    // Values in any rental form must wrap/expand rather than being clipped.
+    .o_car_rental_form .o_field_many2one,
+    .o_car_rental_form .o_field_many2one_selection,
+    .o_car_rental_form .o_field_char,
+    .o_car_rental_form .o_field_text { max-width: 100%; min-width: 0; }
+    .o_car_rental_form .o_field_many2one .o_field_many2one_selection > a,
+    .o_car_rental_form .o_field_many2one .o-autocomplete,
+    .o_car_rental_form .o_field_char .o_input { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
     .o_car_rental_accessory_checklist {
         padding: 16px;
         border: 1px solid #dce5e8;
@@ -347,8 +368,9 @@
     --rental-muted: #60737d;
     --rental-line: #dce5e8;
     --rental-accent: #286a70;
-    max-width: 1120px;
-    margin: 0 auto;
+    max-width: none;
+    width: 100%;
+    margin: 0;
     padding: 8px 4px 24px;
     color: var(--rental-ink);
 

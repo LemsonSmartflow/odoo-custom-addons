@@ -1,6 +1,9 @@
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
+from .pricing import require_role
+from .workflow import window
+
 
 class QuoteChargeWizard(models.TransientModel):
     _name = 'car.rental.quote.charge.wizard'
@@ -154,3 +157,68 @@ class ReturnChargeWizard(models.TransientModel):
             'view_mode': 'form',
             'res_id': rental.id,
         }
+
+
+class DamageApprovalWizard(models.TransientModel):
+    """Approve a return damage without leaving the guided booking journey."""
+    _name = 'car.rental.damage.approval.wizard'
+    _description = 'Approve Damage Assessment'
+
+    journey_id = fields.Many2one('car.rental.journey', readonly=True)
+    damage_id = fields.Many2one('car.rental.damage.case', readonly=True)
+    company_id = fields.Many2one(related='damage_id.company_id', readonly=True)
+    currency_id = fields.Many2one(related='company_id.currency_id')
+    name = fields.Char(related='damage_id.name', readonly=True)
+    cost = fields.Monetary(
+        string='Assessed Charge',
+        currency_field='currency_id',
+        help='Enter the amount to charge the customer for this damage.')
+    repair_notes = fields.Text(
+        string='Assessment / Repair Notes',
+        help='Describe the damage and the intended repair before approving.')
+    severity = fields.Selection([
+        ('minor', 'Minor / cosmetic'),
+        ('moderate', 'Moderate / repair needed'),
+        ('major', 'Major / safety issue'),
+    ], string='Damage Severity', default='minor', required=True)
+
+    @api.model
+    def default_get(self, fields_list):
+        values = super().default_get(fields_list)
+        journey = self.env['car.rental.journey'].browse(
+            self.env.context.get('default_journey_id')).exists()
+        damage = journey.rental_id.damage_ids.filtered(
+            lambda case: case.state == 'draft')[:1] if journey else self.env['car.rental.damage.case']
+        if not damage:
+            damage = self.env['car.rental.damage.case'].browse(
+                self.env.context.get('default_damage_id')).exists()
+        if damage:
+            values.update({
+                'journey_id': journey.id,
+                'damage_id': damage.id,
+                'cost': damage.cost,
+                'repair_notes': damage.repair_notes,
+                'severity': damage.severity,
+            })
+        return values
+
+    def action_open_damage(self):
+        """Open the authoritative Damage Assessment record in its own app."""
+        self.ensure_one()
+        return window('Damage Assessment', 'car.rental.damage.case', res_id=self.damage_id.id)
+
+    def action_approve(self):
+        self.ensure_one()
+        require_role(self.env, 'group_rental_manager')
+        if self.currency_id.compare_amounts(self.cost, 0) < 0:
+            raise ValidationError('The assessed damage charge cannot be negative.')
+        if not self.repair_notes:
+            raise ValidationError('Record the damage assessment notes before approving.')
+        self.damage_id.write({
+            'cost': self.cost,
+            'repair_notes': self.repair_notes,
+            'severity': self.severity,
+        })
+        self.damage_id.action_approve()
+        journey = self.journey_id
+        return journey.action_open() if journey else {'type': 'ir.actions.act_window_close'}

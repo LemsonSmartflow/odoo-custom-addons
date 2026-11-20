@@ -139,6 +139,21 @@ class Collection(models.TransientModel):
             raise ValidationError('This collection has already been recorded.')
         return super().write(vals)
 
+    def _payment_method_line(self, journal):
+        """Resolve the wizard's payment method to a native payment method line."""
+        lines = journal._get_available_payment_method_lines('inbound') if journal else self.env['account.payment.method.line']
+        keywords = {
+            'cash': ('cash',),
+            'card': ('card', 'credit'),
+            'bank_transfer': ('bank transfer', 'bank', 'transfer'),
+        }.get(self.payment_method, ())
+        for keyword in keywords:
+            match = lines.filtered(
+                lambda line: keyword in (line.name or '').lower())
+            if match:
+                return match[:1]
+        return lines[:1]
+
     def action_post(self):
         require_role(self.env, 'group_rental_accountant')
         self.ensure_one()
@@ -226,6 +241,7 @@ class Collection(models.TransientModel):
                     'payment_type': 'inbound', 'partner_type': 'customer',
                     'partner_id': invoice.partner_id.id, 'amount': rental_amount,
                     'date': self.date, 'journal_id': journal.id,
+                    'payment_method_line_id': self._payment_method_line(journal).id,
                     'payment_reference': self.reference or rental.reference,
                     'memo': '%s rental payment' % rental.reference,
                     'car_rental_id': rental.id, 'rental_invoice_kind': 'rental',
@@ -241,6 +257,15 @@ class Collection(models.TransientModel):
         return {'type': 'ir.actions.act_window_close'}
 
     def _action_post_single_invoice(self, rental):
+        # Serialise collections on the same rental.  Without this lock two
+        # accountants can both read the same invoice residual and each post a
+        # full payment, reconciling both against the same receivable line.
+        self.env.cr.execute(
+            'SELECT id FROM car_rental_rental WHERE id=%s FOR UPDATE', [rental.id])
+        rental.invalidate_recordset([
+            'invoice_ids', 'deposit_held', 'balance_due', 'deposit_transfer_in_ids'])
+        if rental.status == 'closed' or rental.reservation_id.status != 'confirmed':
+            raise ValidationError('Collect payment against an open, confirmed rental.')
         currency = self.currency_id
         invoice = rental.invoice_ids.filtered(
             lambda move: move.rental_invoice_kind == 'rental' and move.state == 'posted'
@@ -299,6 +324,7 @@ class Collection(models.TransientModel):
                     'amount': self.amount,
                     'date': self.date,
                     'journal_id': self.journal_id.id,
+                    'payment_method_line_id': self._payment_method_line(self.journal_id).id,
                     'payment_reference': self.reference or rental.reference,
                     'memo': '%s booking payment' % rental.reference,
                     'car_rental_id': rental.id,

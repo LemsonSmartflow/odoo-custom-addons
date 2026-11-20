@@ -309,6 +309,9 @@ class TestBookingJourney(RentalTestCommon):
         open_action = journey.action_open_quotation()
         self.assertEqual(open_action['res_model'], 'sale.order')
         self.assertEqual(open_action['res_id'], order.id)
+        back_action = order.action_booking_journey()
+        self.assertEqual(back_action['res_model'], journey._name)
+        self.assertEqual(back_action['res_id'], journey.id)
 
         send_action = journey.action_send_quotation()
         self.assertEqual(send_action['res_model'], 'mail.compose.message')
@@ -409,7 +412,7 @@ class TestBookingJourney(RentalTestCommon):
         wizard_model = self.env[action['res_model']]
         self.assertEqual(
             set(dict(wizard_model._fields['method'].selection)),
-            {'email', 'whatsapp', 'telegram'})
+            {'email', 'whatsapp', 'telegram', 'copy'})
         local_share = wizard_model.create({
             'journey_id': journey.id,
             'method': 'whatsapp',
@@ -706,12 +709,21 @@ class TestBookingJourney(RentalTestCommon):
             rental, new_damage=True, damage_notes='Damaged mirror')
         journey.action_continue()
         damage = rental.damage_ids.filtered(lambda case: case.state == 'draft')
-        with self.assertRaises(ValidationError):
-            journey.with_user(self.user_accountant).action_continue()
+        # Proceeding with a draft damage opens the in-journey approval popup
+        # instead of leaving for the Damage Assessments app.
+        action = journey.with_user(self.user_accountant).action_continue()
+        self.assertEqual(action.get('res_model'), 'car.rental.damage.approval.wizard')
+        self.assertEqual(action.get('target'), 'new')
         journey.invalidate_recordset(['guidance'])
         self.assertEqual(journey.guidance, 'Manager approval of damage required before settlement.')
-        damage.write({'cost': rental.deposit_required + 50})
-        damage.with_user(self.user_manager).action_approve()
+        wizard = self.env['car.rental.damage.approval.wizard'].with_context(
+            default_journey_id=journey.id, default_damage_id=damage.id).create({})
+        self.assertEqual(wizard.damage_id, damage)
+        wizard.with_user(self.user_manager).write({
+            'cost': rental.deposit_required + 50,
+            'repair_notes': 'Damaged mirror',
+        })
+        wizard.with_user(self.user_manager).action_approve()
         action = journey.with_user(self.user_accountant).action_continue()
         settlement = rental.invoice_ids.filtered(
             lambda move: move.rental_invoice_kind == 'settlement')
@@ -865,3 +877,96 @@ class TestBookingJourney(RentalTestCommon):
         self.assertEqual(journey.step, 'settlement')
         self.assertNotEqual(result.get('res_model'), 'car.rental.return.charge.wizard')
         self.assertEqual(rental.cleaning_charge, 0)
+
+    def test_reservation_first_journey_is_created_and_reused(self):
+        reservation = self._make_reservation(confirm=True)
+        first = reservation.action_booking_journey()
+        journey = self.env['car.rental.journey'].browse(first['res_id'])
+        self.assertTrue(journey)
+        self.assertEqual(journey.step, 'quote')
+        second = reservation.action_booking_journey()
+        self.assertEqual(first['res_id'], second['res_id'])
+        self.assertEqual(
+            self.env['car.rental.journey'].search_count(
+                [('reservation_id', '=', reservation.id)]), 1)
+
+    def test_start_rental_from_rental_form_syncs_journey(self):
+        journey = self._new_journey()
+        rental = self._to_agreement(journey)
+        self._sign_agreement(rental)
+        self._pay_invoice(journey, user=self.user_accountant)
+        self._complete_pickup_inspection(rental)
+        journey.invalidate_recordset()
+        self.assertEqual(journey.step, 'pickup')
+        rental.action_start_rental()
+        journey.invalidate_recordset()
+        self.assertEqual(journey.step, 'on_hire')
+
+    def test_manual_deposit_collection_blocked_for_single_invoice_booking(self):
+        journey = self._new_journey()
+        rental = self._to_agreement(journey)
+        self.assertTrue(rental._uses_single_invoice())
+        with self.assertRaisesRegex(ValidationError, 'booking payment'):
+            self.env['car.rental.deposit.transaction'].create({
+                'rental_id': rental.id,
+                'kind': 'collect',
+                'amount': rental.deposit_required,
+            })
+
+    def test_native_payment_on_settlement_invoice_is_linked_and_visible(self):
+        journey = self._new_journey()
+        rental = self._to_agreement(journey)
+        invoice = rental.with_user(self.user_accountant)._make_invoice(
+            'settlement', self.company.cr_income_account_id, [{
+                'name': 'Damage charge',
+                'quantity': 1,
+                'price_unit': 500,
+                'product_id': self.company.cr_late_product_id.id,
+                'account_id': self.company.cr_income_account_id,
+            }])
+        invoice.action_post()
+        # Register payment from the native invoice screen: no rental context.
+        payment = self.env['account.payment'].create({
+            'payment_type': 'inbound', 'partner_type': 'customer',
+            'partner_id': rental.partner_id.id, 'amount': invoice.amount_total,
+            'journal_id': self.company.cr_cash_journal_id.id,
+        })
+        payment.action_post()
+        receivable = invoice.line_ids.filtered(
+            lambda line: line.account_id.account_type == 'asset_receivable')
+        pay_lines = payment.move_id.line_ids.filtered(
+            lambda line: line.account_id.account_type == 'asset_receivable')
+        (receivable + pay_lines).reconcile()
+        payment.invalidate_recordset(['car_rental_id', 'rental_invoice_kind'])
+        self.assertEqual(payment.car_rental_id, rental)
+        rental.invalidate_recordset()
+        self.assertGreaterEqual(rental.paid_total, invoice.amount_total)
+
+    def test_payment_step_exposes_the_real_invoice(self):
+        journey = self._new_journey()
+        rental = self._to_agreement(journey)
+        self._sign_agreement(rental)
+        journey.invalidate_recordset()
+        self.assertEqual(journey.step, 'payment')
+        self.assertTrue(journey.invoice_id)
+        self.assertEqual(journey.invoice_id.rental_invoice_kind, 'rental')
+        self.assertEqual(journey.invoice_state, 'posted')
+        self.assertGreater(journey.invoice_amount, 0)
+        action = journey.action_open_invoice()
+        self.assertEqual(action['res_model'], 'account.move')
+        self.assertEqual(action['res_id'], journey.invoice_id.id)
+
+    def test_close_blocked_when_single_invoice_return_charges_unsettled(self):
+        journey = self._new_journey()
+        rental = self._to_agreement(journey)
+        self._sign_agreement(rental)
+        self._pay_invoice(journey, user=self.user_accountant)
+        self._complete_pickup_inspection(rental)
+        journey.action_handover()
+        journey.action_begin_return()
+        self._complete_return_inspection(rental)
+        journey.action_continue()
+        self.assertEqual(journey.step, 'settlement')
+        rental._workflow_write({'late_charge': 50})
+        with self.assertRaisesRegex(ValidationError, 'settlement invoice'):
+            journey.with_user(self.user_accountant).action_close_rental()

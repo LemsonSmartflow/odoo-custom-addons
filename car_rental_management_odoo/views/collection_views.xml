@@ -62,23 +62,4 @@
             </form>
         </field>
     </record>
-    <record id="rental_combined_collection" model="ir.ui.view">
-        <field name="name">Rental combined collection</field>
-        <field name="model">car.rental.rental</field>
-        <field name="inherit_id" ref="view_car_rental_rental_form"/>
-        <field name="priority">130</field>
-        <field name="arch" type="xml">
-            <xpath expr="//button[@name='action_record_payment']" position="attributes">
-                <attribute name="string">Payment &amp; Security Deposit</attribute>
-                <attribute name="invisible">status == 'closed'</attribute>
-                <attribute name="groups">car_rental_management_odoo.group_rental_accountant</attribute>
-            </xpath>
-            <xpath expr="//button[@name='action_collect_deposit']" position="replace">
-                <button name="action_collect_payment" type="object"
-                        string="Payment &amp; Security Deposit" class="btn-primary"
-                        invisible="status != 'draft'"
-                        groups="car_rental_management_odoo.group_rental_accountant"/>
-            </xpath>
-        </field>
-    </record>
 </odoo>

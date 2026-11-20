@@ -196,6 +196,17 @@ class TestDigitalContract(RentalTestCommon):
         with self.assertRaises(ValidationError), self.cr.savepoint():
             contract.signer_ids[0].write({'signed_on': fields.Datetime.now()})
 
+    def test_copy_link_option_works_without_public_url(self):
+        contract = self.contract()
+        journey_action = contract.rental_id.reservation_id.action_booking_journey()
+        journey = self.env['car.rental.journey'].browse(journey_action['res_id'])
+        wizard = self.env['car.rental.agreement.send.wizard'].with_context(
+            default_journey_id=journey.id).create({'method': 'copy'})
+        result = wizard.action_send()
+        self.assertIn('/rental/contract/', wizard.signing_link)
+        self.assertEqual(result['res_model'], wizard._name)
+        self.assertEqual(result['res_id'], wizard.id)
+
 
 @tagged('post_install', '-at_install')
 class TestDigitalContractHttp(TestDigitalContract, HttpCase):

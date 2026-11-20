@@ -19,7 +19,8 @@
     <!-- MAIN MENU -->
     <!-- ========================= -->
 
-    <menuitem id="menu_car_rental_root" name="Car Rental" sequence="10"/>
+    <menuitem id="menu_car_rental_root" name="Car Rental" sequence="10"
+              groups="car_rental_management_odoo.group_car_rental_agent"/>
 
 
     <!-- ========================= -->
