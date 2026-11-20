@@ -5,7 +5,7 @@ from odoo import fields
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import tagged
 
-from .common import RentalTestCommon
+from .common import PNG_SIGNATURE, RentalTestCommon
 
 
 @tagged('post_install', '-at_install')
@@ -191,6 +191,17 @@ class TestRentalWorkflow(RentalTestCommon):
         self._sign_agreement(rental)
         self.assertEqual(rental.agreement_state, 'signed')
 
+    def test_agreement_error_names_each_missing_item(self):
+        rental = self._make_rental(self._make_reservation())
+        rental.write({'agreement_terms': False,
+                      'agreement_signed_by': 'Thabo John',
+                      'agreement_signature': PNG_SIGNATURE})
+        with self.assertRaises(ValidationError) as ctx:
+            rental.action_sign_agreement()
+        self.assertIn('approved rental terms', str(ctx.exception))
+        self.assertNotIn('customer name', str(ctx.exception))
+        self.assertNotIn('customer signature', str(ctx.exception))
+
     def test_deposit_cannot_exceed_the_required_amount(self):
         rental = self._make_rental(self._make_reservation())
         deposit = self.env['car.rental.deposit.transaction'].create({
@@ -373,9 +384,35 @@ class TestRentalRoles(RentalTestCommon):
         self.assertTrue(damage)
         with self.assertRaises(AccessError):
             damage.with_user(self.user_agent).action_approve()
+        self.assertEqual(damage.severity, 'minor')
         damage.with_user(self.user_manager).action_approve()
         self.assertEqual(damage.state, 'approved')
+        # A scratched door is minor: the vehicle stays in inspection and can be
+        # cleaned and released without a repair cycle.
+        self.assertEqual(damage.vehicle_id.rental_status, 'inspection')
+        self.assertFalse(damage.blocks_vehicle)
+
+    def test_major_damage_blocks_vehicle_until_resolved(self):
+        rental = self._ready_to_handover(self._make_reservation())
+        rental.action_start_rental()
+        self._complete_return_inspection(
+            rental, new_damage=True, damage_notes='Bent chassis')
+        rental.action_return_vehicle()
+        damage = rental.damage_ids[:1]
+        damage.severity = 'major'
+        self.assertTrue(damage.blocks_vehicle)
+        damage.with_user(self.user_manager).action_approve()
         self.assertEqual(damage.vehicle_id.rental_status, 'damaged')
+
+    def test_start_rental_reports_every_missing_step(self):
+        rental = self._make_rental(self._make_reservation(confirm=True))
+        blockers = rental._rental_start_blockers()
+        self.assertTrue(any('pickup inspection' in item for item in blockers))
+        self.assertTrue(any('agreement' in item for item in blockers))
+        self.assertTrue(any('security deposit' in item for item in blockers))
+        self.assertIn('pickup inspection', rental.start_guidance)
+        with self.assertRaisesRegex(ValidationError, 'pickup inspection'):
+            rental.action_start_rental()
 
     def test_accountant_only_deposit_posting(self):
         rental = self._make_rental(self._make_reservation())

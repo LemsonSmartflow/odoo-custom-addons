@@ -1,6 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <odoo>
-    <record id="group_car_rental_agent" model="res.groups"><field name="implied_ids" eval="[(4, ref('base.group_partner_manager'))]"/></record>
 
     <record id="partner_rental_date_sort" model="ir.ui.view">
         <field name="name">Contacts rental date sorting</field><field name="model">res.partner</field>
@@ -89,7 +88,7 @@
     </record>
     <record id="action_native_customers" model="ir.actions.act_window">
         <field name="name">Customers</field><field name="res_model">res.partner</field><field name="view_mode">kanban,list,form</field>
-        <field name="domain">['|', ('company_id', '=', False), ('company_id', '=', allowed_company_ids[0])]</field>
+        <field name="domain">['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids)]</field>
         <field name="context">{'default_is_company': False}</field>
     </record>
     <record id="menu_car_rental_customer" model="ir.ui.menu"><field name="action" ref="action_native_customers"/></record>
@@ -98,9 +97,15 @@
         <field name="name">Fleet rental details</field><field name="model">fleet.vehicle</field>
         <field name="inherit_id" ref="fleet.fleet_vehicle_view_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//header/field[@name='state_id']" position="attributes">
-                <attribute name="invisible">1</attribute>
+            <!-- The native form binds the avatar to image_128, a read-only copy
+                 of the model's photo.  Point it at the writable image_1920 so
+                 the camera icon actually uploads a vehicle photo.  rental_image
+                 is an alias of this same field, so the gallery/agreement update. -->
+            <xpath expr="//field[@name='image_128']" position="replace">
+                <field name="image_1920" widget="image" class="oe_avatar"/>
             </xpath>
+            <!-- Keep the native Fleet lifecycle visible.  Rental availability is
+                 a separate dimension shown in the Rental Details tab. -->
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_reservations" type="object" class="oe_stat_button" icon="fa-calendar" groups="car_rental_management_odoo.group_car_rental_agent"><field name="reservation_count" widget="statinfo" string="Reservations"/></button>
                 <button name="action_rentals" type="object" class="oe_stat_button" icon="fa-key" groups="car_rental_management_odoo.group_car_rental_agent"><field name="rental_count" widget="statinfo" string="Rentals"/></button>
@@ -113,12 +118,12 @@
                     </group>
                     <div invisible="rental_status == 'setup'">
                         <group>
-                            <group string="Rental setup"><field name="rental_status"/><field name="rental_image" widget="image" class="oe_avatar"/></group>
+                            <group string="Rental setup"><field name="rental_status"/><field name="rental_image" widget="image" class="oe_avatar" help="Shared with the native Fleet photo (image_1920). Add or edit the photo here or in the Fleet header; both show the same image."/></group>
                             <group string="Service and tracking"><field name="rental_tracker_working"/><field name="rental_service_interval"/><field name="rental_next_service_date"/><field name="rental_next_service_mileage"/><field name="rental_service_due"/><field name="manager_id"/></group>
                         </group>
                         <group>
                             <group string="Vehicle road licence and insurance (Fleet contracts)">
-                                <field name="log_contracts"><list create="1" delete="0" default_order="expiration_date asc, id desc"><field name="cost_subtype_id"/><field name="insurer_id"/><field name="ins_ref"/><field name="start_date"/><field name="expiration_date"/><field name="state" widget="badge"/></list></field>
+                                <field name="log_contracts"><list create="0" delete="0" default_order="expiration_date asc, id desc"><field name="cost_subtype_id"/><field name="insurer_id"/><field name="ins_ref"/><field name="start_date"/><field name="expiration_date"/><field name="state" widget="badge"/></list></field>
                             </group>
                             <group string="Rental documents"><field name="rental_document_ids" widget="many2many_binary" nolabel="1"/></group>
                         </group>
@@ -175,7 +180,7 @@
     </record>
     <record id="action_native_vehicles" model="ir.actions.act_window">
         <field name="name">Vehicles</field><field name="res_model">fleet.vehicle</field><field name="view_mode">kanban,list,form</field>
-        <field name="domain">['|', ('company_id', '=', False), ('company_id', '=', allowed_company_ids[0])]</field>
+        <field name="domain">['|', ('company_id', '=', False), ('company_id', 'in', allowed_company_ids)]</field>
     </record>
     <record id="menu_car_rental_vehicle" model="ir.ui.menu"><field name="action" ref="action_native_vehicles"/></record>
 

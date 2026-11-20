@@ -77,9 +77,14 @@ class Rental(models.Model):
             raise ValidationError('Complete all digital contract signatures first.')
         return super().action_sign_agreement()
 
+    def _rental_start_blockers(self):
+        blockers = super()._rental_start_blockers()
+        if any(c.state not in ('complete', 'cancelled') for c in self.contract_ids):
+            blockers.append(
+                'Complete the signatures for all named agreement signers before handover.')
+        return blockers
+
     def action_start_rental(self):
-        if any(c.state not in ('complete', 'cancelled') for c in self.mapped('contract_ids')):
-            raise ValidationError('Complete the signatures for all named agreement signers before handover.')
         return super().action_start_rental()
 
     def action_print_agreement(self):
@@ -265,7 +270,9 @@ class AgreementSendWizard(models.TransientModel):
         ('email', 'Email customer'),
         ('whatsapp', 'Share via WhatsApp'),
         ('telegram', 'Share via Telegram'),
+        ('copy', 'Copy signing link (manual / local testing)'),
     ], string='Send option', required=True, default='email')
+    signing_link = fields.Char(string='Customer Signing Link', readonly=True)
 
     def action_send(self):
         self.ensure_one()
@@ -273,7 +280,32 @@ class AgreementSendWizard(models.TransientModel):
             return self.journey_id._send_agreement_email()
         if self.method in ('whatsapp', 'telegram'):
             return self.journey_id._action_share_agreement(self.method)
+        if self.method == 'copy':
+            return self.action_copy_link()
         raise ValidationError('Choose a supported signing-link delivery option.')
+
+    def action_copy_link(self):
+        """Prepare the packet and reveal the link without the public-URL guard.
+
+        Useful for local testing or when staff will deliver the link themselves.
+        The same private bearer link and expiry rules apply.
+        """
+        self.ensure_one()
+        contract = self.journey_id._prepare_agreement_signing_link()
+        renter = contract.signer_ids.filtered(lambda signer: signer.role == 'renter')
+        if len(renter) != 1 or not renter.link:
+            raise ValidationError('The agreement does not have exactly one customer signing link.')
+        self.signing_link = renter.link
+        self.journey_id.message_post(
+            body='Customer signing link generated for manual copy (local/test delivery).')
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Send Signing Link',
+            'res_model': self._name,
+            'view_mode': 'form',
+            'target': 'new',
+            'res_id': self.id,
+        }
 
 
 class Contract(models.Model):

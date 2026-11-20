@@ -39,6 +39,12 @@ class Journey(models.Model):
     rental_id = fields.Many2one('car.rental.rental', compute='_compute_rental')
     sales_order_id = fields.Many2one('sale.order', compute='_compute_sales_order')
     sales_order_state = fields.Char(compute='_compute_sales_order')
+    invoice_id = fields.Many2one('account.move', compute='_compute_invoice')
+    invoice_state = fields.Selection(
+        [('draft', 'Draft'), ('posted', 'Posted'), ('cancel', 'Cancelled')],
+        compute='_compute_invoice')
+    invoice_amount = fields.Monetary(compute='_compute_invoice', currency_field='currency_id')
+    invoice_residual = fields.Monetary(compute='_compute_invoice', currency_field='currency_id')
     pickup_inspection_done = fields.Boolean(compute='_compute_pickup_inspection_done')
     rental_status = fields.Selection(
         [('draft', 'Draft'), ('ongoing', 'Ongoing'), ('returned', 'Returned'),
@@ -199,6 +205,21 @@ class Journey(models.Model):
             journey.sales_order_state = order.state if order else False
 
     @api.depends(
+        'reservation_id.rental_ids.invoice_ids',
+        'reservation_id.rental_ids.invoice_ids.state',
+        'reservation_id.rental_ids.invoice_ids.amount_residual',
+        'reservation_id.rental_ids.invoice_ids.amount_total')
+    def _compute_invoice(self):
+        for journey in self:
+            invoice = journey.reservation_id.rental_ids.invoice_ids.filtered(
+                lambda move: move.rental_invoice_kind == 'rental'
+                and move.move_type == 'out_invoice' and move.state != 'cancel')[:1]
+            journey.invoice_id = invoice
+            journey.invoice_state = invoice.state if invoice else False
+            journey.invoice_amount = invoice.amount_total if invoice else 0.0
+            journey.invoice_residual = invoice.amount_residual if invoice else 0.0
+
+    @api.depends(
         'reservation_id.rental_ids.status',
         'reservation_id.rental_ids.agreement_state',
         'reservation_id.rental_ids.payment_status',
@@ -317,6 +338,52 @@ class Journey(models.Model):
         if step != 'cancelled' and allowed.get(self.step) != step:
             raise ValidationError('This booking cannot move from %s to %s.' % (self.step, step))
         super(Journey, self).write({'step': step, 'cancelled': step == 'cancelled'})
+
+    def _infer_step(self):
+        """Derive the journey stage from the authoritative reservation/rental state."""
+        self.ensure_one()
+        rental = self.rental_id
+        if self.reservation_id.status == 'cancelled' or (rental and rental.status == 'cancelled'):
+            return 'cancelled'
+        if not rental:
+            return 'quote' if self.reservation_id.status == 'confirmed' else 'booking'
+        if rental.status == 'closed':
+            return 'closed'
+        if rental.status == 'returned':
+            return 'settlement'
+        if rental.status == 'ongoing':
+            return 'on_hire'
+        if rental.agreement_state == 'signed':
+            return 'pickup' if not rental._journey_payment_blockers() else 'payment'
+        if rental.contract_ids.filtered(
+                lambda contract: contract.state in ('sent', 'signing', 'complete')):
+            return 'agreement'
+        # A draft rental alone does not mean the quotation was confirmed.  The
+        # guided flow reaches Agreement only after Sales confirmation; legacy
+        # rentals without a confirmed quote stay at Quote and continue there.
+        if self.sales_order_id and self.sales_order_id.state in ('sale', 'done'):
+            return 'agreement'
+        return 'quote'
+
+    def _reconcile_step(self):
+        """Move a stale journey forward to the state its records are actually in.
+
+        Never moves a journey backwards through the normal workflow; only the
+        terminal ``cancelled`` state can be set directly.  Used by the legacy
+        Reservation/Rental entry points so they cannot leave a journey behind.
+        """
+        self.ensure_one()
+        target = self._infer_step()
+        if target == self.step:
+            return
+        if target == 'cancelled' or self.step == 'cancelled':
+            super(Journey, self).write({
+                'step': target, 'cancelled': target == 'cancelled'})
+            return
+        order = [code for code, _label in JOURNEY_STEPS]
+        if order.index(target) > order.index(self.step):
+            super(Journey, self).write({'step': target})
+            self.message_post(body='Booking journey advanced to %s.' % target)
 
     def _booking_values(self):
         self.ensure_one()
@@ -463,6 +530,13 @@ class Journey(models.Model):
         order = self._ensure_sales_quotation()
         return window('Sales Quotation', 'sale.order', res_id=order.id)
 
+    def action_open_invoice(self):
+        """Open the real invoice created when the agreement was signed."""
+        self.ensure_one()
+        if not self.invoice_id:
+            raise ValidationError('No booking invoice has been created yet. Sign the agreement first.')
+        return window('Rental Invoice', 'account.move', res_id=self.invoice_id.id)
+
     def action_continue(self):
         self.ensure_one()
         self.env.cr.execute('SELECT id FROM car_rental_journey WHERE id = %s FOR UPDATE', [self.id])
@@ -510,7 +584,13 @@ class Journey(models.Model):
                     return self.rental_id.action_return_charge_wizard()
             self.rental_id.action_return_vehicle()
             self._advance_to('settlement')
+            damage_action = self._damage_approval_action()
+            if damage_action:
+                return damage_action
         elif self.step == 'settlement':
+            damage_action = self._damage_approval_action()
+            if damage_action:
+                return damage_action
             return self.rental_id._prepare_settlement()
         else:
             raise ValidationError('This booking has already finished.')
@@ -642,13 +722,31 @@ class Journey(models.Model):
             return window('Inspection', 'car.rental.check', res_id=inspection.id)
         return rental.action_pickup_inspection() if kind == 'pickup' else rental.action_return_inspection()
 
+    def _damage_approval_action(self):
+        """Open the damage approval popup; keep the user inside the journey."""
+        self.ensure_one()
+        damage = self.rental_id.damage_ids.filtered(lambda case: case.state == 'draft')[:1]
+        if not damage:
+            return False
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Approve Damage Assessment',
+            'res_model': 'car.rental.damage.approval.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_journey_id': self.id,
+                'default_damage_id': damage.id,
+            },
+        }
+
     def action_approve_damage(self):
         self.ensure_one()
         require_role(self.env, 'group_rental_manager')
-        damage = self.rental_id.damage_ids.filtered(lambda case: case.state == 'draft')[:1]
-        if not damage:
+        action = self._damage_approval_action()
+        if not action:
             raise ValidationError('There are no draft damage cases to approve.')
-        return window('Damage Assessment', 'car.rental.damage.case', res_id=damage.id)
+        return action
 
 
 class VehiclePreview(models.TransientModel):
@@ -886,6 +984,21 @@ class Rental(models.Model):
         if any(move.state != 'posted' or not self.currency_id.is_zero(move.amount_residual)
                for move in settlement):
             problems.append('Post and settle the final settlement invoice.')
+        # A single-invoice booking has no separate late/cleaning invoices.  Ensure
+        # confirmed return charges cannot be closed away without ever producing a
+        # (posted and settled) final settlement invoice.
+        if self._uses_single_invoice():
+            return_charges = [
+                self.late_charge or 0,
+                self.cleaning_charge or 0,
+                self.return_collection_fee or 0,
+            ]
+            return_charges += [
+                case.cost for case in self.damage_ids
+                if case.state != 'draft' and case.cost > 0
+            ]
+            if any(self.currency_id.compare_amounts(charge, 0) > 0 for charge in return_charges) and not settlement:
+                problems.append('Create and post the final settlement invoice for the return charges.')
         legacy_charges = invoices.filtered(
             lambda move: move.rental_invoice_kind in ('late', 'cleaning', 'damage')
             and not self._uses_single_invoice())
@@ -898,6 +1011,15 @@ class Rental(models.Model):
         if self.deposit_transaction_ids.filtered(lambda event: event.state == 'draft') or self.payment_ids.filtered(
                 lambda payment: payment.state == 'draft'):
             problems.append('Finish or remove unposted deposit transactions and payments.')
+        if self.payment_ids.filtered(
+                lambda payment: payment.state == 'posted'
+                and any(line.account_id.account_type == 'asset_receivable' and not line.reconciled
+                        for line in payment.move_id.line_ids)):
+            problems.append('Reconcile all posted payments against the booking invoice.')
+        if invoices.filtered(
+                lambda move: move.move_type == 'out_refund' and move.state == 'posted'
+                and not move.currency_id.is_zero(move.amount_residual)):
+            problems.append('Reconcile all posted credit notes before closing.')
         return problems
 
     def action_close_journey(self):
@@ -926,34 +1048,35 @@ class Rental(models.Model):
 class Reservation(models.Model):
     _inherit = 'car.rental.reservation'
 
-    def action_booking_journey(self):
+    def _get_or_create_journey(self):
+        """One journey per reservation, shared by the guided and legacy paths."""
         self.ensure_one()
-        self.env.cr.execute('SELECT id FROM car_rental_reservation WHERE id = %s FOR UPDATE', [self.id])
+        self.env.cr.execute(
+            'SELECT id FROM car_rental_reservation WHERE id = %s FOR UPDATE', [self.id])
         journey = self.env['car.rental.journey'].search(
             [('reservation_id', '=', self.id)], limit=1)
-        if not journey:
-            journey = self.env['car.rental.journey'].create({
-                'company_id': self.company_id.id,
-                'reservation_id': self.id,
-                'booking_partner_id': self.partner_id.id,
-                'booking_destination_id': self.destination_id.id,
-                'booking_category_id': self.category_id.id,
-                'booking_vehicle_id': self.vehicle_id.id,
-                'booking_pickup_datetime': self.pickup_datetime,
-                'booking_number_of_days': self.number_of_days,
-                'booking_delivery_service': self.delivery_service,
-                'booking_delivery_address': self.delivery_address,
-                'booking_delivery_fee': self.delivery_fee,
-                'booking_collection_service': self.collection_service,
-                'booking_collection_address': self.collection_address,
-                'booking_collection_fee': self.collection_fee,
-            })
-            rental = self.rental_ids[:1]
-            step = 'quote' if not rental else (
-                'closed' if rental.status == 'closed' else
-                'settlement' if rental.status == 'returned' else
-                'return' if rental.status == 'ongoing' else
-                'payment' if rental.agreement_state == 'signed' else 'agreement')
-            if step != 'booking':
-                super(Journey, journey).write({'step': step})
-        return journey.action_open()
+        if journey:
+            journey._reconcile_step()
+            return journey
+        journey = self.env['car.rental.journey'].create({
+            'company_id': self.company_id.id,
+            'reservation_id': self.id,
+            'booking_partner_id': self.partner_id.id,
+            'booking_destination_id': self.destination_id.id,
+            'booking_category_id': self.category_id.id,
+            'booking_vehicle_id': self.vehicle_id.id,
+            'booking_pickup_datetime': self.pickup_datetime,
+            'booking_number_of_days': self.number_of_days,
+            'booking_delivery_service': self.delivery_service,
+            'booking_delivery_address': self.delivery_address,
+            'booking_delivery_fee': self.delivery_fee,
+            'booking_collection_service': self.collection_service,
+            'booking_collection_address': self.collection_address,
+            'booking_collection_fee': self.collection_fee,
+        })
+        journey._reconcile_step()
+        return journey
+
+    def action_booking_journey(self):
+        self.ensure_one()
+        return self._get_or_create_journey().action_open()

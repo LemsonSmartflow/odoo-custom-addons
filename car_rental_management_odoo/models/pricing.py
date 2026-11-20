@@ -286,6 +286,10 @@ class Reservation(models.Model):
             if not self.env.context.get('skip_rental_cancel'):
                 record.rental_ids._cancel_before_pickup()
             super(Reservation, record).write({'status': 'cancelled'})
+            journey = self.env['car.rental.journey'].sudo().search(
+                [('reservation_id', '=', record.id)], limit=1)
+            if journey:
+                journey._reconcile_step()
         vehicles._refresh_reserved_status()
 
     def action_reset_draft(self):

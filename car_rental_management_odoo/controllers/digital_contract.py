@@ -24,7 +24,7 @@ class DigitalContract(http.Controller):
                                  'X-Frame-Options': 'DENY'})
         return response
 
-    @http.route('/rental/contract/<int:signer_id>/<string:token>', type='http', auth='public', methods=['GET', 'POST'], sitemap=False)
+    @http.route('/rental/contract/<int:signer_id>/<string:token>', type='http', auth='public', methods=['GET', 'POST'], csrf=True, sitemap=False)
     def contract(self, signer_id, token, **post):
         signer = self._signer(signer_id, token)
         contract = signer.contract_id

@@ -171,6 +171,7 @@
     <!-- DASHBOARD MENU -->
     <!-- ================================================== -->
 
-    <menuitem id="menu_car_rental_dashboard" name="Dashboard" parent="menu_car_rental_root" action="action_car_rental_dashboard" sequence="1"/>
+    <menuitem id="menu_car_rental_dashboard" name="Dashboard" parent="menu_car_rental_root" action="action_car_rental_dashboard" sequence="1"
+              groups="car_rental_management_odoo.group_car_rental_agent"/>
 
 </odoo>

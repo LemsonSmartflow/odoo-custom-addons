@@ -58,12 +58,8 @@ class CarRental(models.Model):
         string='Final Mileage'
     )
 
-    amount = fields.Float(
-        string='Amount',
-        related='reservation_id.amount',
-        store=True,
-        readonly=True
-    )
+    # ``amount`` is defined as a Monetary field in finance.py; redefining it
+    # here as a Float left a stale column and an ambiguous type for the ORM.
 
     status = fields.Selection([
         ('draft', 'Draft'),

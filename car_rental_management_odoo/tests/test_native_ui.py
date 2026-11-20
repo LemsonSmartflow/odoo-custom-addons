@@ -169,7 +169,26 @@ class TestNativeScreens(RentalTestCommon):
             ".//filter[@name='rental_available_now']"))
         self.assertIsNotNone(fleet_search_arch.find(
             ".//filter[@name='rental_ready_to_reserve']"))
-        self.assertRegex(fleet_form, r'<field name="state_id"[^>]*invisible="(?:1|True)"')
+        # Native Fleet lifecycle stays visible; rental availability is shown in
+        # the separate Rental Details tab.
+        self.assertRegex(fleet_form, r'<field name="state_id"[^>]*widget="statusbar"')
+        # The camera icon must be bound to the writable vehicle image, not the
+        # read-only model photo, so staff can actually upload a vehicle picture.
+        self.assertRegex(fleet_form, r'<field name="image_1920"[^>]*widget="image"')
+        self.assertNotIn('<field name="image_128"', fleet_form)
+        # No rental view should use the cramped 4-column inner-group layout.
+        for arch in (fleet_form, fleet_list, fleet_search, maintenance_list):
+            self.assertNotIn('col="4"', arch)
+        inspection_form = self.env['car.rental.check'].get_view(
+            self.env.ref('car_rental_management_odoo.view_inspection_form').id)['arch']
+        self.assertNotIn('col="4"', inspection_form)
+        self.assertIn('o_car_rental_inspection_summary', inspection_form)
+        # Money is collected on the invoice / quotation, never from the rental
+        # form.  No payment or deposit collection buttons belong here.
+        rental_form_arch = self.env['car.rental.rental'].get_view(view_type='form')['arch']
+        for action in ('action_record_payment', 'action_collect_payment',
+                       'action_collect_deposit', 'action_refund_deposit'):
+            self.assertNotIn('name="%s"' % action, rental_form_arch)
         self.assertIn('default_order="request_date desc, id desc"', maintenance_list)
         self.assertIn('rental_vehicle_id', maintenance_list)
         self.assertIn('rental_group_vehicle', maintenance_search)
@@ -301,8 +320,11 @@ class TestNativeScreens(RentalTestCommon):
         staff_vehicle = vehicle.with_user(self.user_agent)
         data = staff_vehicle.read(['license_plate', 'model_id', 'rental_status'])[0]
         self.assertEqual(data['license_plate'], vehicle.license_plate)
+        # Native Fleet fields are governed by Fleet ACLs, so rental staff can
+        # edit them; rental-only fields still require the fleet manager role.
+        staff_vehicle.write({'license_plate': 'CR-UPDATED'})
         with self.assertRaises(AccessError), self.cr.savepoint():
-            staff_vehicle.write({'license_plate': 'NOT-ALLOWED'})
+            staff_vehicle.write({'rental_service_interval': 5000})
         partner = self._make_partner()
         with Form(partner.with_user(self.user_agent)) as form:
             form.rental_cin = '111222333'
