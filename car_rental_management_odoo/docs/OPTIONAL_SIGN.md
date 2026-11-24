@@ -19,8 +19,9 @@ declares a `sign.*` field, so the Community installation is unaffected.
 
 1. Install the Enterprise `sign` application.
 2. Add this repository's `car_rental_sign_bridge` folder to your addons path.
-3. Install **Car Rental - Odoo Sign Bridge**.
-4. Open a generated agreement and use **Send with Odoo Sign** / **Refresh Sign Status**.
+3. In `car_rental_sign_bridge/__manifest__.py`, set `installable: True` (it ships as `False` so Odoo.sh does not auto-install an addon that needs Enterprise Sign).
+4. Install **Car Rental - Odoo Sign Bridge**.
+5. Open a generated agreement and use **Send with Odoo Sign** / **Refresh Sign Status**.
 
 The signed PDF is copied into `car.rental.contract.completed_pdf` and the rental
 agreement is marked signed; all existing print, invoice and access controls

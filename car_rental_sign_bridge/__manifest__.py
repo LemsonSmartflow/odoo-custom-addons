@@ -7,6 +7,9 @@
     'author': 'Clinton Giri',
     'depends': ['car_rental_management_odoo', 'sign'],
     'data': [],
-    'installable': True,
+    # Disabled by default: Odoo.sh auto-installs every addon in the repository,
+    # and this bridge requires the Enterprise-only `sign` module.  Set to True
+    # only on an Enterprise instance where Sign is installed.
+    'installable': False,
     'application': False,
 }
