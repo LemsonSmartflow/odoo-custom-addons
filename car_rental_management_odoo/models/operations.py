@@ -1,4 +1,5 @@
-﻿from math import ceil
+﻿import logging
+from math import ceil
 from datetime import timedelta
 
 from odoo import api, fields, models
@@ -6,6 +7,8 @@ from odoo.exceptions import ValidationError
 
 from .pricing import require_role
 from .workflow import window
+
+_logger = logging.getLogger(__name__)
 
 
 class Rental(models.Model):
@@ -93,17 +96,28 @@ class Rental(models.Model):
     def _on_agreement_signed(self):
         for rental in self:
             rental = rental.sudo()
-            if rental._uses_single_invoice():
-                if rental.sale_order_id and rental.sale_order_id.state in ('draft', 'sent'):
-                    rental.sale_order_id.action_confirm()
-                action = rental.action_invoice()
-                invoice = self.env['account.move'].sudo().browse(action.get('res_id')).exists()
-                if invoice and invoice.state == 'draft':
-                    invoice.action_post()
+            # Progression is independent of accounting: a missing account or
+            # journal must never trap the customer at the Agreement step.
             journey = self.env['car.rental.journey'].sudo().search(
                 [('reservation_id', '=', rental.reservation_id.id)], limit=1)
             if journey and journey.step == 'agreement':
-                journey._advance_to('payment')
+                with self.env.cr.savepoint():
+                    journey._advance_to('payment')
+            if rental._uses_single_invoice():
+                try:
+                    with self.env.cr.savepoint():
+                        if rental.sale_order_id and rental.sale_order_id.state in ('draft', 'sent'):
+                            rental.sale_order_id.action_confirm()
+                        action = rental.action_invoice()
+                        invoice = self.env['account.move'].sudo().browse(
+                            action.get('res_id')).exists()
+                        if invoice and invoice.state == 'draft':
+                            invoice.action_post()
+                except Exception as exc:
+                    _logger.exception('Could not post the booking invoice for %s', rental.reference)
+                    rental.message_post(
+                        body='Agreement signed. The booking invoice could not be posted yet: %s'
+                             % exc)
 
     def _workflow_write(self, vals):
         for rental in self:

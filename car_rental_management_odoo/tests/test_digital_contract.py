@@ -122,7 +122,7 @@ class TestDigitalContract(RentalTestCommon):
         self.assertTrue(contract.customer_details)
         messages = self.env['mail.message'].search([
             ('model', '=', 'car.rental.contract'), ('res_id', '=', contract.id)])
-        self.assertTrue(any('completion failed' in (m.body or '') for m in messages))
+        self.assertTrue(any('finalising the document failed' in (m.body or '') for m in messages))
 
     def test_checkbox_acceptance_completes_and_records_attestation(self):
         contract = self.contract()

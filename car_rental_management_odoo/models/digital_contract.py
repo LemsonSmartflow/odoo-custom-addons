@@ -277,7 +277,7 @@ class AgreementSendWizard(models.TransientModel):
         ('email', 'Email customer'),
         ('whatsapp', 'Share via WhatsApp'),
         ('telegram', 'Share via Telegram'),
-        ('copy', 'Copy signing link (manual / local testing)'),
+        ('copy', 'Copy signing link'),
     ], string='Send option', required=True, default='email')
     signing_link = fields.Char(string='Customer Signing Link', readonly=True)
 
@@ -294,7 +294,7 @@ class AgreementSendWizard(models.TransientModel):
     def action_copy_link(self):
         """Prepare the packet and reveal the link without the public-URL guard.
 
-        Useful for local testing or when staff will deliver the link themselves.
+        Use when staff will deliver the link to the customer themselves.
         The same private bearer link and expiry rules apply.
         """
         self.ensure_one()
@@ -304,7 +304,7 @@ class AgreementSendWizard(models.TransientModel):
             raise ValidationError('The agreement does not have exactly one customer signing link.')
         self.signing_link = renter.link
         self.journey_id.message_post(
-            body='Customer signing link generated for manual copy (local/test delivery).')
+            body='Customer signing link generated for manual delivery.')
         return {
             'type': 'ir.actions.act_window',
             'name': 'Send Signing Link',
@@ -807,6 +807,22 @@ class Signer(models.Model):
         except Exception as exc:
             _logger.exception('Could not complete digital agreement %s', contract.id)
             contract.message_post(
-                body='Signature recorded but agreement completion failed: %s' % exc)
+                body='Signature recorded but finalising the document failed: %s' % exc)
+            # Every named signer has accepted.  Do not trap the customer at the
+            # Agreement step just because the PDF/invoice step failed.
+            if all(signer.signed_on for signer in contract.signer_ids):
+                rental = contract.rental_id
+                renter = contract.signer_ids.filtered(lambda s: s.role == 'renter')[:1]
+                try:
+                    with self.env.cr.savepoint():
+                        if rental.agreement_state != 'signed':
+                            rental.sudo().write({
+                                'agreement_state': 'signed',
+                                'agreement_signed_by': renter.name if renter else rental.partner_id.name,
+                                'agreement_signed_on': fields.Datetime.now(),
+                            })
+                        rental.sudo()._on_agreement_signed()
+                except Exception:
+                    _logger.exception('Could not advance workflow after signing %s', contract.id)
             return False
         return True
