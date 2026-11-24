@@ -151,9 +151,13 @@ class FleetVehicle(models.Model):
     def _refresh_reserved_status(self):
         for vehicle in self:
             if vehicle.rental_status in ('available', 'reserved'):
+                # A confirmed reservation still holds the car even after its
+                # draft rental has been created; dropping the old rental_ids
+                # filter prevents the daily cron from flipping it to available
+                # in the middle of a live booking.
                 reserved = self.env['car.rental.reservation'].search_count([
                     ('vehicle_id', '=', vehicle.id), ('status', '=', 'confirmed'),
-                    ('expected_return_datetime', '>=', fields.Datetime.now()), ('rental_ids', '=', False)])
+                    ('expected_return_datetime', '>=', fields.Datetime.now())])
                 vehicle.sudo()._operational_update({'rental_status': 'reserved' if reserved else 'available'})
 
     def write(self, vals):
@@ -293,7 +297,33 @@ class FleetVehicle(models.Model):
         rentals._schedule_handover_reminder()
 
     @api.model
+    def _repair_stuck_rental_states(self):
+        """Self-heal legacy hold/step mismatches without waiting for an upgrade."""
+        for vehicle in self.sudo().search([('rental_status', 'in', ('available', 'reserved'))]):
+            try:
+                vehicle._refresh_reserved_status()
+            except Exception:
+                continue
+        for reservation in self.env['car.rental.reservation'].sudo().search([
+                ('status', '=', 'confirmed')]):
+            rentals = reservation.rental_ids
+            if rentals and all(r.status == 'cancelled' for r in rentals):
+                try:
+                    reservation.with_context(skip_rental_cancel=True).action_cancel()
+                except Exception:
+                    continue
+            journey = self.env['car.rental.journey'].sudo().search(
+                [('reservation_id', '=', reservation.id)], limit=1)
+            if journey:
+                try:
+                    journey._reconcile_step()
+                except Exception:
+                    continue
+        return True
+
+    @api.model
     def _cron_rental_reminders(self):
+        self._repair_stuck_rental_states()
         activity = self.env.ref('mail.mail_activity_data_todo')
         for company in self.env['res.company'].search([]):
             vehicles = self.with_company(company).search([('company_id', '=', company.id), ('rental_status', '!=', 'decommissioned')])

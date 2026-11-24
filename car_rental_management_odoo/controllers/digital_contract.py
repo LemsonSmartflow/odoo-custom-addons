@@ -37,6 +37,11 @@ class DigitalContract(http.Controller):
                     signer._submit(post, post.get('signature', ''))
             except ValidationError as exc:
                 error = str(exc)
+            except Exception as exc:
+                # Never leak a traceback to a public visitor; log it for staff.
+                error = 'We could not record your acceptance. Please contact the rental office.'
+                import logging
+                logging.getLogger(__name__).exception('Digital contract submission failed: %s', exc)
         import json
         values = contract._prefill()
         if error and signer.role == 'renter':
@@ -45,6 +50,8 @@ class DigitalContract(http.Controller):
         response = request.render('car_rental_management_odoo.digital_contract_page', {
             'signer': signer, 'contract': contract, 'token': token, 'error': error,
             'customer_fields': CUSTOMER_FIELDS, 'values': values,
+            'acceptance_method': post.get('acceptance_method', 'drawn'),
+            'checkbox_accept': post.get('checkbox_accept') == 'yes',
             'schedule': json.loads(contract.snapshot or '{}'), 'role_label': dict(ROLES)[signer.role],
             'can_sign': not signer.signed_on and contract.rental_id.status == 'draft' and
                         (signer.role == 'renter' and contract.state == 'sent' or signer.role != 'renter' and contract.state == 'signing')})

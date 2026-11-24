@@ -90,7 +90,15 @@ class TestReservationWorkflow(RentalTestCommon):
         first = self.env['car.rental.reservation'].create(dict(
             base, partner_id=partner.id, pickup_datetime=start,
             expected_return_datetime=start + timedelta(days=2)))
+        first.action_confirm()
+        first.action_create_rental()
+        rental = first.rental_ids[:1]
+        self.assertTrue(rental)
         first.action_cancel()
+        self.assertEqual(first.status, 'cancelled')
+        self.assertEqual(rental.status, 'cancelled')
+        vehicle.invalidate_recordset()
+        self.assertEqual(vehicle.rental_status, 'available')
         second = self.env['car.rental.reservation'].create(dict(
             base, partner_id=partner.id, pickup_datetime=start,
             expected_return_datetime=start + timedelta(days=2)))

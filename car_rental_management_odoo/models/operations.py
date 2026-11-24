@@ -177,9 +177,15 @@ class Rental(models.Model):
             if rental.sale_order_id and rental.sale_order_id.state != 'cancel':
                 rental.sale_order_id.sudo().with_context(
                     skip_rental_booking_cancel=True).action_cancel()
+            vehicle = rental.vehicle_id
             rental._workflow_write({'status': 'cancelled'})
             if rental.reservation_id.status != 'cancelled':
                 rental.reservation_id.with_context(skip_rental_cancel=True).action_cancel()
+            else:
+                # The reservation may already be cancelled while the rental (and
+                # the vehicle's reserved hold) was still active.  Always release
+                # the car instead of waiting for the daily cron.
+                vehicle._refresh_reserved_status()
             rental.message_post(body='Booking cancelled before vehicle handover. Agreement and inspection history retained.')
             rental._sync_journey_from_rental()
 

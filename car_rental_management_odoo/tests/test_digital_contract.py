@@ -19,6 +19,7 @@ from odoo.tools import file_open
 from odoo.tools.pdf import PdfReader
 
 from ..controllers.digital_contract import DigitalContract
+from ..models.digital_contract import CHECKBOX_ACCEPTANCE_TEXT
 from .common import PNG_IMAGE, PNG_SIGNATURE, RentalTestCommon
 
 
@@ -38,7 +39,7 @@ class TestDigitalContract(RentalTestCommon):
         return contract
 
     def particulars(self):
-        return {'signed_at_place': 'Gaborone'}
+        return {'signed_at_place': 'Gaborone', 'accept': 'yes'}
 
     def test_six_signatures_lock_and_complete_original_pdf(self):
         contract = self.contract()
@@ -46,14 +47,14 @@ class TestDigitalContract(RentalTestCommon):
         renter = contract.signer_ids.filtered(lambda s: s.role == 'renter')
         other = contract.signer_ids - renter
         with self.assertRaises(ValidationError), self.cr.savepoint():
-            other[0]._submit({}, PNG_SIGNATURE)
+            other[0]._submit({'accept': 'yes'}, PNG_SIGNATURE)
         renter._submit(self.particulars(), PNG_SIGNATURE)
         self.assertEqual(contract.state, 'signing')
         digest = contract.document_hash
         with self.assertRaises(ValidationError), self.cr.savepoint():
             contract.write({'delivery_place': 'Changed'})
         for signer in other:
-            signer._submit({}, PNG_SIGNATURE)
+            signer._submit({'accept': 'yes'}, PNG_SIGNATURE)
         self.assertEqual(contract.state, 'complete')
         self.assertEqual(contract.rental_id.agreement_state, 'signed')
         self.assertTrue(all(s.signed_hash == digest for s in contract.signer_ids))
@@ -107,6 +108,36 @@ class TestDigitalContract(RentalTestCommon):
         self.assertEqual(contract.state, 'sent')
         self.assertFalse(renter.signed_on)
         self.assertFalse(contract.customer_details)
+
+    def test_checkbox_acceptance_completes_and_records_attestation(self):
+        contract = self.contract()
+        renter = contract.signer_ids.filtered(lambda signer: signer.role == 'renter')
+        values = dict(self.particulars(), acceptance_method='checkbox',
+                      checkbox_accept='yes')
+        renter._submit(values, '')
+        self.assertEqual(contract.state, 'signing')
+        for signer in contract.signer_ids - renter:
+            signer._submit({'accept': 'yes', 'acceptance_method': 'checkbox',
+                            'checkbox_accept': 'yes'}, '')
+        self.assertEqual(contract.state, 'complete')
+        self.assertEqual(contract.rental_id.agreement_state, 'signed')
+        self.assertEqual(renter.acceptance_method, 'checkbox')
+        self.assertEqual(renter.accepted_text, CHECKBOX_ACCEPTANCE_TEXT)
+        self.assertTrue(renter.signature)  # attestation image keeps workflow intact
+        reader = PdfReader(io.BytesIO(base64.b64decode(contract.completed_pdf)))
+        text = '\n'.join(page.extract_text() or '' for page in reader.pages)
+        self.assertIn('Accepted electronically by ticking the acceptance box', text)
+
+    def test_checkbox_requires_the_tick_and_a_valid_method(self):
+        contract = self.contract()
+        renter = contract.signer_ids.filtered(lambda signer: signer.role == 'renter')
+        with self.assertRaisesRegex(ValidationError, 'Tick the acceptance box'), self.cr.savepoint():
+            renter._submit(dict(self.particulars(), acceptance_method='checkbox'), '')
+        with self.assertRaisesRegex(ValidationError, 'Choose how to sign'), self.cr.savepoint():
+            renter._submit(dict(self.particulars(), acceptance_method='fingerprint'), '')
+        self.assertEqual(contract.state, 'sent')
+        self.assertFalse(renter.signed_on)
+        self.assertFalse(renter.accepted_text)
 
     def test_token_rejection_expiry_and_revocation(self):
         contract = self.contract()
@@ -176,7 +207,7 @@ class TestDigitalContract(RentalTestCommon):
         contract = self.contract()
         renter = contract.signer_ids.filtered(lambda s: s.role == 'renter')
         with self.assertRaises(ValidationError), self.cr.savepoint():
-            renter._submit({}, PNG_SIGNATURE)
+            renter._submit({'accept': 'yes'}, PNG_SIGNATURE)
         with self.assertRaises(ValidationError), self.cr.savepoint():
             renter._submit(self.particulars(), PNG_IMAGE)
         renter._submit(self.particulars(), PNG_SIGNATURE)
@@ -221,6 +252,8 @@ class TestDigitalContractHttp(TestDigitalContract, HttpCase):
         self.assertIn('no-store', response.headers['Cache-Control'])
         self.assertIn('Next of kin', response.text)
         self.assertIn('name="signed_at_place"', response.text)
+        self.assertIn('name="acceptance_method"', response.text)
+        self.assertIn('name="checkbox_accept"', response.text)
         self.assertNotIn('name="full_name"', response.text)
         self.assertEqual(self.url_open(path + '/pdf/original').status_code, 200)
         self.assertEqual(self.url_open('/rental/contract/%s/wrong' % signer.id).status_code, 404)

@@ -1,5 +1,6 @@
 """Rental identity and eligibility on standard Contacts."""
 import re
+from datetime import timedelta
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
@@ -184,6 +185,11 @@ class Partner(models.Model):
                         raise ValidationError(_('A rental customer must be at least 21 years old to enable rentals.'))
                 if partner.rental_license_expiry and partner.rental_license_expiry < today:
                     raise ValidationError(_('The driving licence has expired. Update the licence details before enabling rentals.'))
+                if (partner.rental_license_issue_date
+                        and partner.rental_license_issue_date > today - timedelta(days=365 * 2)):
+                    raise ValidationError(_(
+                        'A rental customer must have held a driving licence for at least 2 years '
+                        'before rentals can be enabled.'))
 
     def _check_rental_eligibility(self, pickup, return_time):
         self.ensure_one()
@@ -200,6 +206,9 @@ class Partner(models.Model):
             raise ValidationError(_('The customer must be at least 21 years old on the pickup date.'))
         if self.rental_license_expiry < local_return or self.rental_license_issue_date > local_pickup:
             raise ValidationError(_('The driving licence must be valid throughout the rental period.'))
+        if self.rental_license_issue_date > local_pickup - timedelta(days=365 * 2):
+            raise ValidationError(_(
+                'The customer must have held a driving licence for at least 2 years by the pickup date.'))
         identity_documents = (
             self.rental_omang_document_ids if self.rental_identity_type == 'omang'
             else self.rental_passport_document_ids

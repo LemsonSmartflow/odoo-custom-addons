@@ -136,7 +136,7 @@
                         <button name="action_rental_cleaning" type="object" string="Start Cleaning" invisible="rental_status not in ['returned', 'inspection']"/>
                         <button name="action_rental_release" type="object" string="Release after Cleaning" class="btn-primary" invisible="rental_status != 'cleaning'"/>
                         <button name="action_rental_maintenance" type="object" string="Rental Maintenance"/>
-                        <button name="action_rental_book" type="object" string="New Reservation"/>
+                        <button name="action_rental_book" type="object" string="New Reservation" invisible="rental_status == 'reserved'"/>
                         <button name="action_rental_reservations" type="object" string="Reservations"/>
                         <button name="action_rental_rentals" type="object" string="Rental History"/>
                     </div>

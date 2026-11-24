@@ -533,12 +533,13 @@ class TestBookingJourney(RentalTestCommon):
             {key: 'Test value' for key, _label in CUSTOMER_FIELDS},
             email='customer@example.test',
             kin_email='kin@example.test',
+            accept='yes',
         )
 
         def complete_signatures():
             renter._submit(particulars, PNG_SIGNATURE)
             for signer in other_signers:
-                signer._submit({}, PNG_SIGNATURE)
+                signer._submit({'accept': 'yes'}, PNG_SIGNATURE)
 
         self._assert_signing_hook_called_once(rental, complete_signatures)
         journey.invalidate_recordset()

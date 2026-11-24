@@ -10,7 +10,7 @@ from datetime import timedelta
 from urllib.parse import urlencode, urlsplit
 from xml.sax.saxutils import escape
 
-from PIL import Image
+from PIL import Image, ImageDraw
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as PDFImage, Table, TableStyle, PageBreak, KeepTogether
 from reportlab.lib import colors
@@ -33,6 +33,13 @@ CUSTOMER_FIELDS = [('full_name', 'Full legal name'), ('identity', 'Omang / Passp
                    ('licence', 'Driving licence number'), ('next_of_kin', 'Next of kin full name'),
                    ('relationship', 'Relationship'), ('kin_phone', 'Next of kin cellphone'),
                    ('kin_email', 'Next of kin email'), ('signed_at_place', 'Place of signing')]
+CHECKBOX_ACCEPTANCE_TEXT = (
+    'I have read the original rental agreement and the completed particulars above. '
+    'I confirm those details are correct and I agree to be bound by the agreement. '
+    'I choose to accept electronically by ticking this box instead of drawing a '
+    'signature, and I understand that this acceptance has the same effect as my '
+    'handwritten signature.'
+)
 
 
 class Company(models.Model):
@@ -555,8 +562,13 @@ class Contract(models.Model):
                           paragraph('Each signature applies to the same original contract and completed particulars. Times below are UTC.'), Spacer(1, 14)])
             cards = []
             for signer in self.signer_ids:
+                method = signer.acceptance_method or ('drawn' if signer.signature else False)
                 card = [Paragraph(escape(dict(ROLES)[signer.role]), styles['Heading3']),
                         paragraph(signer.name), paragraph('Signed: %s' % signer.signed_on if signer.signed_on else 'Awaiting signature'), Spacer(1, 8)]
+                if method == 'checkbox':
+                    card.append(paragraph('Accepted electronically by ticking the acceptance box.'))
+                    if signer.accepted_text:
+                        card.append(paragraph('Recorded acceptance: %s' % escape(signer.accepted_text)))
                 if signer.signature:
                     image = PDFImage(io.BytesIO(base64.b64decode(signer.signature)), width=180, height=60, kind='proportional')
                     image.hAlign = 'LEFT'
@@ -611,6 +623,10 @@ class Signer(models.Model):
     signed_on = fields.Datetime(readonly=True)
     signature = fields.Binary(attachment=True, readonly=True)
     signed_hash = fields.Char(readonly=True)
+    acceptance_method = fields.Selection([
+        ('drawn', 'Drawn signature'), ('checkbox', 'Checkbox acceptance')],
+        string='Acceptance Method', readonly=True, copy=False)
+    accepted_text = fields.Text(string='Recorded Acceptance Wording', readonly=True, copy=False)
     _role_unique = models.Constraint('UNIQUE(contract_id,role)', 'Each role must have exactly one signature request.')
 
     def _compute_link(self):
@@ -632,6 +648,20 @@ class Signer(models.Model):
     def unlink(self):
         raise ValidationError('Signature requests are retained for the audit trail.')
 
+    def _attestation_image(self, method_label, signed_on, document_hash):
+        """Build a small PNG attestation so the existing workflow and QWeb
+        agreement keep working for checkbox acceptance (which has no ink)."""
+        img = Image.new('RGB', (900, 220), 'white')
+        d = ImageDraw.Draw(img)
+        d.text((20, 20), 'Electronically accepted by %s' % self.name, fill='black')
+        d.text((20, 60), 'Method: %s' % method_label, fill='black')
+        d.text((20, 95), 'Template: %s' % (self.contract_id.template_version or '-'), fill='black')
+        d.text((20, 130), 'Date (UTC): %s' % signed_on, fill='black')
+        d.text((20, 165), 'SHA-256: %s' % (document_hash or '-')[:48], fill='black')
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        return base64.b64encode(buf.getvalue())
+
     def _submit(self, values, signature):
         self.ensure_one()
         contract = self.contract_id
@@ -641,22 +671,30 @@ class Signer(models.Model):
                 or not contract.expires_on or contract.expires_on <= fields.Datetime.now()
                 or contract.rental_id.status != 'draft'):
             raise ValidationError('This signing request is no longer available.')
-        try:
-            raw = base64.b64decode(signature, validate=True)
-            if len(raw) > 500000:
-                raise ValueError()
-            im = Image.open(io.BytesIO(raw))
-            if im.format != 'PNG' or im.width > 2000 or im.height > 1000 or im.width < 50 or im.height < 20:
-                raise ValueError()
-            im.load()
-            # Transparent pixels must not make an empty signature appear non-blank.
-            rgba = im.convert('RGBA')
-            white = Image.new('RGBA', rgba.size, 'white')
-            white.alpha_composite(rgba)
-            if white.convert('L').getextrema()[0] > 240:
-                raise ValueError()
-        except Exception as exc:
-            raise ValidationError('Draw a signature before submitting.') from exc
+        method = values.get('acceptance_method') or 'drawn'
+        if method not in ('drawn', 'checkbox'):
+            raise ValidationError('Choose how to sign: draw a signature or tick the acceptance box.')
+        if values.get('accept') != 'yes':
+            raise ValidationError('Confirm you have read the original contract and completed schedule.')
+        if method == 'drawn':
+            try:
+                raw = base64.b64decode(signature, validate=True)
+                if len(raw) > 500000:
+                    raise ValueError()
+                im = Image.open(io.BytesIO(raw))
+                if im.format != 'PNG' or im.width > 2000 or im.height > 1000 or im.width < 50 or im.height < 20:
+                    raise ValueError()
+                im.load()
+                rgba = im.convert('RGBA')
+                white = Image.new('RGBA', rgba.size, 'white')
+                white.alpha_composite(rgba)
+                if white.convert('L').getextrema()[0] > 240:
+                    raise ValueError()
+            except Exception as exc:
+                raise ValidationError('Draw a signature before submitting.') from exc
+        else:
+            if values.get('checkbox_accept') != 'yes':
+                raise ValidationError('Tick the acceptance box to confirm your agreement.')
         if self.role == 'renter':
             cleaned = contract._prefill()
             cleaned['signed_at_place'] = str(
@@ -670,8 +708,18 @@ class Signer(models.Model):
                              'submitted_on': fields.Datetime.now(), 'state': 'signing'})
         elif contract.state != 'signing' or not contract.document_hash:
             raise ValidationError('The customer must complete and sign the agreement first.')
-        super().write({'signature': signature, 'signed_on': fields.Datetime.now(), 'signed_hash': contract.document_hash})
-        contract.message_post(body='%s signed as %s.' % (self.name, dict(ROLES)[self.role]))
+        signed_on = fields.Datetime.now()
+        if method == 'checkbox':
+            signature = self._attestation_image('Checkbox acceptance', signed_on,
+                                                contract.document_hash)
+        super().write({
+            'signature': signature, 'signed_on': signed_on,
+            'signed_hash': contract.document_hash,
+            'acceptance_method': method,
+            'accepted_text': CHECKBOX_ACCEPTANCE_TEXT if method == 'checkbox' else False,
+        })
+        contract.message_post(body='%s accepted as %s (%s).' % (
+            self.name, dict(ROLES)[self.role], method))
         try:
             contract._finish()
         except Exception as exc:

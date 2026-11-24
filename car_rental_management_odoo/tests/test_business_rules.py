@@ -187,6 +187,31 @@ class TestBusinessRules(RentalTestCommon):
         with self.assertRaisesRegex(ValidationError, 'expired'), self.cr.savepoint():
             contact.write({'rental_enabled': True})
 
+    def test_licence_held_for_less_than_two_years_is_rejected(self):
+        today = fields.Date.today()
+        profile = {
+            'name': self._unique('New driver'),
+            'company_type': 'person',
+            'street': '1 Test Street',
+            'rental_postal_address': 'PO Box 1',
+            'rental_cin': '123456780',
+            'rental_date_of_birth': today.replace(year=today.year - 30),
+            'rental_driving_license': '12345678901234',
+            'rental_license_issue_date': today - timedelta(days=200),
+            'rental_license_expiry': today.replace(year=today.year + 2),
+            'rental_next_of_kin_name': 'Test Kin',
+            'rental_next_of_kin_relationship': 'Sibling',
+            'rental_next_of_kin_phone': '0811111111',
+            'rental_enabled': True,
+            'rental_omang_document_ids': [(6, 0, [self._attachment('new-omang.png').id])],
+            'rental_license_document_ids': [(6, 0, [self._attachment('new-licence.png').id])],
+        }
+        with self.assertRaisesRegex(ValidationError, 'at least 2 years'), self.cr.savepoint():
+            self.env['res.partner'].create(profile)
+        profile['rental_license_issue_date'] = today - timedelta(days=365 * 3)
+        partner = self.env['res.partner'].create(profile)
+        self.assertTrue(partner.rental_enabled)
+
     def test_rental_customer_requires_selected_identity_and_licence_documents(self):
         today = fields.Date.today()
         with self.assertRaisesRegex(ValidationError, 'Upload the selected'), self.cr.savepoint():

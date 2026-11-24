@@ -17,13 +17,19 @@
                         <div class="p-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <strong><field name="license_plate"/></strong>
-                                <field name="rental_status" widget="badge" decoration-success="rental_status == 'available'" decoration-warning="rental_status == 'rented'" decoration-danger="rental_status in ['maintenance', 'damaged']"/>
+                                <field name="rental_status" widget="badge" decoration-success="rental_status == 'available'" decoration-warning="rental_status in ['rented', 'reserved']" decoration-danger="rental_status in ['maintenance', 'damaged']"/>
                             </div>
                             <h4 class="mb-2"><field name="model_id"/></h4>
                             <div class="text-muted"><field name="model_year"/> · <field name="transmission"/> · <field name="seats"/> seats</div>
                             <div class="d-flex justify-content-between align-items-center mt-3">
                                 <div class="text-muted">Destination pricing</div>
-                                <button name="action_book" type="object" class="btn btn-primary btn-sm" invisible="rental_status not in ['available', 'reserved', 'rented']">Reserve</button>
+                                <button name="action_book" type="object" class="btn btn-primary btn-sm" invisible="rental_status != 'available'">Reserve</button>
+                                <span t-if="record.rental_status.raw_value == 'reserved' || record.rental_status.raw_value == 'rented'"
+                                      class="btn btn-secondary btn-sm disabled"
+                                      title="This vehicle is already booked">
+                                    <t t-if="record.rental_status.raw_value == 'reserved'">Reserved</t>
+                                    <t t-else="">On Hire</t>
+                                </span>
                             </div>
                         </div>
                     </t>
@@ -42,7 +48,7 @@
                     <header>
                         <button name="action_confirm" string="Confirm Reservation" type="object" class="btn-primary" invisible="status != 'draft'"/>
                         <button name="action_create_rental" string="Create Rental" type="object" class="btn-primary" invisible="status != 'confirmed' or rental_count &gt; 0"/>
-                        <button name="action_cancel" string="Cancel" type="object" invisible="status == 'cancelled' or rental_count &gt; 0"/>
+                        <button name="action_cancel" string="Cancel" type="object" invisible="status == 'cancelled'"/>
                         <button name="action_reset_draft" string="Reset to Draft" type="object" invisible="status == 'draft' or rental_count &gt; 0"/>
                         <field name="status" widget="statusbar" statusbar_visible="draft,confirmed,cancelled"/>
                     </header>
