@@ -11,6 +11,7 @@
 <form class="o_car_rental_form"><header>
 <button name="action_prepare" type="object" string="Prepare Signing Links" class="btn-primary" invisible="state != 'draft'"/>
 <button name="action_revoke" type="object" string="Revoke Agreement" invisible="state in ('complete','cancelled')" groups="car_rental_management_odoo.group_rental_manager" confirm="Disable every link for this agreement? Recorded signatures will be retained."/>
+<button name="action_retry_completion" type="object" string="Retry Completion" invisible="state != 'signing'" groups="car_rental_management_odoo.group_rental_manager" help="Use after fixing a failed PDF or accounting step: finalizes an agreement whose signatures are all recorded."/>
 <field name="state" widget="statusbar"/></header><sheet>
 <div class="alert alert-info">Booking particulars are captured from the linked rental. The renter link is sent from the Booking Agreement step. Company representative and witness names are optional; any additional named signers can review the same document and sign through their individual links after the renter.</div>
 <group string="Booking"><field name="rental_id" readonly="1"/><field name="company_id" readonly="1"/></group>

@@ -29,12 +29,14 @@ class DigitalContract(http.Controller):
         signer = self._signer(signer_id, token)
         contract = signer.contract_id
         error = None
+        completion_pending = False
         if request.httprequest.method == 'POST':
             try:
                 if post.get('accept') != 'yes':
                     raise ValidationError('Confirm you have read the original contract and completed schedule.')
                 with request.env.cr.savepoint():
-                    signer._submit(post, post.get('signature', ''))
+                    completed = signer._submit(post, post.get('signature', ''))
+                    completion_pending = completed is False
             except ValidationError as exc:
                 error = str(exc)
             except Exception as exc:
@@ -52,6 +54,7 @@ class DigitalContract(http.Controller):
             'customer_fields': CUSTOMER_FIELDS, 'values': values,
             'acceptance_method': post.get('acceptance_method', 'drawn'),
             'checkbox_accept': post.get('checkbox_accept') == 'yes',
+            'completion_pending': completion_pending,
             'schedule': json.loads(contract.snapshot or '{}'), 'role_label': dict(ROLES)[signer.role],
             'can_sign': not signer.signed_on and contract.rental_id.status == 'draft' and
                         (signer.role == 'renter' and contract.state == 'sent' or signer.role != 'renter' and contract.state == 'signing')})

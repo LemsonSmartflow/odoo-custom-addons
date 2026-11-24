@@ -14,6 +14,7 @@
 <a t-if="contract.state in ('signing', 'complete')" class="download" t-att-href="'%s/pdf/review' % request.httprequest.path" target="_blank" rel="noopener noreferrer">Review completed schedule and signatures</a>
 <a t-if="contract.state == 'complete'" class="download" t-att-href="'%s/pdf/completed' % request.httprequest.path" target="_blank" rel="noopener noreferrer">Download fully signed agreement</a>
 <div t-if="error" class="error" role="alert" t-esc="error"/>
+<div t-if="completion_pending and not error" class="notice" role="status">Your acceptance was recorded successfully. The rental office will finalise the agreement and invoice shortly — you do not need to sign again.</div>
 <div t-if="signer.signed_on" class="notice">Thank you. <t t-if="signer.acceptance_method == 'checkbox'">Your electronic acceptance was recorded</t><t t-else="">Your signature was recorded</t> on <span t-esc="signer.signed_on"/> UTC. <span t-if="contract.state != 'complete'">The agreement is awaiting the remaining signatures.</span></div>
 <div t-if="not can_sign and not signer.signed_on" class="notice">The customer must complete and sign their details first, or this agreement is no longer open for signing. Please contact the rental office.</div>
  <form method="post" id="contract-form" t-if="can_sign">

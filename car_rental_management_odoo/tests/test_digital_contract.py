@@ -87,27 +87,32 @@ class TestDigitalContract(RentalTestCommon):
         self.assertEqual(contract._prefill()['full_name'], rental.partner_id.display_name)
         self.assertEqual(contract._prefill()['signed_at_place'], 'Gaborone')
 
-    def test_completion_failure_shows_safe_message_and_rolls_back_signature(self):
+    def test_completion_failure_keeps_signature_and_flags_office(self):
         contract = self.contract()
         renter = contract.signer_ids.filtered(lambda signer: signer.role == 'renter')
 
-        with self.assertRaisesRegex(ValidationError, 'problem at the rental office') as raised:
-            with self.cr.savepoint():
-                with patch.object(
-                    type(contract), '_finish',
-                    side_effect=ValidationError(
-                        'Configure rental income accounts and the sales journal in Car Rental Settings first.'),
-                ), patch(
-                    'odoo.addons.car_rental_management_odoo.models.digital_contract._logger.exception'
-                ):
-                    renter._submit(self.particulars(), PNG_SIGNATURE)
+        with patch.object(
+            type(contract), '_finish',
+            side_effect=ValidationError(
+                'Configure rental income accounts and the sales journal in Car Rental Settings first.'),
+        ), patch(
+            'odoo.addons.car_rental_management_odoo.models.digital_contract._logger.exception'
+        ) as logged:
+            result = renter._submit(self.particulars(), PNG_SIGNATURE)
 
-        self.assertNotIn('Configure rental income accounts', str(raised.exception))
+        self.assertIs(result, False)
+        logged.assert_called_once()
         contract.invalidate_recordset()
         renter.invalidate_recordset()
-        self.assertEqual(contract.state, 'sent')
-        self.assertFalse(renter.signed_on)
-        self.assertFalse(contract.customer_details)
+        # Acceptance is durable; only downstream completion was rolled back.
+        self.assertTrue(renter.signed_on)
+        self.assertTrue(renter.signature)
+        self.assertEqual(renter.signed_hash, contract.document_hash)
+        self.assertEqual(contract.state, 'signing')
+        self.assertTrue(contract.customer_details)
+        messages = self.env['mail.message'].search([
+            ('model', '=', 'car.rental.contract'), ('res_id', '=', contract.id)])
+        self.assertTrue(any('completion failed' in (m.body or '') for m in messages))
 
     def test_checkbox_acceptance_completes_and_records_attestation(self):
         contract = self.contract()
@@ -138,6 +143,19 @@ class TestDigitalContract(RentalTestCommon):
         self.assertEqual(contract.state, 'sent')
         self.assertFalse(renter.signed_on)
         self.assertFalse(renter.accepted_text)
+
+    def test_retry_completion_after_failed_downstream_step(self):
+        contract = self.contract()
+        renter = contract.signer_ids.filtered(lambda signer: signer.role == 'renter')
+        with patch.object(
+            type(contract), '_finish', side_effect=ValidationError('boom')
+        ), patch(
+            'odoo.addons.car_rental_management_odoo.models.digital_contract._logger.exception'
+        ):
+            self.assertIs(renter._submit(self.particulars(), PNG_SIGNATURE), False)
+        with patch.object(type(contract), '_finish', wraps=contract._finish) as retried:
+            contract.action_retry_completion()
+        retried.assert_called_once()
 
     def test_token_rejection_expiry_and_revocation(self):
         contract = self.contract()

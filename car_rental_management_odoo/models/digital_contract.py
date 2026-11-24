@@ -389,6 +389,13 @@ class Contract(models.Model):
     def _store(self, vals):
         return super().write(vals)
 
+    def action_retry_completion(self):
+        """Finalize a fully signed packet after a prior downstream failure."""
+        require_role(self.env, 'group_rental_manager')
+        for contract in self:
+            contract._finish()
+        return True
+
     def _lock(self):
         self.ensure_one()
         self.env.cr.execute('SELECT id FROM car_rental_contract WHERE id=%s FOR UPDATE', [self.id])
@@ -720,11 +727,16 @@ class Signer(models.Model):
         })
         contract.message_post(body='%s accepted as %s (%s).' % (
             self.name, dict(ROLES)[self.role], method))
+        # The customer's acceptance must never be lost because a downstream
+        # step (PDF assembly, invoice posting, accounting setup) fails.  Run
+        # completion in its own savepoint: if it fails, roll back only that
+        # work, keep the signature/acceptance, and flag the office for follow-up.
         try:
-            contract._finish()
+            with self.env.cr.savepoint():
+                contract._finish()
         except Exception as exc:
             _logger.exception('Could not complete digital agreement %s', contract.id)
-            raise ValidationError(
-                'We could not complete your signature because of a problem at the rental office. '
-                'Your signature was not saved. Please contact the rental office before trying again.'
-            ) from exc
+            contract.message_post(
+                body='Signature recorded but agreement completion failed: %s' % exc)
+            return False
+        return True
