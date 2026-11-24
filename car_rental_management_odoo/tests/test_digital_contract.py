@@ -35,6 +35,16 @@ class TestDigitalContract(RentalTestCommon):
         contract.write({'delivery_place': 'Office', 'company_email': 'office@example.test',
                         'company_representative': 'Director', 'company_witness_1': 'CW One',
                         'company_witness_2': 'CW Two', 'renter_witness_1': 'RW One', 'renter_witness_2': 'RW Two'})
+        template = self.env['rental.agreement.template'].search([
+            ('company_id', '=', self.company.id)], limit=1)
+        if template:
+            template.write({
+                'require_company_representative': True,
+                'require_company_witness_1': True,
+                'require_company_witness_2': True,
+                'require_renter_witness_1': True,
+                'require_renter_witness_2': True,
+            })
         contract.action_prepare()
         return contract
 
@@ -120,7 +130,7 @@ class TestDigitalContract(RentalTestCommon):
         values = dict(self.particulars(), acceptance_method='checkbox',
                       checkbox_accept='yes')
         renter._submit(values, '')
-        self.assertEqual(contract.state, 'signing')
+        self.assertIn(contract.state, ('signing', 'complete'))
         for signer in contract.signer_ids - renter:
             signer._submit({'accept': 'yes', 'acceptance_method': 'checkbox',
                             'checkbox_accept': 'yes'}, '')

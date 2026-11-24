@@ -348,6 +348,20 @@ class Contract(models.Model):
     completed_filename = fields.Char(readonly=True)
     expires_on = fields.Datetime(readonly=True)
     particulars_html = fields.Html(compute='_compute_particulars', string='Recorded Particulars')
+    has_odoo_sign = fields.Boolean(compute='_compute_backend', string='Odoo Sign Available')
+    sign_backend = fields.Selection([
+        ('private', 'Private signing links'), ('odoo_sign', 'Odoo Sign'),
+    ], compute='_compute_backend', string='Signing Backend')
+    external_request_ref = fields.Char(readonly=True, copy=False)
+    sign_state = fields.Char(readonly=True, copy=False)
+
+    @api.depends('company_id')
+    def _compute_backend(self):
+        gateway = self.env['car.rental.sign.gateway']
+        ready = gateway.is_ready()
+        for contract in self:
+            contract.has_odoo_sign = ready
+            contract.sign_backend = 'odoo_sign' if ready else 'private'
 
     @api.depends('snapshot', 'customer_details')
     def _compute_particulars(self):
@@ -389,6 +403,33 @@ class Contract(models.Model):
     def _store(self, vals):
         return super().write(vals)
 
+    def complete_from_external(self, signed_pdf, signed_by, signed_on):
+        """Import a signed PDF produced by an external signer (e.g. Odoo Sign)."""
+        self.ensure_one()
+        self._store({
+            'state': 'complete',
+            'completed_pdf': signed_pdf,
+            'completed_filename': 'Signed agreement - %s.pdf' % self.rental_id.reference,
+            'sign_state': 'done',
+        })
+        rental = self.rental_id
+        rental.write({
+            'agreement_signed_by': signed_by,
+            'agreement_terms': 'Signed externally on %s (request %s).' % (
+                signed_on, self.external_request_ref),
+        })
+        rental.action_sign_agreement()
+        self.message_post(body='Signed PDF imported from the external signing backend.')
+        return True
+
+    def action_send_via_odoo_sign(self):
+        self.ensure_one()
+        return self.env['car.rental.sign.gateway'].send(self)
+
+    def action_sync_odoo_sign(self):
+        self.ensure_one()
+        return self.env['car.rental.sign.gateway'].sync(self)
+
     def action_retry_completion(self):
         """Finalize a fully signed packet after a prior downstream failure."""
         require_role(self.env, 'group_rental_manager')
@@ -411,7 +452,12 @@ class Contract(models.Model):
         if rental.contract_ids.filtered(lambda c: c != self and c.state not in ('draft', 'cancelled')):
             raise ValidationError('Another active contract already exists for this rental.')
         company = self.company_id.sudo()
-        if not company.cr_contract_pdf or not company.cr_contract_version:
+        agreement = self.env['rental.agreement'].sudo().search(
+            [('contract_id', '=', self.id)], limit=1)
+        template = agreement.template_id if agreement and agreement.template_id else False
+        master_pdf = (template.master_pdf if template else company.cr_contract_pdf)
+        master_version = (template.version if template else company.cr_contract_version)
+        if not master_pdf or not master_version:
             raise ValidationError('Load the contract PDF and version in Car Rental Settings first.')
         if rental.status != 'draft' or rental.agreement_state == 'signed':
             raise ValidationError('The rental must still be unsigned and awaiting pickup.')
@@ -419,7 +465,7 @@ class Contract(models.Model):
             raise ValidationError('Payment advance days cannot be negative.')
         if not self.delivery_place or not self.company_email:
             raise ValidationError('Complete the delivery place and company notices email.')
-        raw = base64.b64decode(company.cr_contract_pdf)
+        raw = base64.b64decode(master_pdf)
         if not raw.startswith(b'%PDF'):
             raise ValidationError('The contract template must be a PDF.')
         booking = rental.reservation_id
@@ -458,9 +504,21 @@ class Contract(models.Model):
             raise ValidationError(
                 'Complete the customer Contact profile before issuing the agreement: %s.'
                 % ', '.join(missing_customer_details))
-        self._store({'source_pdf': company.cr_contract_pdf, 'source_filename': company.cr_contract_filename,
-                     'template_version': company.cr_contract_version, 'source_hash': hashlib.sha256(raw).hexdigest(),
-                     'snapshot': json.dumps(snapshot, ensure_ascii=False), 'state': 'sent',
+        if template and agreement.values_snapshot:
+            config = json.loads(agreement.template_config_snapshot or '{}')
+            values = json.loads(agreement.values_snapshot or '{}')
+            snapshot = {
+                line.get('label'): values.get(line.get('key'))
+                for line in config.get('fields', [])
+            }
+            source_hash = template.master_hash or hashlib.sha256(raw).hexdigest()
+            source_filename = template.master_filename
+        else:
+            source_hash = hashlib.sha256(raw).hexdigest()
+            source_filename = company.cr_contract_filename
+        self._store({'source_pdf': master_pdf, 'source_filename': source_filename,
+                     'template_version': master_version, 'source_hash': source_hash,
+                     'snapshot': json.dumps(snapshot, ensure_ascii=False, default=str), 'state': 'sent',
                      'customer_snapshot': json.dumps(customer_snapshot, sort_keys=True, ensure_ascii=False),
                      'expires_on': fields.Datetime.now() + timedelta(days=30)})
         signer_names = {
@@ -471,9 +529,21 @@ class Contract(models.Model):
             'renter_witness_1': self.renter_witness_1,
             'renter_witness_2': self.renter_witness_2,
         }
+        signer_requirements = (json.loads(agreement.template_config_snapshot or '{}').get('signers', {})
+                               if template else {})
         for role, name in signer_names.items():
-            if name and name.strip():
-                self.env['car.rental.contract.signer']._new_request(self, role, name.strip())
+            if not name or not name.strip():
+                continue
+            requirement_key = {
+                'company': 'require_company_representative',
+                'company_witness_1': 'require_company_witness_1',
+                'company_witness_2': 'require_company_witness_2',
+                'renter_witness_1': 'require_renter_witness_1',
+                'renter_witness_2': 'require_renter_witness_2',
+            }.get(role)
+            if template and requirement_key and not signer_requirements.get(requirement_key):
+                continue
+            self.env['car.rental.contract.signer']._new_request(self, role, name.strip())
         self.message_post(body='Contract issued. The renter link can be sent from the booking. Additional named signers can use their individual private links.')
 
     def action_send_customer_link(self):

@@ -16,3 +16,6 @@ from . import collection
 from . import charge_wizards
 
 from . import native_ui
+from . import rental_agreement
+from . import rental_agreement_wizard
+from . import sign_gateway

@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Faithful QWeb reproduction of the supplied City Delights contract.
+         The legal wording, clause numbering, schedules and branding are kept
+         verbatim; only the dotted/underscore blanks are populated. -->
+    <template id="city_delights_header">
+        <div class="cd-header">
+            <img class="cd-logo" t-att-src="doc._logo_data_uri()" alt="City Delights Car Rental"/>
+            <table class="cd-head-table">
+                <tr>
+                    <td>Address<br/>Private Bag 154<br/>Gaborone Botswana</td>
+                    <td>Physical Address<br/>Block 3 Gaborone<br/>Plot 27190</td>
+                    <td>Mobile Number<br/>+267 77 512 962<br/>+267 74 683 565</td>
+                </tr>
+            </table>
+            <div class="cd-rule"/>
+        </div>
+    </template>
+
+    <template id="city_delights_signature_block">
+        <table class="cd-sig-table">
+            <tr>
+                <td>
+                    <div class="cd-sign-line"><t t-esc="doc.agreement_value('company_signature')"/></div>
+                    <div>CITY DELIGHTS (PTY) LTD (Duly</div>
+                    <div>represented by <t t-esc="doc.agreement_value('company_representative')"/></div>
+                    <div>in his capacity as <t t-esc="doc.agreement_value('company_designation') or 'Director'">Director</t>)</div>
+                </td>
+                <td>
+                    <div class="cd-sign-line"><t t-esc="doc.agreement_value('renter_signature')"/></div>
+                    <div><t t-esc="doc.agreement_value('renter_name')"/></div>
+                    <div><t t-esc="doc.agreement_value('identity_number')"/></div>
+                    <div><t t-esc="doc.agreement_value('agreement_date')"/></div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <div>As witnesses:</div>
+                    <div>1. <t t-esc="doc.agreement_value('company_witness_1')"/></div>
+                    <div>2. <t t-esc="doc.agreement_value('company_witness_2')"/></div>
+                </td>
+                <td>
+                    <div>As witnesses:</div>
+                    <div>1. <t t-esc="doc.agreement_value('renter_witness_1')"/></div>
+                    <div>2. <t t-esc="doc.agreement_value('renter_witness_2')"/></div>
+                </td>
+            </tr>
+        </table>
+    </template>
+
+    <template id="city_delights_agreement_report">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="cd-contract">
+                    <style>
+                        .cd-contract { font-family: Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #000; }
+                        .cd-page { page-break-after: always; min-height: 640px; }
+                        .cd-header { margin-bottom: 18px; }
+                        .cd-logo { width: 168px; height: 92px; }
+                        .cd-head-table { width: 100%; border: 0; font-size: 8.5pt; margin-top: -78px; margin-left: 180px; }
+                        .cd-head-table td { width: 33%; vertical-align: top; border: 0; }
+                        .cd-rule { border-top: 3px solid #232a35; margin-top: 8px; }
+                        .cd-title { font-size: 12pt; font-weight: bold; text-align: center; margin: 12px 0 4px 0; }
+                        .cd-center { text-align: center; }
+                        .cd-caption { text-align: center; margin: 10px 0; }
+                        .cd-sign-line { border-bottom: 1px solid #000; height: 18px; margin-bottom: 4px; }
+                        .cd-sig-table { width: 100%; border: 0; margin-top: 24px; }
+                        .cd-sig-table td { width: 50%; border: 0; vertical-align: top; padding-right: 24px; }
+                        .cd-value { font-weight: bold; }
+                        .cd-schedule { font-weight: bold; text-align: center; margin: 12px 0; }
+                        .cd-page-no { text-align: center; font-size: 8pt; margin-top: 18px; }
+                        .cd-para { margin: 7px 0; text-align: justify; }
+                    </style>
+
+                    <!-- PAGE 1 -->
+                    <div class="cd-page">
+                        <t t-call="car_rental_management_odoo.city_delights_header"/>
+                        <div class="cd-title">MEMORANDUM OF AGREEMENT OF LEASE</div>
+                        <div class="cd-center">made and entered into by and between</div>
+                        <div class="cd-caption">CITY DELIGHTS (PTY) LTD<br/>(hereinafter referred to as the "Company")<br/>and<br/>
+                            <span class="cd-value" t-esc="doc.agreement_value('renter_name')"/><br/>
+                            (Of identity / Omang number <span class="cd-value" t-esc="doc.agreement_value('identity_number')"/>.)<br/>
+                            (hereinafter referred to as the "Renter")
+                        </div>
+                        <div class="cd-para">WHEREAS the Company is the owner of the Motor vehicle described in the and is willing to lease the Motor vehicle to the Renter on the following terms and conditions.</div>
+                        <div class="cd-para">NOW THEREFORE IT IS AGREED AS FOLLOWS :</div>
+                        <div class="cd-para"><b>DEFINITIONS</b></div>
+                        <div class="cd-para">1. In this agreement the following terms shall have the meanings assigned to them hereunder and cognate expressions shall have corresponding meanings:</div>
+                        <div class="cd-para">&#8220;Agreement&#8221; means this agreement together with any policies, appendices or schedules thereto and any amendments agreed to by the Parties in accordance with this memorandum of agreement duly signed by the Parties;</div>
+                        <div class="cd-para">&#8220;Delivery Date&#8221; means the date for delivery specified in the second schedule or such postponed date as may arise;</div>
+                        <div class="cd-para">&#8220;Delivery Place&#8221; means the place for delivery specified in the second schedule;</div>
+                        <div class="cd-para">&#8220;Deposit&#8221; means the deposit specified in the second schedule;</div>
+                        <div class="cd-para">&#8220;Lease Period&#8221; means the period for the lease of the Motor vehicle specified in the second schedule;</div>
+                        <div class="cd-para">&#8220;Motor vehicle&#8221; means the vehicle, engine and accompanying equipment described in the first schedule and includes all spare parts supplied or to be supplied by the Company ;</div>
+                        <div class="cd-page-no">1</div>
+                    </div>
+
+                    <!-- PAGE 2 -->
+                    <div class="cd-page">
+                        <t t-call="car_rental_management_odoo.city_delights_header"/>
+                        <div class="cd-title">AGREEMENT OF LEASE</div>
+                        <div class="cd-para">2. The Company agrees to lease and the Renter agrees to take on the Motor vehicle from the Delivery Date, for the Lease Period subject to the terms of this Agreement and in particular, the term that the Motor Vehicle will remain the sole property of the Company at all times.</div>
+                        <div class="cd-para"><b>PERIOD BEFORE DELIVERY</b></div>
+                        <div class="cd-para">3. Before the Delivery Date, the Renter shall at his own expense deliver to the Company in form and substance satisfactory to the Lessor:</div>
+                        <div class="cd-para">3.1 the Security Deposit: and</div>
+                        <div class="cd-para">3.2 certified copy of the Renter or his designated driver&#8217;s valid driver&#8217;s license, national identity card / omang and / or passport.</div>
+                        <div class="cd-para"><b>DELIVERY</b></div>
+                        <div class="cd-para">4. The Renter shall at its own expenses take delivery of the Motor vehicle at the place specified in the second schedule on the Delivery Date and on delivery, the Renter shall sign a receipt in the form set out in the third schedule.</div>
+                        <div class="cd-para">5. By acceptance of the Motor vehicle the Renter acknowledges that it has inspected it and that it is fully equipped, roadworthy, of good appearance and complying with all warranties by the Company.</div>
+                        <div class="cd-para"><b>RENTALS AND PAYMENT</b></div>
+                        <div class="cd-para">6. The Renter shall pay the Company with effect from the Delivery Date the rental set out in the second schedule, for the entire Lease Period, in advance, by no later than <span class="cd-value" t-esc="doc.contract_id.payment_advance_days"/>. days, .</div>
+                        <div class="cd-para">7. On or before the delivery, the Renter shall pay the Company the Security Deposit from which the Company may from time to time deduct:</div>
+                        <div class="cd-para">7.1 any sums due from the Renter by way of interest, indemnity, penalties, liquidated damages, general damages, including damage to the Motor vehicle, or otherwise under this Agreement. Penalties shall include, car wash fees, costs for refuelling the car, costs associated with collection of the Motor vehicle and costs for late return of the Motor vehicle;</div>
+                        <div class="cd-para">Provided that, in the absence of damage or loss, any excess shall be returned to the Renter.</div>
+                        <div class="cd-page-no">2</div>
+                    </div>
+
+                    <!-- PAGE 3 -->
+                    <div class="cd-page">
+                        <t t-call="car_rental_management_odoo.city_delights_header"/>
+                        <div class="cd-para">8. All money payable by the Renter under this Agreement shall be paid within one (1) day of issuance of an invoice or demand by the Company, into the Company&#8217;s bank account at:</div>
+                        <div class="cd-para" style="margin-left: 20px;">
+                            Bank Name: First National Bank of Botswana Limited<br/>
+                            Account Name : City Delights (Pty )Ltd<br/>
+                            Account number: 62923303599<br/>
+                            Type of Account: Current<br/>
+                            Branch: First Place Gaborone<br/>
+                            Branch number: 281467<br/>
+                            Swift Code: FIRNBWGX<br/>
+                            Reference: Client's full names
+                        </div>
+                        <div class="cd-para">or in such manner as the Company may notify the Renter and payment shall not be considered to have been made until actually received by the Company. Time for payment shall be of the essence.</div>
+                        <div class="cd-para">9. The Renter shall pay on demand interest at the rate of 10% monthly, on any money outstanding under this Agreement. Interest shall start accruing, twenty-one (21) days after the date of default.</div>
+                        <div class="cd-para"><b>RENTER&#8217;S OBLIGATIONS</b></div>
+                        <div class="cd-para">10. The Renter will at all times, at his own expense, during the period of this Agreement:</div>
+                        <div class="cd-para">10.1 obey and comply with all laws, rules, regulations, orders and other legal requirements from time to time in force anywhere in Botswana in respect of the Motor vehicle or its use;</div>
+                        <div class="cd-para">10.2 ensure that the Motor vehicle is operated in accordance with the manufacturer&#8217;s approved operating manual and the Company&#8217;s operations manual and by a driver fully qualified and licensed for the Motor vehicle;</div>
+                        <div class="cd-para">10.3 maintain the registration of the Motor vehicle in the name of the Company;</div>
+                        <div class="cd-para">10.4 not do or permit or omit to be done, anything which might endanger the title of the Company to the Motor vehicle or the Company&#8217;s ability to recover it in good condition on termination of this Agreement and promptly at the Company&#8217;s request, execute all such documents and take all such action as the Company may reasonably require in order to establish and protect the Company&#8217;s title to the Motor vehicle;</div>
+                        <div class="cd-page-no">3</div>
+                    </div>
+
+                    <!-- PAGE 4 -->
+                    <div class="cd-page">
+                        <t t-call="car_rental_management_odoo.city_delights_header"/>
+                        <div class="cd-para">10.5 not directly or indirectly create, incur, assume or allow to exist any mortgage, pledge, lien, attachment, encumbrance or third party right on the Motor vehicle or pledge the Company&#8217;s credit for any purpose whatsoever;</div>
+                        <div class="cd-para">10.6 immediately notify the Company with full details of any accident occurring to or defect arising in the Motor vehicle and any other event or circumstance which might endanger the Company&#8217;s ability to recover it in good condition on termination of this Agreement;</div>
+                        <div class="cd-para">10.7 ensure that the Motor vehicle is at all times when not being operated, properly and safely parked and sheltered when this is reasonably possible;</div>
+                        <div class="cd-para">10.8 ensure that the Motor vehicle is not operated in any manner or place or for any purpose which would or might render it liable to confiscation, forfeiture, seizure, destruction or condemnation; and</div>
+                        <div class="cd-para">10.9 not base Motor vehicle outside <span class="cd-value" t-esc="doc.agreement_value('operating_location')"/> (city/town/village/district) and not operate the Motor vehicle outside Botswana. In the event that there is any change in location, that is, the Motor vehicle being used out of the agreed radius, the Renter shall communicate such change with the Company and pay any fees incidental thereto.</div>
+                        <div class="cd-para"><b>REPLACEMENTS AND ALTERATIONS</b></div>
+                        <div class="cd-para">11. The Renter shall not substitute or replace any part or alter, modify or add to the Motor vehicle in any way.</div>
+                        <div class="cd-para"><b>REPRESENTATIONS AND WARRANTIES BY THE RENTER</b></div>
+                        <div class="cd-para">12. The Renter represents and warrants with effect both at signature of this Agreement and throughout its terms, that he is physically and legally qualified to operate the Motor vehicle.</div>
+                        <div class="cd-para"><b>LIABILITY</b></div>
+                        <div class="cd-para">13. Throughout the period of this Agreement, the Renter shall have direction and control over and responsibility of the Motor vehicle and shall be responsible for the loss and all damage to the Motor vehicle however caused.</div>
+                        <div class="cd-para">14. In the event of loss and damage referred to at Clause 13, the Renter shall be liable to pay the daily rentals and other sums in accordance with the Agreement, until he has fully replaced and / or restored the Motor vehicle to the Company.</div>
+                        <div class="cd-page-no">4</div>
+                    </div>
+
+                    <!-- PAGE 5 -->
+                    <div class="cd-page">
+                        <t t-call="car_rental_management_odoo.city_delights_header"/>
+                        <div class="cd-para">15. The Renter shall inform the Company of the event causing loss and / or damage and shall cause the Motor vehicle to be repaired by the Company&#8217;s mechanic, or a mechanic approved by the Company. The Renter shall be liable for the costs of repairs incidental thereto.</div>
+                        <div class="cd-para"><b>EXCLUSIONS</b></div>
+                        <div class="cd-para">16. The Motor vehicle shall not be :</div>
+                        <div class="cd-para">16.1 used to carry passengers or property, for hire;</div>
+                        <div class="cd-para">16.2 used to push, propel or tow another vehicle, trailer or any other thing without the written permission of the Company;</div>
+                        <div class="cd-para">16.3 used for any race or in any competition;</div>
+                        <div class="cd-para">16.4 used for any illegal purpose;</div>
+                        <div class="cd-para">16.5 operated by any other person other than the Renter stipulated, without the written permission of the Company; and</div>
+                        <div class="cd-para">16.6 the Renter shall not operate the vehicle in a negligent manner.</div>
+                        <div class="cd-para"><b>INDEMNITY</b></div>
+                        <div class="cd-para">17. The Renter indemnifies each of the Company and its employees and agents and shall keep each of them fully indemnified at all times against all actions, claims, demands, proceedings, costs, expenses, fines, penalties, taxes (other than taxes chargeable on the Company&#8217;s profits), losses and liabilities whatever in any way arising out of, or connected with the Motor vehicle or this Agreement and arising during the period of this Agreement, but whenever incurred, including in particular, without limitation, all those arising from, resulting from or connected with:</div>
+                        <div class="cd-para">17.1 delivery, possession, use, operation, management, maintenance or repossession of the Motor vehicle;</div>
+                        <div class="cd-para">17.2 loss, injury or damage sustained by the Renter or any third party; and</div>
+                        <div class="cd-para">17.3 any breach or non-compliance by the Renter of or with any of the provisions of this Agreement, relevant law.</div>
+                        <div class="cd-page-no">5</div>
+                    </div>
+
+                    <!-- PAGE 6 -->
+                    <div class="cd-page">
+                        <t t-call="car_rental_management_odoo.city_delights_header"/>
+                        <div class="cd-para"><b>WAIVER</b></div>
+                        <div class="cd-para">18. The Company shall not be liable to the Renter in any manner whatever (whether in the law of contract, delict or otherwise) in respect of any loss or damage, whether direct, consequential, economic or of any other kind, however arising from or in respect of the Motor vehicle or its operation, maintenance or use, and the Renter waives any other warranties, conditions, representations and liabilities on the part of the Company. The Renter confirms that it has had adequate opportunity to inspect the Motor vehicle.</div>
+                        <div class="cd-para"><b>BREACH</b></div>
+                        <div class="cd-para">19. The Company may terminate this Agreement upon breach by the Renter, immediately if:</div>
+                        <div class="cd-para">19.1 the Renter fails to comply with any other provision of this Agreement; or</div>
+                        <div class="cd-para">19.2 any circumstances arise which might in the reasonable opinion of the Company materially affect the ability of the Renter to fulfil any of its obligations under this Agreement or the safety of the Motor vehicle; and the Parties agree that the occurrence of any event as is mentioned in this Clause 19 shall constitute breach and / or repudiation by the Renter of this Agreement.</div>
+                        <div class="cd-para"><b>CONSEQUENCES OF TERMINATION</b></div>
+                        <div class="cd-para">20. Upon termination of this Agreement for any reason whatsoever:</div>
+                        <div class="cd-para">20.1 the Renter shall immediately deliver the Motor vehicle to the Company at the Delivery Place, in a roadworthy condition, clean, complete and complying substantially with its condition at first delivery to the Renter;</div>
+                        <div class="cd-para">20.2 the Renter shall promptly, on demand, pay the Company an amount equal to the value of the amount of any fuel which was in the Motor vehicle on the Delivery Date;</div>
+                        <div class="cd-para">20.3 in the event only of termination as a result of repudiation by the Renter, the Renter shall be liable immediately to pay the Company by way of liquidated damages, a sum equal to the total balance of rentals which would have been payable had this Agreement continued for the full Lease Period, discounted at a percentage at the Company&#8217;s discretion, for the remaining period of the Agreement;</div>
+                        <div class="cd-para">20.4 if the Renter fails to deliver the Motor vehicle immediately to the Company, the Company may do all things necessary to retake possession of it, including (without limitation) entering upon any premises, and the Renter shall permit the Company to do all such things and reimburse the Company for all costs involved; and</div>
+                        <div class="cd-page-no">6</div>
+                    </div>
+
+                    <!-- PAGE 7 -->
+                    <div class="cd-page">
+                        <t t-call="car_rental_management_odoo.city_delights_header"/>
+                        <div class="cd-para">20.5 notwithstanding termination, the Renter shall continue to bear all risk in the Motor vehicle until redelivery to the Company at the Delivery Place and continue to be obliged to pay rentals until such delivery.</div>
+                        <div class="cd-para"><b>SPECIAL REMEDY FOR BREACH</b></div>
+                        <div class="cd-para">21. In the event of breach by the Renter, and the Company engages an Attorney to enforce the provisions of this Agreement, the Client shall be liable for the legal costs incurred therein on an Attorney and own Client scale.</div>
+                        <div class="cd-para"><b>OPTION TO RENEW AND / OR EXTEND</b></div>
+                        <div class="cd-para">22. The Renter shall have the option to renew and / or extend this Agreement, in any manner to be prescribed by the Company, that is, through cellphone call or text message, on the same terms and conditions as this Agreement.</div>
+                        <div class="cd-para"><b>NOTICES AND DOMICILIA</b></div>
+                        <div class="cd-para">23. The Parties choose as their respective domicilium citandi et executandi for the purpose of legal proceedings the following physical addresses, and for the purposes of giving or sending any notice provided for or necessary in terms of this Agreement, the said domicilium as well as the following telefax numbers:</div>
+                        <div class="cd-para">23.1 City Delights (Pty) Ltd t/a City Delights Car Rental<br/>Plot 27190, Block 3, Gaborone<br/>Private Bag 154<br/>Gaborone<br/>+267 77 512 962 / +267 74 683 565<br/><t t-esc="doc.agreement_value('company_email')"/></div>
+                        <div class="cd-para">23.2 The Renter: <t t-esc="doc.agreement_value('renter_name')"/><br/><t t-esc="doc.agreement_value('physical_address')"/><br/><t t-esc="doc.agreement_value('postal_address')"/><br/><t t-esc="doc.agreement_value('phone')"/> / <t t-esc="doc.agreement_value('email')"/></div>
+                        <div class="cd-para">24. Any notice, acceptance, demand or other communication properly addressed by either Party to the other Party at the latter's domicilium in terms hereof for the time being and sent by prepaid registered post, shall be deemed to be received by the latter on the fifth business day following the date of posting thereof.</div>
+                        <div class="cd-para"><b>RELAXATION</b></div>
+                        <div class="cd-para">25. No relaxation or indulgence which either party may grant to the other is a waiver of the rights of that party, and that party shall not be precluded from exercising any rights which may have arisen in the past or which may arise in future.</div>
+                        <div class="cd-page-no">7</div>
+                    </div>
+
+                    <!-- PAGE 8 -->
+                    <div class="cd-page">
+                        <t t-call="car_rental_management_odoo.city_delights_header"/>
+                        <div class="cd-para"><b>SEVERANCE</b></div>
+                        <div class="cd-para">26. If any term of this Agreement is found by any competent judicial authority to be unenforceable in any respect, the validity of the remainder of this Agreement shall be unaffected, provided that such unenforceability does not materially affect the Parties&#8217; rights under this Agreement.</div>
+                        <div class="cd-para"><b>AMENDMENTS AND VARIATION</b></div>
+                        <div class="cd-para">27. No amendment or variation of this Agreement shall be effective unless it is recorded in writing and signed by both Parties.</div>
+                        <div class="cd-para"><b>ASSIGNMENT AND TRANSFER</b></div>
+                        <div class="cd-para">28. Save as otherwise provided for herein, this Agreement or any rights or benefits hereunder shall not be assignable, transferable or divisible in whole or in part by any Party without the prior written consent of the other Party.</div>
+                        <div class="cd-para"><b>COUNTERPARTS</b></div>
+                        <div class="cd-para">29. This Agreement may be signed in separate counterparts, each of which shall be deemed to be an original and all of which taken together shall constitute one of the same instruments. Any Party may enter into this Agreement by signing any such counterpart.</div>
+                        <div class="cd-para"><b>APPLICABLE LAW AND JURISDICTION</b></div>
+                        <div class="cd-para">30. This agreement shall be interpreted and governed in terms of the laws of the Republic of Botswana.</div>
+                        <div class="cd-para"><b>WHOLE AGREEMENT</b></div>
+                        <div class="cd-para">31. This Agreement constitutes the whole agreement between the Parties as to the subject matter hereof and no agreements, representations or warranties between the Parties regarding the subject matter hereof other than those set out herein are binding on the Parties.</div>
+                        <div class="cd-para">DATED AT <t t-esc="doc.agreement_value('execution_place')"/> THIS <t t-esc="doc.agreement_value('execution_date')"/> .</div>
+                        <t t-call="car_rental_management_odoo.city_delights_signature_block"/>
+                        <div class="cd-page-no">8</div>
+                    </div>
+
+                    <!-- PAGE 9 -->
+                    <div class="cd-page">
+                        <t t-call="car_rental_management_odoo.city_delights_header"/>
+                        <div class="cd-para">NEXT OF KIN DETAILS: <span class="cd-value" t-esc="doc.agreement_value('next_of_kin')"/></div>
+                        <div class="cd-para">RELATIONSHIP: <span class="cd-value" t-esc="doc.agreement_value('relationship')"/></div>
+                        <div class="cd-para">CELLPHONE NUMBER: <span class="cd-value" t-esc="doc.agreement_value('kin_phone')"/></div>
+                        <div class="cd-para">EMAIL ADDRESS <span class="cd-value" t-esc="doc.agreement_value('kin_email')"/></div>
+                        <div class="cd-schedule">FIRST SCHEDULE<br/>THE MOTOR VEHICLE</div>
+                        <div class="cd-para">Registration Number: <span class="cd-value" t-esc="doc.agreement_value('vehicle_registration')"/></div>
+                        <div class="cd-para">Manufacturer: <span class="cd-value" t-esc="doc.agreement_value('vehicle_manufacturer')"/></div>
+                        <div class="cd-para">Type / Model: <span class="cd-value" t-esc="doc.agreement_value('vehicle_model')"/></div>
+                        <div class="cd-para">Colour : <span class="cd-value" t-esc="doc.agreement_value('vehicle_colour')"/></div>
+                        <div class="cd-schedule">SECOND SCHEDULE</div>
+                        <div class="cd-para">Delivery Date: <span class="cd-value" t-esc="doc.agreement_value('delivery_date')"/></div>
+                        <div class="cd-para">Lease Period: <span class="cd-value" t-esc="doc.agreement_value('lease_period')"/></div>
+                        <div class="cd-para">Delivery Place : <span class="cd-value" t-esc="doc.agreement_value('delivery_place')"/></div>
+                        <div class="cd-para">Security Deposit : <span class="cd-value" t-esc="doc.agreement_value('security_deposit')"/></div>
+                        <div class="cd-para">Daily Rental : <span class="cd-value" t-esc="doc.agreement_value('daily_rental')"/></div>
+                        <div class="cd-page-no">9</div>
+                    </div>
+
+                    <!-- PAGE 10 -->
+                    <div class="cd-page">
+                        <t t-call="car_rental_management_odoo.city_delights_header"/>
+                        <div class="cd-schedule">THIRD SCHEDULE<br/>DELIVERY RECEIPT</div>
+                        <div class="cd-para">We acknowledge having received delivery of <span class="cd-value" t-esc="doc.agreement_value('renter_name')"/> of motor vehicle registration number <span class="cd-value" t-esc="doc.agreement_value('vehicle_registration')"/>, as more particularly described in the First Schedule to an agreement between us and <span class="cd-value" t-esc="doc.agreement_value('renter_name')"/> (Renter) dated <span class="cd-value" t-esc="doc.agreement_value('agreement_date')"/> (the Agreement), together with the accompanying spare parts (the Motor vehicle) and, having examined it, confirm that we are satisfied that the Motor vehicle is complete, in good working or condition, as described in the Agreement and to our satisfaction.</div>
+                        <div class="cd-para">DATED AT <t t-esc="doc.agreement_value('execution_place')"/> THIS <t t-esc="doc.agreement_value('execution_date')"/> .</div>
+                        <t t-call="car_rental_management_odoo.city_delights_signature_block"/>
+                        <div class="cd-page-no">10</div>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <record id="paperformat_city_delights" model="report.paperformat">
+        <field name="name">City Delights Letter</field>
+        <field name="format">custom</field>
+        <field name="page_height">792</field>
+        <field name="page_width">612</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">30</field>
+        <field name="margin_bottom">30</field>
+        <field name="margin_left">20</field>
+        <field name="margin_right">20</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_city_delights_agreement" model="ir.actions.report">
+        <field name="name">City Delights Rental Agreement</field>
+        <field name="model">rental.agreement</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">car_rental_management_odoo.city_delights_agreement_report</field>
+        <field name="report_file">city_delights_rental_agreement</field>
+        <field name="paperformat_id" ref="paperformat_city_delights"/>
+        <field name="binding_model_id" ref="model_rental_agreement"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

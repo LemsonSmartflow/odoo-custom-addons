@@ -5,3 +5,4 @@ from . import test_collection
 from . import test_digital_contract
 from . import test_native_ui
 from . import test_shared_records
+from . import test_rental_agreement_template

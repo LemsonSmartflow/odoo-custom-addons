@@ -12,6 +12,9 @@
 <button name="action_prepare" type="object" string="Prepare Signing Links" class="btn-primary" invisible="state != 'draft'"/>
 <button name="action_revoke" type="object" string="Revoke Agreement" invisible="state in ('complete','cancelled')" groups="car_rental_management_odoo.group_rental_manager" confirm="Disable every link for this agreement? Recorded signatures will be retained."/>
 <button name="action_retry_completion" type="object" string="Retry Completion" invisible="state != 'signing'" groups="car_rental_management_odoo.group_rental_manager" help="Use after fixing a failed PDF or accounting step: finalizes an agreement whose signatures are all recorded."/>
+<button name="action_send_via_odoo_sign" type="object" string="Send with Odoo Sign" invisible="not has_odoo_sign or sign_backend != 'odoo_sign' or state != 'draft'"/>
+<button name="action_sync_odoo_sign" type="object" string="Refresh Sign Status" invisible="not has_odoo_sign or not external_request_ref"/>
+<field name="has_odoo_sign" invisible="1"/><field name="sign_backend" invisible="1"/><field name="external_request_ref" invisible="1"/><field name="sign_state" invisible="1"/>
 <field name="state" widget="statusbar"/></header><sheet>
 <div class="alert alert-info">Booking particulars are captured from the linked rental. The renter link is sent from the Booking Agreement step. Company representative and witness names are optional; any additional named signers can review the same document and sign through their individual links after the renter.</div>
 <group string="Booking"><field name="rental_id" readonly="1"/><field name="company_id" readonly="1"/></group>

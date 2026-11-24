@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Access control -->
+    <record id="access_rental_agreement_template_agent" model="ir.model.access">
+        <field name="name">Rental agreement template - staff read</field>
+        <field name="model_id" ref="model_rental_agreement_template"/>
+        <field name="group_id" ref="group_car_rental_agent"/>
+        <field name="perm_read" eval="True"/>
+    </record>
+    <record id="access_rental_agreement_template_manager" model="ir.model.access">
+        <field name="name">Rental agreement template - manager</field>
+        <field name="model_id" ref="model_rental_agreement_template"/>
+        <field name="group_id" ref="group_rental_manager"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+    <record id="access_rental_agreement_template_field_manager" model="ir.model.access">
+        <field name="name">Rental agreement template field - manager</field>
+        <field name="model_id" ref="model_rental_agreement_template_field"/>
+        <field name="group_id" ref="group_rental_manager"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="access_rental_agreement_agent" model="ir.model.access">
+        <field name="name">Rental agreement - staff</field>
+        <field name="model_id" ref="model_rental_agreement"/>
+        <field name="group_id" ref="group_car_rental_agent"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+    <record id="access_rental_agreement_manager" model="ir.model.access">
+        <field name="name">Rental agreement - manager</field>
+        <field name="model_id" ref="model_rental_agreement"/>
+        <field name="group_id" ref="group_rental_manager"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    <record id="access_sign_gateway_agent" model="ir.model.access">
+        <field name="name">Signing gateway - staff read</field>
+        <field name="model_id" ref="model_car_rental_sign_gateway"/>
+        <field name="group_id" ref="group_car_rental_agent"/>
+        <field name="perm_read" eval="True"/>
+    </record>
+
+    <record id="rule_rental_agreement_template_company" model="ir.rule">
+        <field name="name">Rental agreement template company isolation</field>
+        <field name="model_id" ref="model_rental_agreement_template"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_rental_agreement_company" model="ir.rule">
+        <field name="name">Rental agreement company isolation</field>
+        <field name="model_id" ref="model_rental_agreement"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <!-- Templates -->
+    <record id="rental_agreement_template_tree" model="ir.ui.view">
+        <field name="name">rental.agreement.template.list</field>
+        <field name="model">rental.agreement.template</field>
+        <field name="arch" type="xml">
+            <list string="Agreement Templates">
+                <field name="name"/>
+                <field name="version"/>
+                <field name="state" widget="badge" decoration-success="state == 'active'" decoration-muted="state == 'archived'"/>
+                <field name="is_default" widget="boolean_toggle"/>
+                <field name="company_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="rental_agreement_template_form" model="ir.ui.view">
+        <field name="name">rental.agreement.template.form</field>
+        <field name="model">rental.agreement.template</field>
+        <field name="arch" type="xml">
+            <form string="Agreement Template" class="o_car_rental_form">
+                <header>
+                    <button name="action_activate" type="object" string="Activate" class="btn-primary" invisible="state == 'active'" groups="car_rental_management_odoo.group_rental_manager"/>
+                    <button name="action_archive" type="object" string="Archive" invisible="state == 'archived'" groups="car_rental_management_odoo.group_rental_manager"/>
+                    <button name="action_new_version" type="object" string="New Version" groups="car_rental_management_odoo.group_rental_manager"/>
+                    <button name="action_load_city_contract" type="object" string="Load City Delights Contract" groups="car_rental_management_odoo.group_rental_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,active,archived"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" placeholder="City Delights Standard Rental Agreement"/></h1></div>
+                    <group col="2">
+                        <group string="Template">
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="version"/>
+                            <field name="is_default"/>
+                            <field name="sequence"/>
+                            <field name="valid_from"/>
+                            <field name="valid_to"/>
+                        </group>
+                        <group string="Master document">
+                            <field name="master_filename"/>
+                            <field name="master_pdf" widget="binary" filename="master_filename"/>
+                            <field name="master_hash" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Dynamic Fields">
+                            <field name="field_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="key"/>
+                                    <field name="label"/>
+                                    <field name="section"/>
+                                    <field name="required"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Signing">
+                            <group col="2">
+                                <group string="Required signers">
+                                    <field name="require_company_representative"/>
+                                    <field name="require_company_witness_1"/>
+                                    <field name="require_company_witness_2"/>
+                                    <field name="require_renter_witness_1"/>
+                                    <field name="require_renter_witness_2"/>
+                                </group>
+                                <group string="Wording">
+                                    <field name="completion_text"/>
+                                    <field name="acceptance_text"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Notes"><field name="notes"/></page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_rental_agreement_templates" model="ir.actions.act_window">
+        <field name="name">Templates</field>
+        <field name="res_model">rental.agreement.template</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Agreements -->
+    <record id="rental_agreement_tree" model="ir.ui.view">
+        <field name="name">rental.agreement.list</field>
+        <field name="model">rental.agreement</field>
+        <field name="arch" type="xml">
+            <list string="Rental Agreements">
+                <field name="rental_id"/>
+                <field name="template_id" optional="show"/>
+                <field name="agreement_status" widget="badge" decoration-success="agreement_status == 'signed'" decoration-danger="agreement_status == 'cancelled'"/>
+                <field name="company_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="rental_agreement_form" model="ir.ui.view">
+        <field name="name">rental.agreement.form</field>
+        <field name="model">rental.agreement</field>
+        <field name="arch" type="xml">
+            <form string="Rental Agreement" class="o_car_rental_form">
+                <header>
+                    <button name="action_generate" type="object" string="Generate Agreement" class="btn-primary" invisible="contract_state != 'draft'"/>
+                    <button name="action_preview" type="object" string="Preview Agreement" invisible="contract_state != 'draft'"/>
+                    <button name="action_download_pdf" type="object" string="Download PDF" invisible="contract_state == 'draft'"/>
+                    <button name="action_cancel_agreement" type="object" string="Cancel Agreement" invisible="contract_state in ['cancelled', 'complete']"/>
+                    <button name="action_send_via_odoo_sign" type="object" string="Send with Odoo Sign" invisible="not has_odoo_sign or sign_backend != 'odoo_sign' or contract_state != 'draft'"/>
+                    <button name="action_sync_odoo_sign" type="object" string="Refresh Sign Status" invisible="not has_odoo_sign or not external_request_ref"/>
+                    <field name="contract_state" invisible="1"/>
+                    <field name="has_odoo_sign" invisible="1"/>
+                    <field name="sign_backend" invisible="1"/>
+                    <field name="external_request_ref" invisible="1"/>
+                    <field name="agreement_status" widget="statusbar" statusbar_visible="draft,sent,signing,signed"/>
+                </header>
+                <sheet>
+                    <group col="2">
+                        <group string="Agreement">
+                            <field name="rental_id" readonly="1"/>
+                            <field name="template_id" readonly="contract_state != 'draft'"/>
+                            <field name="template_version_snapshot" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                        </group>
+                        <group string="Signing">
+                            <field name="sign_state" readonly="1" invisible="not external_request_ref"/>
+                            <field name="is_legacy" readonly="1" invisible="not is_legacy"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Snapshotted Values">
+                            <field name="values_snapshot" readonly="1" widget="text"/>
+                        </page>
+                        <page string="Signers">
+                            <field name="signer_ids" readonly="1">
+                                <list>
+                                    <field name="role"/>
+                                    <field name="name"/>
+                                    <field name="signed_on"/>
+                                    <field name="acceptance_method"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_rental_agreements" model="ir.actions.act_window">
+        <field name="name">Agreements</field>
+        <field name="res_model">rental.agreement</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Creation wizard -->
+    <record id="access_rental_agreement_wizard" model="ir.model.access">
+        <field name="name">Rental agreement create wizard</field>
+        <field name="model_id" ref="model_rental_agreement_create_wizard"/>
+        <field name="group_id" ref="group_car_rental_agent"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+    </record>
+    <record id="rental_agreement_wizard_form" model="ir.ui.view">
+        <field name="name">rental.agreement.create.wizard.form</field>
+        <field name="model">rental.agreement.create.wizard</field>
+        <field name="arch" type="xml">
+            <form string="New Rental Agreement">
+                <group>
+                    <field name="company_id" invisible="1"/>
+                    <field name="template_id"/>
+                    <field name="partner_id"/>
+                    <field name="vehicle_id"/>
+                    <field name="destination_id"/>
+                    <field name="pickup_datetime"/>
+                    <field name="number_of_days"/>
+                    <field name="delivery_place"/>
+                </group>
+                <footer>
+                    <button name="action_create" type="object" string="Create Agreement" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_rental_agreement_create" model="ir.actions.act_window">
+        <field name="name">New Agreement</field>
+        <field name="res_model">rental.agreement.create.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Menus -->
+    <menuitem id="menu_rental_agreements" name="Rental Agreements" parent="menu_car_rental_root" sequence="25"/>
+    <menuitem id="menu_rental_agreement_new" name="New Agreement" parent="menu_rental_agreements" action="action_rental_agreement_create" sequence="5"/>
+    <menuitem id="menu_rental_agreements_list" name="Agreements" parent="menu_rental_agreements" action="action_rental_agreements" sequence="10"/>
+    <menuitem id="menu_rental_agreement_templates" name="Templates" parent="menu_rental_agreements" action="action_rental_agreement_templates" sequence="20"
+              groups="car_rental_management_odoo.group_rental_manager"/>
+</odoo>
