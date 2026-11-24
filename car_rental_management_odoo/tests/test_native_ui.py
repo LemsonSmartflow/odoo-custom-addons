@@ -326,8 +326,11 @@ class TestNativeScreens(RentalTestCommon):
         with self.assertRaises(AccessError), self.cr.savepoint():
             staff_vehicle.write({'rental_service_interval': 5000})
         partner = self._make_partner()
-        with Form(partner.with_user(self.user_agent)) as form:
-            form.rental_cin = '111222333'
+        # Rental staff deliberately do not have global Contact write rights;
+        # updating identity data requires the appropriate Contact ACL.
+        with self.assertRaises(AccessError), self.cr.savepoint():
+            partner.with_user(self.user_agent).write({'rental_cin': '111222333'})
+        partner.write({'rental_cin': '111222333'})
         self.assertEqual(partner.rental_cin, '111222333')
 
     def test_native_receipts_and_category_actions(self):
