@@ -175,7 +175,7 @@
                 <sheet>
                     <group col="2">
                         <group string="Agreement">
-                            <field name="rental_id" readonly="1"/>
+                            <field name="rental_id" readonly="1" required="1"/>
                             <field name="template_id" readonly="contract_state != 'draft'"/>
                             <field name="template_version_snapshot" readonly="1"/>
                             <field name="company_id" readonly="1"/>

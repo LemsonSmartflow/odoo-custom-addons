@@ -329,9 +329,15 @@ class RentalAgreement(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             if not vals.get('contract_id'):
+                rental_id = vals.get('rental_id')
+                if not rental_id:
+                    raise ValidationError(_(
+                        'Select a rental before saving an agreement. Use New Agreement '
+                        'to create one from a template, customer and vehicle.'))
                 contract = self.env['car.rental.contract'].create({
-                    'rental_id': vals['rental_id'],
+                    'rental_id': rental_id,
                     'delivery_place': vals.get('delivery_place'),
+                    'company_email': vals.get('company_email'),
                     'payment_advance_days': vals.get('payment_advance_days', 0),
                 })
                 vals['contract_id'] = contract.id
