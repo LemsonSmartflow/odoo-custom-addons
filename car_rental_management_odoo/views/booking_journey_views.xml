@@ -318,15 +318,15 @@
                         <div class="text-muted" colspan="2">
                             Customer identity, contact and next-of-kin details come from the Contact profile and are snapshotted when the agreement is issued. Review the Contact before sending; signing asks the renter only for their place of signing. Vehicle, dates, destination, hire and deposit details come from this booking.
                             Enter any additional signers required by your company; representative and witness names
-                            are optional. Sending emails the renter's private link, and each additional named signer
+                            are optional. Sending the agreement emails the renter a private signing link, and each additional named signer
                             receives a separate private link in signing progress.
                         </div>
                     </group>
                     <group string="Payment" class="o_car_rental_step_panel"
                            invisible="step != 'payment'">
                         <div class="alert alert-info" role="status">
-                            Signing the agreement posted one Odoo customer invoice covering the hire
-                            and the refundable security deposit. Record payment against that invoice;
+                            Signing prepares a draft Odoo customer invoice covering the hire
+                            and the refundable security deposit. Review and confirm it, then record payment;
                             the booking advances when the payment policy is met.
                         </div>
                         <group string="Rental invoice">

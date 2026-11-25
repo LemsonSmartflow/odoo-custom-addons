@@ -626,6 +626,121 @@
     }
 }
 
+// "How It Works" guide: a calm, scannable reference page.
+.o_car_rental_guide {
+    --rental-guide-ink: #173a45;
+    --rental-guide-muted: #5c7179;
+    --rental-guide-line: #dce5e8;
+    --rental-guide-accent: #286a70;
+    color: var(--rental-guide-ink);
+
+    h2 {
+        margin: 24px 0 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--rental-guide-line);
+        font-size: 1.15rem;
+        font-weight: 700;
+    }
+
+    h3 { font-size: 1rem; font-weight: 700; }
+
+    p, li { color: var(--rental-guide-muted); line-height: 1.6; }
+
+    .o_car_rental_guide_hero {
+        margin-bottom: 18px;
+        padding: 22px 26px;
+        border-radius: 12px;
+        background: linear-gradient(120deg, #173a45, #286a70);
+        color: #fff;
+
+        h1 { margin: 4px 0 8px; color: #fff; font-size: 1.6rem; font-weight: 700; }
+        p { max-width: 720px; margin-bottom: 16px; color: #d8eeee; line-height: 1.55; }
+        .o_car_rental_eyebrow { color: #9fd7d4; }
+    }
+
+    .o_car_rental_guide_actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+
+        .btn {
+            min-height: 38px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .btn-primary { border-color: #fff; background: #fff; color: var(--rental-guide-ink); }
+        .btn:not(.btn-primary) {
+            border-color: #9fd7d4;
+            background: transparent;
+            color: #fff;
+        }
+    }
+
+    .o_car_rental_guide_flow {
+        margin-bottom: 20px;
+        padding: 16px 20px;
+        border: 1px solid var(--rental-guide-line);
+        border-left: 4px solid var(--rental-guide-accent);
+        border-radius: 10px;
+        background: #f7fafb;
+    }
+
+    .o_car_rental_guide_flow_title {
+        margin-bottom: 10px;
+        color: var(--rental-guide-accent);
+        font-size: .75rem;
+        font-weight: 750;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .o_car_rental_guide_steps {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+
+        span {
+            padding: 4px 10px;
+            border: 1px solid #c8dade;
+            border-radius: 20px;
+            background: #fff;
+            color: var(--rental-guide-ink);
+            font-size: .82rem;
+            font-weight: 600;
+        }
+        i { color: #8aa7ad; font-size: 11px; }
+    }
+
+    .o_car_rental_guide_grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin: 12px 0 18px;
+    }
+
+    .o_car_rental_guide_card {
+        box-sizing: border-box;
+        padding: 14px 16px;
+        border: 1px solid var(--rental-guide-line);
+        border-radius: 10px;
+        background: #fbfcfc;
+
+        h3 { margin-bottom: 6px; color: var(--rental-guide-accent); }
+        p { margin: 0; font-size: .92rem; }
+    }
+
+    .alert { margin: 14px 0; line-height: 1.6; }
+    code { color: #8d2932; }
+
+    @media (max-width: 767px) {
+        .o_car_rental_guide_grid { grid-template-columns: minmax(0, 1fr); }
+        .o_car_rental_guide_actions .btn { flex: 1 1 auto; }
+    }
+}
+
 // Vehicle picker dialog used by the guided booking flow.
 .o_car_vehicle_picker {
     .o_car_vehicle_current {

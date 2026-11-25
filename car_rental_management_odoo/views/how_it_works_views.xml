@@ -5,118 +5,333 @@
         <field name="model">car.rental.dashboard</field>
         <field name="priority">99</field>
         <field name="arch" type="xml">
-            <form string="How It Works" create="0" edit="0" delete="0" duplicate="0" class="o_car_rental_form">
+            <form string="How It Works" create="0" edit="0" delete="0" duplicate="0"
+                  class="o_car_rental_form o_car_rental_guide">
                 <sheet>
-                    <h1>How It Works</h1>
-                    <div class="alert alert-info" role="status">Use Payment &amp; Security Deposit to collect both in one form. The quote and collection show settled, unrefunded deposit credit from the customer's prior returned rentals; it is applied to the new deposit by default. Enter the cash received, method and date; review the allocation and post it once. Any cash amount funds the remaining deposit before rent. Credit transfers only the liability between rentals and does not create another cash receipt.</div>
-                    <div class="alert alert-info">The Quote step creates the linked Odoo Sales quotation, where staff can send it using Odoo's quotation email and confirm it from the booking or Sales. At Agreement, review the customer's Contact profile (including next-of-kin details) before issuing; those particulars are snapshotted into the agreement. The renter only confirms the details and enters the place of signing. Confirm the delivery place, add any company representative or witness names your company requires, then click Send Signing Link to Customer and choose email, WhatsApp or Telegram from the popup. Any additional named signers then sign through their private links in signing progress. Only the renter's signature is required when no additional signers are named. A rental manager can renew an expired unsigned signing link. The signed original PDF and completion schedule are retained.</div>
-                    <div class="alert alert-info">Cancel bookings from the Booking workflow. Cancelling an unconfirmed quotation in Sales also cancels its linked booking and releases its vehicle. If the booking has invoices, receipts or deposits, cancel it from Booking so Finance can reverse those records safely.</div>
-                    <div class="alert alert-success" role="status">Open Bookings and click New to start a booking. Use Continue through Booking, Quote, Agreement, Payment, Pickup, On Hire, Return and Settlement. After handover, save and exit at On Hire; begin the return process when the vehicle is physically returned. Select customer delivery during Booking; Continue opens a popup for its address and product price, then the Quote lists the charge. At Return, select vehicle collection from another location when needed; the return popup captures its address and price along with late-return or dirty-return charges. Save &amp; Exit lets you resume later.</div>
-                    <div class="alert alert-info" role="status">The daily operations reminder schedules an internal activity for the rental's responsible user on the calendar day before the vehicle is due back, followed by an overdue activity if it remains out after its due time. It does not send a message to the customer.</div>
-                    <div class="alert alert-info" role="status">To sort any list, click a visible date or type/status column heading. Use Search → Group By to group by record type/status, category or date/month. Vehicles and contacts start with newest Created On first; reservations and rentals start with their booking dates.</div>
-                    <p>A practical guide from the customer's first enquiry to final payment and the vehicle's next booking. Use the same customer, reservation and rental records throughout the cycle.</p>
-                    <div class="alert alert-info" role="status">Customer → Reservation → Rental → Invoice and receipts → Pickup → Return inspection → Final charges and deposit settlement → Cleaning and release</div>
+                    <div class="o_car_rental_guide_hero">
+                        <span class="o_car_rental_eyebrow">City Delights Car Rental</span>
+                        <h1>How It Works</h1>
+                        <p>From the first enquiry to the vehicle's next booking. One customer,
+                           one reservation, one rental — carried through every step.</p>
+                        <div class="o_car_rental_guide_actions">
+                            <button name="%(action_booking_journeys)d" type="action"
+                                    string="Open Bookings" class="btn-primary"/>
+                            <button name="%(action_rental_agreement_create)d" type="action"
+                                    string="New Agreement"/>
+                            <button name="%(action_car_rental_vehicle)d" type="action"
+                                    string="Open Vehicles"/>
+                        </div>
+                    </div>
+
+                    <div class="o_car_rental_guide_flow">
+                        <div class="o_car_rental_guide_flow_title">The booking journey</div>
+                        <div class="o_car_rental_guide_steps">
+                            <span>Booking</span><i class="fa fa-arrow-right"/>
+                            <span>Quote</span><i class="fa fa-arrow-right"/>
+                            <span>Agreement</span><i class="fa fa-arrow-right"/>
+                            <span>Payment</span><i class="fa fa-arrow-right"/>
+                            <span>Pickup</span><i class="fa fa-arrow-right"/>
+                            <span>On Hire</span><i class="fa fa-arrow-right"/>
+                            <span>Return</span><i class="fa fa-arrow-right"/>
+                            <span>Settlement</span><i class="fa fa-arrow-right"/>
+                            <span>Closed</span>
+                        </div>
+                        <p class="text-muted mb-0">Use <strong>Continue</strong> to advance and
+                           <strong>Save &amp; Exit</strong> to resume later. Each step keeps its records
+                           linked, so nothing is entered twice.</p>
+                    </div>
+
                     <notebook>
                         <page string="Start Here" name="guide_start">
                             <h2>Who does what?</h2>
-                            <ul>
-                                <li><strong>Rental Staff:</strong> register customers, prepare bookings, obtain signatures, complete inspections and record handovers and returns.</li>
-                                <li><strong>Rental Manager:</strong> approve destination pricing and exceptional price overrides.</li>
-                                <li><strong>Rental Accountant:</strong> create and post invoices, post rental receipts, collect deposits, apply deposits to damage invoices and record refunds.</li>
-                                <li><strong>Fleet Manager:</strong> prepare vehicles, manage compliance and repairs, complete cleaning and release vehicles for hire.</li>
-                                <li><strong>Car Rental Admin:</strong> has the combined rental roles. An administrator configures company settings.</li>
-                            </ul>
+                            <div class="o_car_rental_guide_grid">
+                                <div class="o_car_rental_guide_card">
+                                    <h3>Rental Staff</h3>
+                                    <p>Register customers, prepare bookings, issue agreements,
+                                       complete inspections and record handovers and returns.</p>
+                                </div>
+                                <div class="o_car_rental_guide_card">
+                                    <h3>Rental Manager</h3>
+                                    <p>Approve destination rates and price overrides, manage
+                                       agreement templates and renew expired signing links.</p>
+                                </div>
+                                <div class="o_car_rental_guide_card">
+                                    <h3>Rental Accountant</h3>
+                                    <p>Review and confirm invoices, record payments and deposits,
+                                       settle charges, refund deposits and close rentals.</p>
+                                </div>
+                                <div class="o_car_rental_guide_card">
+                                    <h3>Fleet Manager</h3>
+                                    <p>Prepare vehicles, manage compliance and repairs, complete
+                                       cleaning and release vehicles for hire.</p>
+                                </div>
+                            </div>
+                            <p><strong>Car Rental Admin</strong> combines the rental roles; an
+                               administrator configures company settings. Buttons and menus follow
+                               these permissions — if a button is missing, ask your administrator
+                               to check your rental role.</p>
+
                             <h2>Where to work</h2>
-                            <p><strong>Customers</strong> holds customer identity and licence details. <strong>Bookings</strong> contains reservations and rentals. <strong>Fleet</strong> contains vehicle previews, inspections, damage and maintenance. <strong>Payments</strong> contains receipts, invoices, deposits/refunds and outstanding invoices. <strong>Configuration</strong> contains categories, destinations, pricing rules and settings.</p>
+                            <p><strong>Customers</strong> holds identity and licence details (Odoo
+                               Contacts). <strong>Bookings</strong> runs the guided journey and holds
+                               reservations and rentals. <strong>Rental Agreements</strong> holds
+                               templates and signed agreements. <strong>Fleet</strong> holds vehicles,
+                               inspections, damage and maintenance. <strong>Payments</strong> holds
+                               invoices, receipts, deposits and refunds. <strong>Configuration</strong>
+                               holds categories, destinations, pricing rules and settings.</p>
+
                             <h2>What counts as a completed cycle?</h2>
                             <ul>
-                                <li>The rental is Returned and its pickup and return inspections are completed.</li>
-                                <li>Rental, late-return and damage invoices are posted and settled, or an outstanding balance is being explicitly followed up.</li>
-                                <li>The deposit has been refunded or applied to approved damage charges; the amount held is zero.</li>
-                                <li>Damage and repairs are resolved, cleaning is complete and the vehicle has been released.</li>
+                                <li>The rental is Returned and both inspections are complete.</li>
+                                <li>The hire invoice and any final settlement invoice are confirmed,
+                                    posted and settled, or an outstanding balance is being followed up.</li>
+                                <li>The deposit has been refunded or applied to approved charges; the
+                                    amount held is zero.</li>
+                                <li>Damage and repairs are resolved, cleaning is done and the vehicle
+                                    is released.</li>
                             </ul>
-                            <p><strong>Returned describes the physical return.</strong> The accountant uses Close Rental in the Create a Booking form after invoices, charges and deposit refunds are settled. Closed completes the customer cycle. Fleet cleaning, repair and release are separate tasks.</p>
+                            <p><strong>Returned</strong> describes the physical return. The accountant
+                               uses <strong>Close Rental</strong> to record financial completion.
+                               Cleaning and release are separate fleet tasks.</p>
                         </page>
+
                         <page string="Before Your First Booking" name="guide_setup">
                             <h2>Prepare the business once</h2>
                             <ol>
-                                <li>In <strong>Configuration → Vehicle Categories and Destinations</strong>, create the categories and destinations you actually serve.</li>
-                                <li>In <strong>Configuration → Pricing Rules</strong>, enter daily rates, duration bands, validity dates and the deposit ratio. A manager must click <strong>Approve Rate</strong>. Draft example rates cannot confirm bookings.</li>
-                                <li>In <strong>Fleet → Vehicles</strong>, add the registration, category, photo, odometer and compliance documents/expiry dates. The Fleet category is the rental-pricing category too, so select it once. Use the number plate as Fleet ID; registration fills automatically. Activate the completed vehicle. Only real registered vehicles appear in dashboard totals.</li>
-                                <li>In <strong>Configuration → Settings</strong>, configure rental/damage income accounts, the deposit liability account, maintenance expense account, sales journal, bank/cash journal and rental, security-deposit, delivery, off-site collection, cleaning and late-return products. Configure applicable sales taxes and check the company's accounting currency and customer receivable account.</li>
-                                <li>Add approved agreement terms. Decide whether full rental payment, valid compliance documents and a working tracker are required at pickup, and set the late-return grace period.</li>
-                                <li>Assign users the appropriate rental roles. Buttons and financial menus depend on permissions.</li>
+                                <li>In <strong>Configuration → Vehicle Categories and Destinations</strong>,
+                                    create the categories and destinations you serve.</li>
+                                <li>In <strong>Configuration → Pricing Rules</strong>, enter daily rates,
+                                    duration bands, validity dates and the deposit ratio. A manager must
+                                    click <strong>Approve Rate</strong>; draft rates cannot confirm a booking.</li>
+                                <li>In <strong>Fleet → Vehicles</strong>, add the registration, category,
+                                    photo, odometer and compliance documents with expiry dates. Use the
+                                    number plate as Fleet ID and activate the completed vehicle. Only
+                                    real registered vehicles appear in dashboard totals.</li>
+                                <li>Accounting is set up for you: the rental income, damage, deposit
+                                    liability, clearing and expense accounts plus the bank and sales
+                                    journals are created automatically and linked in
+                                    <strong>Configuration → Settings</strong>. Review them and the
+                                    charge products and sales taxes for your business. If a field is
+                                    cleared, it is repaired automatically the next time you invoice.</li>
+                                <li>Confirm the agreement template is active in
+                                    <strong>Rental Agreements → Templates</strong>. Decide whether full
+                                    payment, valid compliance documents and a tracker are required at
+                                    pickup, and set the late-return grace period.</li>
+                                <li>Assign users the appropriate rental roles.</li>
                             </ol>
-                            <p><strong>Deposit calculation:</strong> agreed daily rate × deposit ratio. It is calculated from one daily rate, separately from the rental total. The pricing screen shows the Pula deposit amount, defaulting to the full daily rate, with a 50% minimum. For example, a daily rate of 500 and a ratio of 1 require a 500 deposit, even for a three-day rental. These numbers are illustrative.</p>
+                            <div class="alert alert-info" role="status">
+                                <strong>Deposit calculation:</strong> agreed daily rate × deposit ratio,
+                                separate from the rental total. The screen shows the Pula amount with a
+                                50% minimum. For example, a daily rate of 500 with a ratio of 1 requires
+                                a 500 deposit even on a three-day rental. These numbers are illustrative.
+                            </div>
+                            <p><strong>Signing links need a public URL.</strong> Set
+                               <code>web.base.url</code> to your publicly reachable HTTPS address
+                               before sending a signing link. Localhost, private addresses and HTTP
+                               links are blocked.</p>
                         </page>
-                        <page string="1. Welcome and Book" name="guide_booking">
+
+                        <page string="Rental Agreements" name="guide_agreements">
+                            <h2>Reusable templates</h2>
+                            <p>Agreements behave like Odoo quotation templates. A
+                               <strong>template</strong> holds the approved contract wording and its
+                               field mapping; each <strong>agreement</strong> is a dated snapshot of
+                               that template plus the customer, vehicle and booking values. Changing a
+                               template never changes an agreement already issued.</p>
+                            <ul>
+                                <li><strong>City Delights Standard Rental Agreement</strong> is installed
+                                    with the original 10-page contract, three schedules and bank details.</li>
+                                <li>A manager can activate, archive, create a new version or load the
+                                    City Delights contract from <strong>Rental Agreements → Templates</strong>.</li>
+                                <li>Customer, vehicle, rental, company, representative and witness
+                                    values are pulled from Odoo records once and filled consistently
+                                    throughout the document.</li>
+                            </ul>
+
+                            <h2>Create an agreement</h2>
+                            <ol>
+                                <li>Open <strong>Rental Agreements → New Agreement</strong>.</li>
+                                <li>Choose the template, customer and vehicle, then confirm the rental
+                                    dates, delivery place and any representative or witness names.</li>
+                                <li>Click <strong>Create Agreement</strong>, then
+                                    <strong>Generate Agreement</strong>. Use
+                                    <strong>Preview Agreement</strong> to check it before sending.</li>
+                                <li>Download the 10-page PDF with <strong>Download PDF</strong>, or send
+                                    the signing link from the booking's Agreement step.</li>
+                            </ol>
+
+                            <h2>Signing and status</h2>
+                            <p>Statuses move through <strong>Draft → Generated → Sent → Signing →
+                               Signed</strong>, or <strong>Cancelled</strong>. The renter confirms the
+                               details and enters only the place of signing; prices and the deposit
+                               are read-only. Additional named signers each get their own private
+                               link. Links expire after 30 days and a manager can renew an unsigned
+                               one without losing existing signatures. The signed PDF and the full
+                               audit trail are retained. Where Odoo Sign is available, a manager can
+                               send the agreement through it; otherwise the built-in private signing
+                               flow is used.</p>
+                            <div class="alert alert-warning" role="status">
+                                Signing links are private bearer links: anyone holding one can open
+                                that person's signing page. Send them only to the intended signer.
+                            </div>
+                            <button name="%(action_rental_agreements)d" type="action"
+                                    string="Open Agreements" class="btn-secondary"/>
+                            <button name="%(action_rental_agreement_templates)d" type="action"
+                                    string="Open Templates" class="btn-secondary"/>
+                        </page>
+
+                        <page string="1. Booking and Quote" name="guide_booking">
                             <h2>1. Register or find the customer</h2>
-                            <p>Open <strong>Customers</strong> and search before creating a duplicate. Select Omang or Passport and enter that document's number, date of birth, physical and postal addresses, licence number, issue date and expiry, and next-of-kin name, relationship and phone. Omang numbers must be exactly 9 digits; passport and driving licence numbers accept 6 to 20 letters or digits. A customer must already be at least 21 and have an unexpired licence to enable rentals. Upload the selected identity document and driving licence before saving. At booking, the licence must remain valid through the full hire.</p>
-                            <button name="%(action_car_rental_customer)d" type="action" string="Open Customers" class="btn-secondary"/>
-                            <h2>2. Prepare the reservation and quote</h2>
-                            <p>Open <strong>Bookings → Reservations → New</strong>. Select the customer, destination and vehicle category, then enter the pickup date/time and number of 24-hour rental days. The expected return date/time is calculated from the pickup time; review it along with the daily rate, tax, total, dirty-return fee and required deposit. Older reservations with an explicit return timestamp remain supported and are billed by each started 24-hour period.</p>
-                            <p>Select an available vehicle or click <strong>Allocate Vehicle</strong>. You can also start from a vehicle's preview using its booking button. The booking picker lists every vehicle available for the chosen category and dates; scroll the list, click <strong>Select</strong> to preview a car and then <strong>Use This Vehicle</strong> to apply it. Allocation checks for overlapping bookings; a car currently rented may be booked for a future free period, but cannot be handed over until it is returned and cleared.</p>
-                            <p>For a special rate, use <strong>Price Override</strong>: enter the proposed rate and reason, request approval and have a manager approve it before confirmation. Do not change a sales quotation to bypass the agreed booking price.</p>
-                            <h2>3. Confirm, then create the rental</h2>
-                            <p>Click <strong>Confirm Reservation</strong> once the customer accepts the quote. Confirmation locks the booking details. Click <strong>Create Rental</strong> to open the linked draft rental. Keep using this rental for payments, signatures, inspections and return; do not create another booking for the same handover.</p>
-                            <p>If an unused reservation needs cancelling, use <strong>Cancel</strong>. A confirmed booking that needs different dates or pricing should be cancelled while unused and replaced. Linked rentals and posted financial records require follow-up rather than deleting the history.</p>
-                            <button name="%(action_car_rental_reservation)d" type="action" string="Open Reservations" class="btn-secondary"/>
+                            <p>Open <strong>Customers</strong> and search before creating a duplicate.
+                               Enter the identity document, date of birth, addresses, licence details
+                               and next of kin, then upload the document and licence. Omang numbers
+                               must be exactly 9 digits; passport and licence numbers accept 6 to 20
+                               letters or digits. A renter must be at least 21 with a licence valid
+                               through the whole hire.</p>
+                            <button name="%(action_car_rental_customer)d" type="action"
+                                    string="Open Customers" class="btn-secondary"/>
+
+                            <h2>2. Prepare the reservation</h2>
+                            <p>In <strong>Bookings → New</strong>, select the customer, destination and
+                               category, then the pickup time and number of 24-hour days. The expected
+                               return is calculated automatically. Use <strong>Choose Vehicle &amp;
+                               Preview</strong> to list available cars, preview one and apply it.
+                               Allocation checks overlapping bookings and vehicle readiness.</p>
+                            <p>For a special rate, request a <strong>Price Override</strong> and have a
+                               manager approve it before confirmation. Do not edit the sales quotation
+                               to bypass the agreed price.</p>
+
+                            <h2>3. Quote and confirm</h2>
+                            <p><strong>Continue</strong> creates a native Odoo Sales quotation with hire,
+                               refundable deposit and any delivery charge. Send it with Odoo's
+                               quotation email and confirm it from the booking or Sales — confirming
+                               advances the journey automatically. If delivery was requested, the
+                               popup captures its address and charge.</p>
+                            <button name="%(action_car_rental_reservation)d" type="action"
+                                    string="Open Reservations" class="btn-secondary"/>
                         </page>
+
                         <page string="2. Payment and Pickup" name="guide_pickup">
-                            <h2>4. Invoice and collect rental payment</h2>
-                            <p>Finance opens the draft rental and clicks <strong>Create / Open Invoice</strong>. Review the invoice and click <strong>Confirm</strong> to post it. Then open the rental's <strong>Payments</strong> tab, click <strong>Record Payment</strong>, enter the amount/date/payment method, save and click <strong>Post Receipt</strong>. A draft receipt does not count as money received. Posted receipts settle the linked rental invoice and update the rental balance.</p>
-                            <p>If your business uses Sales, a manager can create the linked <strong>Sales Quotation</strong> first; finance can invoice that quotation. Use the linked invoice rather than producing a second invoice for the same hire.</p>
+                            <h2>4. Review and confirm the invoice</h2>
+                            <p>Signing prepares a <strong>draft</strong> invoice covering the hire and
+                               refundable deposit — nothing is posted automatically. In the Payment
+                               step the accountant clicks <strong>Create Invoice</strong> if needed,
+                               then <strong>Review Invoice</strong> to check it and click
+                               <strong>Confirm</strong> in Odoo. <strong>Open Invoice</strong> is
+                               available once posted, and <strong>Record Payment</strong> only becomes
+                               available after that. A draft receipt does not count as money received.</p>
+                            <p>Prior deposit credit from the customer's returned rentals is shown and
+                               applied by default. The accountant can adjust it; the remaining balance
+                               is paid normally.</p>
+
                             <h2>5. Collect the security deposit</h2>
-                            <p>In the rental's <strong>Payments</strong> tab, click <strong>Collect Deposit</strong>, check the amount and click <strong>Post Deposit Transaction</strong>. The deposit is held separately from rental revenue. A rental receipt does not satisfy the deposit requirement.</p>
-                            <h2>6. Sign and inspect before giving out the keys</h2>
-                            <p>In <strong>Agreement</strong>, review the terms, verify the automatically filled customer name, capture the signature and click <strong>Acknowledge Agreement</strong>. Use <strong>Print Agreement</strong> for the agreement document.</p>
-                            <p>Click <strong>Pickup Inspection</strong>. Record the actual inspection time, inspector, odometer and fuel. Tick the accessories present in the vehicle, confirm that you checked the list, and record any existing damage. Attach photos, verify the automatically filled customer name and capture the signature. Save and click <strong>Complete Inspection</strong>.</p>
-                            <h2>7. Start the rental</h2>
-                            <p>Return to the rental and click <strong>Start Rental</strong>. Pickup requires a confirmed reservation, completed pickup inspection, acknowledged agreement, the required posted deposit, a ready vehicle and any enabled Road Licence/tracker checks. Insurance is tracked but does not block pickup. If full payment is required, posted rental receipts must cover the rental total. The rental becomes <strong>Ongoing</strong> and the car becomes <strong>Rented</strong>.</p>
-                            <p>In the guided Booking flow, <strong>Hand Over Vehicle</strong> ends at an <strong>On Hire</strong> success screen. Save and exit while the customer has the car. When it is physically returned, reopen the booking and click <strong>Begin Return Process</strong> to continue to the return inspection.</p>
-                            <button name="%(action_car_rental_rental)d" type="action" string="Open Rentals" class="btn-secondary"/>
+                            <p>The deposit is a refundable liability on the same invoice, held
+                               separately from rental income. It is satisfied when the invoice is
+                               settled or by an eligible prior-deposit credit — a rental receipt
+                               alone does not satisfy it.</p>
+
+                            <h2>6. Sign and inspect before handing over the keys</h2>
+                            <p>At Agreement, review the customer contact and delivery place, then send
+                               the signing link by email, WhatsApp or Telegram (or copy it). WhatsApp
+                               and Telegram prepare a message for staff to send. Once signed, the
+                               journey continues to Payment.</p>
+                            <p>Complete the <strong>Pickup Inspection</strong> with the actual time,
+                               inspector, odometer, fuel, accessories, existing damage, photos and the
+                               customer's signature. Confirm the checklist and complete the inspection.</p>
+
+                            <h2>7. Hand over the vehicle</h2>
+                            <p><strong>Hand Over Vehicle</strong> requires a confirmed reservation,
+                               completed inspection, signed agreement, required deposit, a ready
+                               vehicle and any enabled compliance checks. If full payment is required,
+                               posted receipts must cover the hire. The rental becomes
+                               <strong>Ongoing</strong> and the car <strong>Rented</strong>. Save &amp;
+                               Exit while the customer has the car; reopen and click
+                               <strong>Begin Return Process</strong> when it comes back.</p>
+                            <button name="%(action_car_rental_rental)d" type="action"
+                                    string="Open Rentals" class="btn-secondary"/>
                         </page>
+
                         <page string="3. Return and Finish" name="guide_return">
                             <h2>8. Inspect the returned car</h2>
-                            <p>Open the ongoing rental and click <strong>Return Inspection</strong>. Confirm the odometer reading (pre-filled from Fleet), actual return time and fuel. Compare the accessory checklist with pickup; missing items are automatically recorded as a damage assessment. Tick the accessories present at return, confirm that you checked the list, and record any other new damage. Attach return photos and obtain the customer's acknowledgement and signature, then complete the inspection. The rental automatically calculates distance travelled from pickup and return mileage.</p>
-                            <p>Click <strong>Return Vehicle</strong> on the rental. Return mileage cannot be lower than pickup mileage. The rental becomes <strong>Returned</strong>; the vehicle moves into inspection or damage handling. Late charges are calculated using the actual return time and the configured grace period.</p>
+                            <p>Record the return odometer (pre-filled from Fleet), actual time and
+                               fuel. Compare the accessory checklist with pickup — missing items become
+                               a damage assessment. Add new damage, attach photos and obtain the
+                               customer's acknowledgement. Distance travelled is calculated from the
+                               two odometer readings. Late charges use the actual return time and the
+                               configured grace period.</p>
+                            <p>Off-site collection can be selected at Return with an address and
+                               editable charge. If the car was clean at pickup and is returned dirty,
+                               or is late, confirm or edit those charges in the same popup.</p>
+
                             <h2>9. Assess and bill additional charges</h2>
-                            <p>For a late return, use <strong>Create / Open Late Return Invoice</strong> in the rental's Payments tab and post the invoice. New damage creates an assessment under <strong>Fleet → Damage Assessments</strong>. A manager reviews the evidence/cost and clicks <strong>Approve Charge</strong>. Finance creates and posts the <strong>Damage Invoice</strong>.</p>
-                            <p>Legacy rentals retain their existing separate cleaning, late-return and damage invoices and deposit-application actions. New guided rentals capture cleaning and late-return charges in the return popup and include them with approved damage in one settlement invoice. Finance can use <strong>Apply Deposit</strong> on legacy approved damage cases to settle their posted invoice, up to the deposit held and the invoice's outstanding balance. Collect any remaining legacy charge through its standard accounting payment workflow.</p>
+                            <p>A manager approves damage assessments under
+                               <strong>Fleet → Damage Assessments</strong>. Finance reviews the new
+                               charges and posts one final settlement invoice. Legacy rentals keep
+                               their separate cleaning, late and damage invoices and deposit
+                               application actions.</p>
+
                             <h2>10. Refund and reconcile</h2>
-                            <p>After inspecting the return and settling assessed damage and cleaning invoices, use <strong>Refund Remaining Deposit</strong> in the rental's Payments tab and post the transaction. If there is no damage, refund the full deposit held. Check <strong>Payments → Outstanding Invoices</strong> for any remaining rental, damage or late charges.</p>
-                            <p>Posting a receipt or refund records the accounting entry. Staff must also collect or return the money through the actual cash, bank or card process; this module does not send bank transfers automatically.</p>
+                            <p>Apply the deposit to approved charges, pay any shortfall against the
+                               settlement invoice and refund the remaining balance. Check
+                               <strong>Payments → Outstanding Invoices</strong> before closing. Posting
+                               a receipt or refund records the accounting entry; staff still collect
+                               or return the physical money through the cash, bank or card process.</p>
+                            <p><strong>Close Rental</strong> validates that no charges, payments or
+                               deposits remain. Closing the customer cycle does not release the car.</p>
+
                             <h2>11. Repair, clean and release</h2>
-                            <p>Fleet staff request and complete any necessary repairs in Maintenance, record work and costs, and resolve the damage case. On the vehicle, click <strong>Send to Cleaning</strong>. After cleaning, click <strong>Release Vehicle</strong>. The car becomes available for its next hire. Review the completion checklist in Start Here and keep the documents attached to the rental.</p>
-                            <button name="%(action_car_rental_vehicle)d" type="action" string="Open Vehicles" class="btn-secondary"/>
+                            <p>Complete repairs in Maintenance, resolve the damage case, send the car
+                               to cleaning and then release it for the next hire. Use
+                               <strong>Vehicle / Fleet Follow-up</strong> from the booking.</p>
+                            <button name="%(action_car_rental_vehicle)d" type="action"
+                                    string="Open Vehicles" class="btn-secondary"/>
                         </page>
+
                         <page string="Balances and Help" name="guide_help">
                             <h2>Understand the money</h2>
                             <ul>
-                                <li><strong>Rental amount:</strong> the agreed hire charge including configured tax.</li>
-                                <li><strong>Paid total / rental balance:</strong> posted base rental receipts and the remaining base rental charge.</li>
-                                <li><strong>Total Customer Balance:</strong> outstanding posted rental-linked invoices, including damage and late charges; if no posted base rental invoice exists, the rental balance is also included. Check draft invoices separately before closing the cycle. Cleaning invoices also contribute to the outstanding balance once posted.</li>
-                                <li><strong>Deposit held:</strong> posted collections less posted refunds and damage applications. It is customer money held as a liability, not rental income.</li>
+                                <li><strong>Rental amount:</strong> the agreed hire charge including tax.</li>
+                                <li><strong>Paid total / rental balance:</strong> posted base receipts and
+                                    the remaining base charge.</li>
+                                <li><strong>Total Customer Balance:</strong> outstanding posted invoices,
+                                    including damage, late and cleaning charges. Check draft invoices
+                                    separately before closing.</li>
+                                <li><strong>Deposit held:</strong> collections less refunds and damage
+                                    applications. It is customer money held as a liability, not income.</li>
                             </ul>
-                            <p><strong>Example:</strong> three days at 500, no tax, and a deposit ratio of 1 means a rental invoice of 1,500 plus a separately collected deposit of 500. With no damage, refund 500 after inspection. With approved damage of 200, post its invoice, apply 200 of the deposit and refund the remaining 300. Settle any late invoice separately.</p>
+                            <p><strong>Example:</strong> three days at 500, no tax, ratio 1 means a 1,500
+                               hire invoice plus a separately held 500 deposit. With no damage, refund
+                               500. With 200 approved damage, apply 200 of the deposit and refund 300.
+                               Settle any late invoice separately.</p>
+
                             <h2>If an action is blocked</h2>
                             <ul>
-                                <li><strong>No approved rate:</strong> ask the manager to approve a rule matching destination, category, duration and rental date; recalculate the draft reservation.</li>
-                                <li><strong>No vehicle available:</strong> check category, dates, overlapping bookings and vehicle readiness.</li>
-                                <li><strong>Pickup blocked:</strong> check agreement, completed signed/photo inspection, posted deposit, posted rental receipts and vehicle compliance.</li>
-                                <li><strong>Receipt cannot post:</strong> post the base rental invoice first and check the configured bank/cash journal and remaining invoice balance.</li>
-                                <li><strong>Refund blocked:</strong> complete the return inspection, assess new damage and settle the damage invoices before refunding the remaining amount.</li>
-                                <li><strong>Vehicle cannot be released:</strong> complete the return inspection, resolve damage/repairs and send the vehicle to cleaning first.</li>
-                                <li><strong>Button or menu missing:</strong> ask your administrator to check your rental role.</li>
-                                <li><strong>Historical receipts:</strong> ask finance to reconcile opening balances before creating new invoices; do not charge the customer twice.</li>
+                                <li><strong>No approved rate:</strong> ask a manager to approve a rule
+                                    matching destination, category, duration and date, then recalculate.</li>
+                                <li><strong>No vehicle available:</strong> check category, dates,
+                                    overlapping bookings and vehicle readiness.</li>
+                                <li><strong>Pickup blocked:</strong> check the agreement, signed
+                                    inspection, posted deposit, posted receipts and vehicle compliance.</li>
+                                <li><strong>Record Payment missing:</strong> confirm and post the draft
+                                    invoice first.</li>
+                                <li><strong>Refund blocked:</strong> complete the return inspection and
+                                    settle assessed charges before refunding the remainder.</li>
+                                <li><strong>Vehicle cannot be released:</strong> resolve damage and send
+                                    the car to cleaning first.</li>
+                                <li><strong>Signing link will not open:</strong> check that
+                                    <code>web.base.url</code> is a public HTTPS address.</li>
+                                <li><strong>Historical receipts:</strong> have finance reconcile opening
+                                    balances before new invoices; do not charge twice.</li>
                             </ul>
-                            <p>Completed inspections, acknowledged agreements and posted transactions are protected history. Finance uses accounting reversals for corrections to posted entries.</p>
+                            <p>Completed inspections, signed agreements and posted transactions are
+                               protected history. Finance uses accounting reversals for corrections.</p>
                         </page>
                     </notebook>
                 </sheet>
             </form>
         </field>
     </record>
+
     <record id="action_rental_how_it_works" model="ir.actions.act_window">
         <field name="name">How It Works</field>
         <field name="res_model">car.rental.dashboard</field>
@@ -124,5 +339,6 @@
         <field name="view_id" ref="view_rental_how_it_works"/>
         <field name="res_id" ref="car_rental_dashboard_record"/>
     </record>
-    <menuitem id="menu_rental_how_it_works" name="How It Works" parent="menu_car_rental_root" action="action_rental_how_it_works" sequence="80"/>
+    <menuitem id="menu_rental_how_it_works" name="How It Works"
+              parent="menu_car_rental_root" action="action_rental_how_it_works" sequence="80"/>
 </odoo>
