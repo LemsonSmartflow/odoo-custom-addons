@@ -685,29 +685,7 @@ class Journey(models.Model):
         """Create or open the booking invoice as a DRAFT for review."""
         self.ensure_one()
         require_role(self.env, 'group_rental_accountant')
-        action = self.rental_id.action_invoice()
-        invoice = self.env['account.move'].browse(action.get('res_id')).exists()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'Booking Invoice',
-            'res_model': 'account.move',
-            'view_mode': 'form',
-            'res_id': invoice.id,
-            'target': 'current',
-        }
-
-    def action_open_invoice(self):
-        self.ensure_one()
-        if not self.invoice_id:
-            raise ValidationError('No booking invoice has been created yet.')
-        return {
-            'type': 'ir.actions.act_window',
-            'name': 'Booking Invoice',
-            'res_model': 'account.move',
-            'view_mode': 'form',
-            'res_id': self.invoice_id.id,
-            'target': 'current',
-        }
+        return self.rental_id.action_invoice()
 
     def action_collect_payment(self):
         self.ensure_one()

@@ -53,6 +53,15 @@ class Company(models.Model):
     rental_late_grace_hours = fields.Float(default=2, string='Late Return Grace (hours)')
     rental_allow_direct_invoice = fields.Boolean(default=False, string='Allow Direct Rental Invoicing Without a Sales Order')
 
+    def ensure_rental_accounting(self):
+        """Create any missing rental accounts/journals and link them to the
+        company. Safe to call repeatedly; used at install, upgrade and at the
+        point of invoicing so a fresh database configures itself."""
+        from ..hooks import configure_company_accounting
+        for company in self:
+            configure_company_accounting(company.sudo())
+        return True
+
     @api.model
     def _ensure_default_rental_products(self):
         products = {
@@ -428,6 +437,8 @@ class SaleOrder(models.Model):
 
     def _prepare_invoice(self):
         values = super()._prepare_invoice()
+        if self.car_rental_id:
+            self.company_id.ensure_rental_accounting()
         values['car_rental_id'] = self.car_rental_id.id or False
         if self.car_rental_id:
             self._validate_rental_quote()
@@ -923,6 +934,9 @@ class Rental(models.Model):
         self.ensure_one()
         require_role(self.env, 'group_rental_accountant')
         self.env.cr.execute('UPDATE car_rental_rental SET id = id WHERE id = %s', [self.id])
+        # Self-heal missing rental accounting configuration (e.g. a company
+        # added after install) so invoicing never stops on a config error.
+        self.company_id.ensure_rental_accounting()
         if not account or not self.company_id.cr_sales_journal_id:
             raise ValidationError('Configure rental income accounts and the sales journal in Car Rental Settings first.')
         partner = self.partner_id
@@ -950,6 +964,7 @@ class Rental(models.Model):
 
     def action_invoice(self):
         self.ensure_one()
+        self.company_id.ensure_rental_accounting()
         existing = self.invoice_ids.filtered(lambda m: m.rental_invoice_kind == 'rental' and m.state != 'cancel')[:1]
         if not existing:
             if self._uses_single_invoice() and self.agreement_state != 'signed':
