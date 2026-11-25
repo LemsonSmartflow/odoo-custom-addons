@@ -30,6 +30,10 @@ class TestRentalAgreementTemplate(RentalTestCommon):
         agreement._snapshot_template(template, template._prepare_values(rental, journey))
         return agreement, template, rental
 
+    def test_create_without_rental_reports_a_clear_error(self):
+        with self.assertRaisesRegex(ValidationError, 'Select a rental'):
+            self.env['rental.agreement'].create({})
+
     def test_default_template_installed_with_field_mapping(self):
         template = self.env['rental.agreement.template'].search([
             ('company_id', '=', self.company.id), ('state', '=', 'active')], limit=1)

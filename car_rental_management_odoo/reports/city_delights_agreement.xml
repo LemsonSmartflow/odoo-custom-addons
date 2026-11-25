@@ -5,12 +5,18 @@
          verbatim; only the dotted/underscore blanks are populated. -->
     <template id="city_delights_header">
         <div class="cd-header">
-            <img class="cd-logo" t-att-src="doc._logo_data_uri()" alt="City Delights Car Rental"/>
-            <table class="cd-head-table">
+            <table class="cd-head-wrap">
                 <tr>
-                    <td>Address<br/>Private Bag 154<br/>Gaborone Botswana</td>
-                    <td>Physical Address<br/>Block 3 Gaborone<br/>Plot 27190</td>
-                    <td>Mobile Number<br/>+267 77 512 962<br/>+267 74 683 565</td>
+                    <td class="cd-logo-cell"><img class="cd-logo" t-att-src="doc._logo_data_uri()" alt="City Delights Car Rental"/></td>
+                    <td>
+                        <table class="cd-head-table">
+                            <tr>
+                                <td>Address<br/>Private Bag 154<br/>Gaborone Botswana</td>
+                                <td>Physical Address<br/>Block 3 Gaborone<br/>Plot 27190</td>
+                                <td>Mobile Number<br/>+267 77 512 962<br/>+267 74 683 565</td>
+                            </tr>
+                        </table>
+                    </td>
                 </tr>
             </table>
             <div class="cd-rule"/>
@@ -53,23 +59,26 @@
             <t t-foreach="docs" t-as="doc">
                 <div class="cd-contract">
                     <style>
-                        .cd-contract { font-family: Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #000; }
-                        .cd-page { page-break-after: always; min-height: 640px; }
-                        .cd-header { margin-bottom: 18px; }
-                        .cd-logo { width: 168px; height: 92px; }
-                        .cd-head-table { width: 100%; border: 0; font-size: 8.5pt; margin-top: -78px; margin-left: 180px; }
-                        .cd-head-table td { width: 33%; vertical-align: top; border: 0; }
+                        .cd-contract { font-family: Helvetica, Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #000; }
+                        .cd-page { page-break-after: always; padding-bottom: 10px; }
+                        .cd-header { margin-bottom: 22px; }
+                        .cd-head-wrap { width: 100%; border: 0; border-collapse: collapse; }
+                        .cd-head-wrap td { border: 0; vertical-align: top; padding: 0; }
+                        .cd-logo-cell { width: 160px; }
+                        .cd-logo { width: 150px; height: 84px; }
+                        .cd-head-table { width: 100%; border: 0; font-size: 9.5pt; }
+                        .cd-head-table td { width: 33%; vertical-align: top; border: 0; padding: 0 6px; }
                         .cd-rule { border-top: 3px solid #232a35; margin-top: 8px; }
-                        .cd-title { font-size: 12pt; font-weight: bold; text-align: center; margin: 12px 0 4px 0; }
+                        .cd-title { font-size: 15pt; font-weight: bold; text-align: center; margin: 18px 0 10px 0; }
                         .cd-center { text-align: center; }
-                        .cd-caption { text-align: center; margin: 10px 0; }
-                        .cd-sign-line { border-bottom: 1px solid #000; height: 18px; margin-bottom: 4px; }
-                        .cd-sig-table { width: 100%; border: 0; margin-top: 24px; }
-                        .cd-sig-table td { width: 50%; border: 0; vertical-align: top; padding-right: 24px; }
+                        .cd-caption { text-align: center; margin: 14px 0; line-height: 1.7; }
+                        .cd-sign-line { border-bottom: 1px solid #000; height: 22px; margin: 6px 0 10px 0; }
+                        .cd-sig-table { width: 100%; border: 0; margin-top: 28px; }
+                        .cd-sig-table td { width: 50%; border: 0; vertical-align: top; padding-right: 24px; line-height: 1.9; }
                         .cd-value { font-weight: bold; }
-                        .cd-schedule { font-weight: bold; text-align: center; margin: 12px 0; }
-                        .cd-page-no { text-align: center; font-size: 8pt; margin-top: 18px; }
-                        .cd-para { margin: 7px 0; text-align: justify; }
+                        .cd-schedule { font-size: 13pt; font-weight: bold; text-align: center; margin: 16px 0; }
+                        .cd-page-no { text-align: center; font-size: 9pt; margin-top: 24px; }
+                        .cd-para { margin: 11px 0; text-align: justify; line-height: 1.6; }
                     </style>
 
                     <!-- PAGE 1 -->

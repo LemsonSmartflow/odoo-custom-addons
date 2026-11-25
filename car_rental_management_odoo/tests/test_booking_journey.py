@@ -49,6 +49,8 @@ class TestBookingJourney(RentalTestCommon):
         invoice = rental.invoice_ids.filtered(
             lambda move: move.rental_invoice_kind == 'rental')[:1]
         self.assertTrue(invoice)
+        if invoice.state == 'draft':
+            invoice.with_user(self.user_accountant).action_post()
         credit = min(
             max(rental.deposit_required - rental.deposit_held, 0),
             rental._available_deposit_credit())
@@ -147,6 +149,8 @@ class TestBookingJourney(RentalTestCommon):
         invoice = rental.invoice_ids.filtered(
             lambda move: move.rental_invoice_kind == 'rental')
         self.assertEqual(len(invoice), 1)
+        self.assertEqual(invoice.state, 'draft')
+        invoice.with_user(self.user_accountant).action_post()
         deposit_lines = invoice.invoice_line_ids.filtered('rental_deposit_line')
         hire_lines = invoice.invoice_line_ids.filtered(
             lambda line: line.display_type == 'product' and not line.rental_deposit_line)
@@ -594,7 +598,9 @@ class TestBookingJourney(RentalTestCommon):
         self._sign_agreement(rental)
         invoice = rental.invoice_ids.filtered(
             lambda move: move.rental_invoice_kind == 'rental')
-        self.assertEqual(invoice.state, 'posted')
+        # Signing prepares a draft invoice; the accountant confirms it.
+        self.assertEqual(invoice.state, 'draft')
+        invoice.action_post()
         journey.with_user(self.user_accountant).action_cancel()
         self.assertEqual(rental.status, 'cancelled')
         self.assertEqual(journey.step, 'cancelled')
@@ -650,6 +656,8 @@ class TestBookingJourney(RentalTestCommon):
         self._sign_agreement(rental)
         invoice = rental.invoice_ids.filtered(
             lambda move: move.rental_invoice_kind == 'rental')
+        self.assertEqual(invoice.state, 'draft')
+        invoice.with_user(self.user_accountant).action_post()
         payment = self.env['account.payment'].with_user(self.user_accountant).create({
             'payment_type': 'inbound',
             'partner_type': 'customer',
@@ -951,7 +959,7 @@ class TestBookingJourney(RentalTestCommon):
         self.assertEqual(journey.step, 'payment')
         self.assertTrue(journey.invoice_id)
         self.assertEqual(journey.invoice_id.rental_invoice_kind, 'rental')
-        self.assertEqual(journey.invoice_state, 'posted')
+        self.assertEqual(journey.invoice_state, 'draft')
         self.assertGreater(journey.invoice_amount, 0)
         action = journey.action_open_invoice()
         self.assertEqual(action['res_model'], 'account.move')

@@ -11,7 +11,8 @@ from odoo.exceptions import UserError
 class SignGateway(models.Model):
     _name = 'car.rental.sign.gateway'
     _description = 'Rental Agreement Signing Gateway'
-    _auto = False
+    # A normal (empty) table is required: Odoo 19 verifies every non-abstract
+    # model has a table at registry setup, even for stateless service models.
 
     @api.model
     def is_ready(self):

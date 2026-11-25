@@ -104,20 +104,18 @@ class Rental(models.Model):
                 with self.env.cr.savepoint():
                     journey._advance_to('payment')
             if rental._uses_single_invoice():
+                # Prepare a DRAFT invoice for the accountant to review and
+                # confirm, exactly like a quotation.  Never post it silently.
                 try:
                     with self.env.cr.savepoint():
                         if rental.sale_order_id and rental.sale_order_id.state in ('draft', 'sent'):
                             rental.sale_order_id.action_confirm()
-                        action = rental.action_invoice()
-                        invoice = self.env['account.move'].sudo().browse(
-                            action.get('res_id')).exists()
-                        if invoice and invoice.state == 'draft':
-                            invoice.action_post()
+                        rental.action_invoice()
                 except Exception as exc:
-                    _logger.exception('Could not post the booking invoice for %s', rental.reference)
+                    _logger.exception('Could not prepare the booking invoice for %s',
+                                      rental.reference)
                     rental.message_post(
-                        body='Agreement signed. The booking invoice could not be posted yet: %s'
-                             % exc)
+                        body='Agreement signed. The invoice could not be prepared yet: %s' % exc)
 
     def _workflow_write(self, vals):
         for rental in self:

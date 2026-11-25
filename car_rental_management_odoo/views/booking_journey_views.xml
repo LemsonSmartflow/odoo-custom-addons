@@ -164,9 +164,18 @@
                             invisible="step != 'agreement' or agreement_contract_state != 'expired'"/>
                     <button name="action_digital_contract" type="object" string="View Signing Progress"
                             invisible="step != 'agreement' or agreement_contract_state == 'draft'"/>
+                    <button name="action_create_invoice" type="object" string="Create Invoice"
+                            class="btn-primary" groups="car_rental_management_odoo.group_rental_accountant"
+                            invisible="step != 'payment' or invoice_id"/>
+                    <button name="action_create_invoice" type="object" string="Review Invoice"
+                            groups="car_rental_management_odoo.group_rental_accountant"
+                            invisible="step != 'payment' or not invoice_id or invoice_state != 'draft'"/>
+                    <button name="action_open_invoice" type="object" string="Open Invoice"
+                            groups="car_rental_management_odoo.group_rental_accountant"
+                            invisible="step != 'payment' or invoice_state != 'posted'"/>
                     <button name="action_collect_payment" type="object" string="Record Payment"
                             class="btn-primary" groups="car_rental_management_odoo.group_rental_accountant"
-                            invisible="step != 'payment' or payment_ready"/>
+                            invisible="step != 'payment' or payment_ready or invoice_state != 'posted'"/>
                     <button name="action_continue" type="object" string="Prepare Settlement"
                             class="btn-primary" groups="car_rental_management_odoo.group_rental_accountant"
                             invisible="step != 'settlement'"/>
