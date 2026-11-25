@@ -592,6 +592,26 @@ class TestBookingJourney(RentalTestCommon):
         with self.assertRaises(AccessError):
             journey.with_user(self.user_agent).action_close_rental()
 
+    def test_signing_self_heals_missing_rental_accounting_configuration(self):
+        journey = self._new_journey()
+        rental = self._to_agreement(journey)
+        self.company.write({
+            'cr_income_account_id': False,
+            'cr_damage_account_id': False,
+            'cr_deposit_account_id': False,
+            'cr_deposit_pending_account_id': False,
+            'cr_expense_account_id': False,
+            'cr_cash_journal_id': False,
+            'cr_sales_journal_id': False,
+        })
+        self._sign_agreement(rental)
+        invoice = rental.invoice_ids.filtered(
+            lambda move: move.rental_invoice_kind == 'rental')
+        self.assertTrue(invoice)
+        self.assertEqual(invoice.state, 'draft')
+        self.assertTrue(self.company.cr_income_account_id)
+        self.assertTrue(self.company.cr_sales_journal_id)
+
     def test_signed_unpaid_booking_cancellation_credits_invoice(self):
         journey = self._new_journey()
         rental = self._to_agreement(journey)
