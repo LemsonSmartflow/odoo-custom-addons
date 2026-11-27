@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+
+    <record id="view_kem_document_form_enterprise" model="ir.ui.view">
+        <field name="name">kem.document.record.form.enterprise</field>
+        <field name="model">kem.document.record</field>
+        <field name="inherit_id" ref="kem_event_medical.view_kem_document_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_push_to_documents" type="object" class="oe_stat_button" icon="fa-cloud-upload"
+                        invisible="documents_document_id">
+                    <div class="o_stat_info"><span class="o_stat_text">Push to Documents</span></div>
+                </button>
+            </xpath>
+            <xpath expr="//group/field[@name='attachment_id']" position="after">
+                <field name="documents_document_id" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

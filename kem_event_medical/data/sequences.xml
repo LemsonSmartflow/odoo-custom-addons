@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo noupdate="1">
+
+    <record id="seq_kem_event_booking" model="ir.sequence">
+        <field name="name">Event Medical Booking</field>
+        <field name="code">kem.event.booking</field>
+        <field name="prefix">EVT-%(year)s-</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <record id="seq_kem_operational_job" model="ir.sequence">
+        <field name="name">Event Medical Operational Job</field>
+        <field name="code">kem.operational.job</field>
+        <field name="prefix">JOB-%(year)s-</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+</odoo>

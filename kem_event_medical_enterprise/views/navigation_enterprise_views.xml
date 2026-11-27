@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+
+    <record id="action_kem_enterprise_planning" model="ir.actions.act_window">
+        <field name="name">Event Planning Slots</field>
+        <field name="res_model">planning.slot</field>
+        <field name="view_mode">gantt,list,form</field>
+        <field name="domain">[('kem_booking_id', '!=', False)]</field>
+    </record>
+    <menuitem id="menu_kem_enterprise_planning" name="Planning" parent="kem_event_medical.menu_kem_connected_root"
+              action="action_kem_enterprise_planning" sequence="15"/>
+
+    <record id="action_kem_enterprise_fieldservice" model="ir.actions.act_window">
+        <field name="name">Field Service Tasks</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">list,form,kanban</field>
+        <field name="domain">[('kem_booking_id', '!=', False)]</field>
+    </record>
+    <menuitem id="menu_kem_enterprise_fieldservice" name="Field Service" parent="kem_event_medical.menu_kem_connected_root"
+              action="action_kem_enterprise_fieldservice" sequence="25"/>
+
+    <record id="action_kem_enterprise_documents" model="ir.actions.act_window">
+        <field name="name">Documents App</field>
+        <field name="res_model">documents.document</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('kem_booking_id', '!=', False)]</field>
+    </record>
+    <menuitem id="menu_kem_enterprise_documents" name="Documents App" parent="kem_event_medical.menu_kem_connected_root"
+              action="action_kem_enterprise_documents" sequence="35"/>
+
+    <record id="action_kem_enterprise_sign" model="ir.actions.act_window">
+        <field name="name">Signature Requests</field>
+        <field name="res_model">sign.request</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_kem_enterprise_sign" name="Sign" parent="kem_event_medical.menu_kem_connected_root"
+              action="action_kem_enterprise_sign" sequence="45"/>
+
+</odoo>

@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+
+    <record id="view_kem_job_form_enterprise" model="ir.ui.view">
+        <field name="name">kem.operational.job.form.enterprise</field>
+        <field name="model">kem.operational.job</field>
+        <field name="inherit_id" ref="kem_event_medical.view_kem_job_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_fieldservice_task" type="object" class="oe_stat_button" icon="fa-wrench"
+                        invisible="not fieldservice_task_id">
+                    <div class="o_stat_info"><span class="o_stat_text">Field Service Task</span></div>
+                </button>
+            </xpath>
+            <xpath expr="//group[@string='Resources']" position="inside">
+                <field name="fieldservice_task_id" invisible="1"/>
+                <field name="planning_slot_ids" widget="many2many_tags" readonly="1" invisible="not planning_slot_ids"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

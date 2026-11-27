@@ -1,0 +1,101 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+
+    <record id="view_kem_booking_list" model="ir.ui.view">
+        <field name="name">kem.event.booking.list</field>
+        <field name="model">kem.event.booking</field>
+        <field name="arch" type="xml">
+            <list string="Event Bookings" decoration-success="state == 'completed'" decoration-info="state in ['confirmed','ready']" decoration-warning="state in ['planning','in_progress']" decoration-danger="state == 'cancelled'">
+                <field name="reference"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="event_type" optional="show"/>
+                <field name="start_date"/>
+                <field name="attendance" optional="hide"/>
+                <field name="crew_count" string="Crew"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kem_booking_form" model="ir.ui.view">
+        <field name="name">kem.event.booking.form</field>
+        <field name="model">kem.event.booking</field>
+        <field name="arch" type="xml">
+            <form string="Event Booking">
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm Booking" class="oe_highlight" invisible="state != 'enquiry' and state != 'assessment' and state != 'quotation' and state != 'awaiting'"/>
+                    <button name="action_plan" type="object" string="Plan" invisible="state != 'confirmed'"/>
+                    <button name="action_ready" type="object" string="Ready for Deployment" class="oe_highlight" invisible="state != 'planning'"/>
+                    <button name="action_deploy" type="object" string="Deploy" invisible="state != 'ready'"/>
+                    <button name="action_complete" type="object" string="Mark Completed" invisible="state != 'in_progress'"/>
+                    <button name="action_next" type="object" string="Advance Status"/>
+                    <field name="state" widget="statusbar" statusbar_visible="enquiry,assessment,quotation,awaiting,confirmed,planning,ready,in_progress,completed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_jobs" type="object" class="oe_stat_button" icon="fa-tasks">
+                            <field name="job_ids" widget="statinfo" string="Jobs"/>
+                        </button>
+                        <button name="action_view_documents" type="object" class="oe_stat_button" icon="fa-folder">
+                            <field name="document_ids" widget="statinfo" string="Documents"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name" string="Event Name"/>
+                        <h1><field name="name" placeholder="Event name"/></h1>
+                    </div>
+                    <group>
+                        <field name="reference"/>
+                        <field name="company_id" invisible="1"/>
+                    </group>
+                    <group>
+                        <group string="Customer &amp; sales">
+                            <field name="partner_id"/>
+                            <field name="opportunity_id"/>
+                            <field name="sale_order_id"/>
+                        </group>
+                        <group string="Event">
+                            <field name="event_type"/>
+                            <field name="location"/>
+                            <field name="organiser"/>
+                            <field name="organiser_phone"/>
+                        </group>
+                    </group>
+                    <group string="Schedule">
+                        <field name="start_date"/>
+                        <field name="end_date"/>
+                        <field name="service_start"/>
+                        <field name="service_end"/>
+                        <field name="attendance"/>
+                    </group>
+                    <group string="Service requirements">
+                        <field name="requirement" nolabel="1"/>
+                        <field name="personnel_required"/>
+                        <field name="vehicle_required"/>
+                        <field name="equipment_required" nolabel="1"/>
+                    </group>
+                    <group string="Planning">
+                        <field name="project_id"/>
+                        <field name="team_ids" widget="many2many_tags"/>
+                        <field name="vehicle_ids" widget="many2many_tags"/>
+                        <field name="crew_count"/>
+                    </group>
+                    <group string="Notes">
+                        <field name="notes" nolabel="1"/>
+                        <field name="completion_notes" nolabel="1" invisible="state != 'completed'"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kem_booking" model="ir.actions.act_window">
+        <field name="name">Event Bookings</field>
+        <field name="res_model">kem.event.booking</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Create an event medical booking.</p></field>
+    </record>
+
+</odoo>

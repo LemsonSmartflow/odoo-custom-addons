@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+
+    <record id="view_kem_job_list" model="ir.ui.view">
+        <field name="name">kem.operational.job.list</field>
+        <field name="model">kem.operational.job</field>
+        <field name="arch" type="xml">
+            <list string="Operational Jobs" decoration-success="state == 'completed'" decoration-warning="state in ['en_route','on_site']" decoration-danger="state == 'cancelled'">
+                <field name="reference"/>
+                <field name="name"/>
+                <field name="job_type" optional="show"/>
+                <field name="partner_id"/>
+                <field name="booking_id"/>
+                <field name="state" widget="badge"/>
+                <field name="opened" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_kem_job_form" model="ir.ui.view">
+        <field name="name">kem.operational.job.form</field>
+        <field name="model">kem.operational.job</field>
+        <field name="arch" type="xml">
+            <form string="Operational Job">
+                <header>
+                    <button name="action_set_state" type="object" string="Dispatched" class="oe_highlight" invisible="state != 'assigned'" context="{'kem_target_state': 'dispatched'}"/>
+                    <button name="action_set_state" type="object" string="En Route" invisible="state != 'dispatched'" context="{'kem_target_state': 'en_route'}"/>
+                    <button name="action_set_state" type="object" string="On Site" invisible="state != 'en_route'" context="{'kem_target_state': 'on_site'}"/>
+                    <button name="action_complete" type="object" string="Complete" class="oe_highlight" invisible="state in ['completed','cancelled']"/>
+                    <button name="action_next" type="object" string="Advance Status"/>
+                    <field name="state" widget="statusbar" statusbar_visible="new,assigned,dispatched,en_route,on_site,completed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_booking" type="object" class="oe_stat_button" icon="fa-calendar" invisible="not booking_id">
+                            <div class="o_stat_info"><span class="o_stat_text">Booking</span></div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name" string="Job Name"/>
+                        <h1><field name="name" placeholder="Job name"/></h1>
+                    </div>
+                    <group>
+                        <field name="reference"/>
+                        <field name="company_id" invisible="1"/>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="job_type"/>
+                            <field name="partner_id"/>
+                            <field name="booking_id"/>
+                            <field name="project_id"/>
+                        </group>
+                        <group>
+                            <field name="opened"/>
+                            <field name="closed"/>
+                        </group>
+                    </group>
+                    <group string="Resources">
+                        <field name="team_ids" widget="many2many_tags"/>
+                        <field name="vehicle_ids" widget="many2many_tags"/>
+                    </group>
+                    <group string="Service record">
+                        <field name="notes" nolabel="1"/>
+                        <field name="documents" nolabel="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kem_job" model="ir.actions.act_window">
+        <field name="name">Operational Jobs</field>
+        <field name="res_model">kem.operational.job</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

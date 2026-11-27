@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_kem_booking_user,booking.operations.staff,model_kem_event_booking,kem_event_medical.group_kem_user,1,1,1,0
+access_kem_booking_manager,booking.manager,model_kem_event_booking,kem_event_medical.group_kem_manager,1,1,1,1
+access_kem_job_user,job.operations.staff,model_kem_operational_job,kem_event_medical.group_kem_user,1,1,1,0
+access_kem_job_manager,job.manager,model_kem_operational_job,kem_event_medical.group_kem_manager,1,1,1,1
+access_kem_document_user,document.operations.staff,model_kem_document_record,kem_event_medical.group_kem_user,1,1,1,0
+access_kem_document_manager,document.manager,model_kem_document_record,kem_event_medical.group_kem_manager,1,1,1,1
+access_kem_dashboard_base,dashboard.any.internal.user,model_kem_dashboard,base.group_user,1,1,1,0
+access_kem_dashboard_user,dashboard.operations.staff,model_kem_dashboard,kem_event_medical.group_kem_user,1,0,0,0
+access_kem_dashboard_manager,dashboard.manager,model_kem_dashboard,kem_event_medical.group_kem_manager,1,0,0,0

@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo noupdate="1">
+
+    <!-- CRM stages used by the demonstration; kept in core so no Enterprise dependency. -->
+    <record id="stage_new_enquiry" model="crm.stage">
+        <field name="name">New Enquiry</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="stage_contacted" model="crm.stage">
+        <field name="name">Contacted</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="stage_assessment" model="crm.stage">
+        <field name="name">Assessment</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="stage_quotation_sent" model="crm.stage">
+        <field name="name">Quotation Sent</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="stage_negotiation" model="crm.stage">
+        <field name="name">Negotiation</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="stage_won" model="crm.stage">
+        <field name="name">Won</field>
+        <field name="sequence">60</field>
+        <field name="is_won" eval="True"/>
+    </record>
+    <record id="stage_lost" model="crm.stage">
+        <field name="name">Lost</field>
+        <field name="sequence">70</field>
+    </record>
+
+</odoo>

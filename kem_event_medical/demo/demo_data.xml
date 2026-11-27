@@ -1,0 +1,296 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo noupdate="1">
+
+    <!-- Fictional customers -->
+    <record id="partner_kalahari_sports" model="res.partner">
+        <field name="name">Kalahari Sports Events</field>
+        <field name="email">boitumelo@kalaharisports.co.bw</field>
+        <field name="phone">+267 71 880 412</field>
+        <field name="customer_rank" eval="1"/>
+        <field name="is_company" eval="True"/>
+        <field name="comment">Fictional demonstration customer.</field>
+    </record>
+    <record id="partner_delta" model="res.partner">
+        <field name="name">Delta Construction Group</field>
+        <field name="email">kabelo.modise@deltaconst.co.bw</field>
+        <field name="phone">+267 72 114 908</field>
+        <field name="customer_rank" eval="1"/>
+        <field name="is_company" eval="True"/>
+    </record>
+    <record id="partner_cbp" model="res.partner">
+        <field name="name">Central Business Park</field>
+        <field name="email">naledi@cbp.co.bw</field>
+        <field name="phone">+267 39 120 455</field>
+        <field name="customer_rank" eval="1"/>
+        <field name="is_company" eval="True"/>
+    </record>
+    <record id="partner_bca" model="res.partner">
+        <field name="name">Botswana Community Athletics</field>
+        <field name="email">thusonkwe@bca.org.bw</field>
+        <field name="phone">+267 77 431 220</field>
+        <field name="customer_rank" eval="1"/>
+        <field name="is_company" eval="True"/>
+    </record>
+
+    <!-- CRM opportunities -->
+    <record id="lead_athletics" model="crm.lead">
+        <field name="name">Medical standby — Kalahari Annual Athletics Meet</field>
+        <field name="partner_id" ref="partner_kalahari_sports"/>
+        <field name="type">opportunity</field>
+        <field name="stage_id" ref="stage_new_enquiry"/>
+        <field name="expected_revenue" eval="28500"/>
+        <field name="probability" eval="10"/>
+        <field name="description">1,500 attendees. 4 personnel, 1 ambulance, 07:00–18:00.</field>
+    </record>
+    <record id="lead_delta" model="crm.lead">
+        <field name="name">First aid standby — Delta Construction Safety Day</field>
+        <field name="partner_id" ref="partner_delta"/>
+        <field name="type">opportunity</field>
+        <field name="stage_id" ref="stage_contacted"/>
+        <field name="expected_revenue" eval="9600"/>
+        <field name="probability" eval="30"/>
+    </record>
+    <record id="lead_marathon" model="crm.lead">
+        <field name="name">Medical standby — Community Marathon</field>
+        <field name="partner_id" ref="partner_bca"/>
+        <field name="type">opportunity</field>
+        <field name="stage_id" ref="stage_quotation_sent"/>
+        <field name="expected_revenue" eval="42000"/>
+        <field name="probability" eval="65"/>
+    </record>
+
+    <!-- Service products -->
+    <record id="product_paramedic" model="product.product">
+        <field name="name">Event medical standby — paramedic</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="list_price" eval="420"/>
+    </record>
+    <record id="product_ambulance" model="product.product">
+        <field name="name">Ambulance standby</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="list_price" eval="850"/>
+    </record>
+    <record id="product_first_aider" model="product.product">
+        <field name="name">First aid coverage</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="list_price" eval="280"/>
+    </record>
+    <record id="product_extra_hours" model="product.product">
+        <field name="name">Additional service hours</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="list_price" eval="350"/>
+    </record>
+    <record id="product_equipment" model="product.product">
+        <field name="name">Equipment &amp; consumables</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="list_price" eval="3080"/>
+    </record>
+    <record id="product_response_vehicle" model="product.product">
+        <field name="name">Response vehicle</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="list_price" eval="1200"/>
+    </record>
+
+    <!-- Quotations -->
+    <record id="quotation_athletics" model="sale.order">
+        <field name="name">QUO-2026-001</field>
+        <field name="partner_id" ref="partner_kalahari_sports"/>
+        <field name="note">Payment within 14 days of invoice. 50% deposit required to confirm booking.</field>
+        <field name="order_line" eval="[
+            (0, 0, {'product_id': ref('product_paramedic'), 'product_uom_qty': 32, 'price_unit': 420}),
+            (0, 0, {'product_id': ref('product_ambulance'), 'product_uom_qty': 8, 'price_unit': 850}),
+            (0, 0, {'product_id': ref('product_first_aider'), 'product_uom_qty': 16, 'price_unit': 280}),
+            (0, 0, {'product_id': ref('product_extra_hours'), 'product_uom_qty': 2, 'price_unit': 350}),
+            (0, 0, {'product_id': ref('product_equipment'), 'product_uom_qty': 1, 'price_unit': 3080}),
+        ]"/>
+    </record>
+    <record id="quotation_delta" model="sale.order">
+        <field name="name">QUO-2026-002</field>
+        <field name="partner_id" ref="partner_delta"/>
+        <field name="order_line" eval="[
+            (0, 0, {'product_id': ref('product_first_aider'), 'product_uom_qty': 8, 'price_unit': 280}),
+            (0, 0, {'product_id': ref('product_response_vehicle'), 'product_uom_qty': 1, 'price_unit': 1200}),
+        ]"/>
+    </record>
+
+    <!-- Crew -->
+    <record id="job_paramedic" model="hr.job">
+        <field name="name">Paramedic</field>
+    </record>
+    <record id="job_first_aider" model="hr.job">
+        <field name="name">First Aider</field>
+    </record>
+    <record id="job_driver" model="hr.job">
+        <field name="name">Ambulance Driver</field>
+    </record>
+    <record id="employee_medical_officer" model="hr.employee">
+        <field name="name">Dr. Lerato Khumalo</field>
+        <field name="job_id" ref="job_paramedic"/>
+        <field name="work_email">lerato.khumalo@kemedresponse.co.bw</field>
+    </record>
+    <record id="employee_paramedic" model="hr.employee">
+        <field name="name">Kagiso Ndlovu</field>
+        <field name="job_id" ref="job_paramedic"/>
+        <field name="work_email">kagiso.ndlovu@kemedresponse.co.bw</field>
+    </record>
+    <record id="employee_aider_one" model="hr.employee">
+        <field name="name">Amantle Banda</field>
+        <field name="job_id" ref="job_first_aider"/>
+        <field name="work_email">amantle.banda@kemedresponse.co.bw</field>
+    </record>
+    <record id="employee_aider_two" model="hr.employee">
+        <field name="name">Tebogo Ralekgosi</field>
+        <field name="job_id" ref="job_first_aider"/>
+        <field name="work_email">tebogo.ralekgosi@kemedresponse.co.bw</field>
+    </record>
+    <record id="employee_driver" model="hr.employee">
+        <field name="name">Sipho Dube</field>
+        <field name="job_id" ref="job_driver"/>
+        <field name="work_email">sipho.dube@kemedresponse.co.bw</field>
+    </record>
+
+    <!-- Fleet -->
+    <record id="brand_kem" model="fleet.vehicle.model.brand">
+        <field name="name">Kalahari Fleet</field>
+    </record>
+    <record id="model_ambulance_one" model="fleet.vehicle.model">
+        <field name="name">Ambulance 01</field>
+        <field name="brand_id" ref="brand_kem"/>
+        <field name="vehicle_type">car</field>
+    </record>
+    <record id="model_ambulance_two" model="fleet.vehicle.model">
+        <field name="name">Ambulance 02</field>
+        <field name="brand_id" ref="brand_kem"/>
+        <field name="vehicle_type">car</field>
+    </record>
+    <record id="model_response" model="fleet.vehicle.model">
+        <field name="name">Response Vehicle 04</field>
+        <field name="brand_id" ref="brand_kem"/>
+        <field name="vehicle_type">car</field>
+    </record>
+    <record id="vehicle_ambulance_one" model="fleet.vehicle">
+        <field name="model_id" ref="model_ambulance_one"/>
+        <field name="license_plate">BW-AMB-001</field>
+        <field name="odometer" eval="42800"/>
+    </record>
+    <record id="vehicle_ambulance_two" model="fleet.vehicle">
+        <field name="model_id" ref="model_ambulance_two"/>
+        <field name="license_plate">BW-AMB-002</field>
+        <field name="odometer" eval="61200"/>
+    </record>
+    <record id="vehicle_response" model="fleet.vehicle">
+        <field name="model_id" ref="model_response"/>
+        <field name="license_plate">BW-RSP-004</field>
+        <field name="odometer" eval="29600"/>
+    </record>
+
+    <!-- Event bookings -->
+    <record id="booking_athletics" model="kem.event.booking">
+        <field name="name">Kalahari Annual Athletics Meet</field>
+        <field name="partner_id" ref="partner_kalahari_sports"/>
+        <field name="opportunity_id" ref="lead_athletics"/>
+        <field name="sale_order_id" ref="quotation_athletics"/>
+        <field name="event_type">sporting</field>
+        <field name="location">Botswana National Stadium, Gaborone</field>
+        <field name="start_date" eval="'2026-11-28'"/>
+        <field name="end_date" eval="'2026-11-28'"/>
+        <field name="service_start">07:00</field>
+        <field name="service_end">18:00</field>
+        <field name="attendance" eval="1500"/>
+        <field name="organiser">Ms. Boitumelo Rasebotsa</field>
+        <field name="organiser_phone">+267 71 880 412</field>
+        <field name="requirement">Medical standby and first aid for track and field events. Full-day coverage, one ambulance on standby.</field>
+        <field name="personnel_required" eval="4"/>
+        <field name="vehicle_required">1 ambulance</field>
+        <field name="equipment_required">First aid kits x4, oxygen x2, defibrillator x1</field>
+        <field name="state">enquiry</field>
+        <field name="team_ids" eval="[(6, 0, [ref('employee_medical_officer'), ref('employee_paramedic'), ref('employee_aider_one'), ref('employee_aider_two')])]"/>
+        <field name="vehicle_ids" eval="[(6, 0, [ref('vehicle_ambulance_one')])]"/>
+        <field name="notes">High-profile event. Requires 07:00 setup. Parking reserved near the main stand.</field>
+    </record>
+    <record id="booking_delta" model="kem.event.booking">
+        <field name="name">Delta Construction Safety Day</field>
+        <field name="partner_id" ref="partner_delta"/>
+        <field name="opportunity_id" ref="lead_delta"/>
+        <field name="sale_order_id" ref="quotation_delta"/>
+        <field name="event_type">corporate</field>
+        <field name="location">Delta Yard, Broadhurst Industrial, Gaborone</field>
+        <field name="start_date" eval="'2026-12-05'"/>
+        <field name="end_date" eval="'2026-12-05'"/>
+        <field name="service_start">08:00</field>
+        <field name="service_end">12:00</field>
+        <field name="attendance" eval="300"/>
+        <field name="personnel_required" eval="2"/>
+        <field name="state">planning</field>
+        <field name="team_ids" eval="[(6, 0, [ref('employee_aider_one'), ref('employee_aider_two')])]"/>
+        <field name="vehicle_ids" eval="[(6, 0, [ref('vehicle_response')])]"/>
+    </record>
+    <record id="booking_marathon" model="kem.event.booking">
+        <field name="name">Community Marathon</field>
+        <field name="partner_id" ref="partner_bca"/>
+        <field name="opportunity_id" ref="lead_marathon"/>
+        <field name="event_type">community</field>
+        <field name="location">Gaborone City — starts at National Stadium</field>
+        <field name="start_date" eval="'2027-01-17'"/>
+        <field name="end_date" eval="'2027-01-17'"/>
+        <field name="service_start">05:30</field>
+        <field name="service_end">15:30</field>
+        <field name="attendance" eval="2000"/>
+        <field name="personnel_required" eval="6"/>
+        <field name="state">quotation</field>
+    </record>
+
+    <!-- Operational jobs -->
+    <record id="job_emergency_call" model="kem.operational.job">
+        <field name="name">Emergency call — Mabuasehube roadside</field>
+        <field name="job_type">emergency</field>
+        <field name="state">completed</field>
+        <field name="opened" eval="'2026-11-19 14:12:00'"/>
+        <field name="closed" eval="'2026-11-19 15:40:00'"/>
+        <field name="team_ids" eval="[(6, 0, [ref('employee_paramedic'), ref('employee_driver')])]"/>
+        <field name="vehicle_ids" eval="[(6, 0, [ref('vehicle_ambulance_one')])]"/>
+        <field name="notes">Patient assessed and transported to hospital. Handover completed.</field>
+    </record>
+    <record id="job_delta_standby" model="kem.operational.job">
+        <field name="name">Delta Safety Day — first aid standby</field>
+        <field name="job_type">event</field>
+        <field name="partner_id" ref="partner_delta"/>
+        <field name="booking_id" ref="booking_delta"/>
+        <field name="state">assigned</field>
+        <field name="opened" eval="'2026-11-22 09:00:00'"/>
+        <field name="team_ids" eval="[(6, 0, [ref('employee_aider_one'), ref('employee_aider_two')])]"/>
+        <field name="vehicle_ids" eval="[(6, 0, [ref('vehicle_response')])]"/>
+        <field name="notes">Standby for 05 Dec 08:00–12:00.</field>
+    </record>
+
+    <!-- Document records -->
+    <record id="doc_quotation" model="kem.document.record">
+        <field name="name">Quotation QUO-2026-001</field>
+        <field name="category">quotation</field>
+        <field name="partner_id" ref="partner_kalahari_sports"/>
+        <field name="booking_id" ref="booking_athletics"/>
+        <field name="reference">QUO-2026-001</field>
+        <field name="access_level">Sales</field>
+    </record>
+    <record id="doc_service_report" model="kem.document.record">
+        <field name="name">Service report JOB-001</field>
+        <field name="category">report</field>
+        <field name="partner_id" ref="partner_bca"/>
+        <field name="job_id" ref="job_emergency_call"/>
+        <field name="reference">JOB-001</field>
+        <field name="access_level">Operations</field>
+    </record>
+
+</odoo>

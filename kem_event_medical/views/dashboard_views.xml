@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+
+    <record id="view_kem_dashboard_form" model="ir.ui.view">
+        <field name="name">kem.dashboard.form</field>
+        <field name="model">kem.dashboard</field>
+        <field name="arch" type="xml">
+            <form string="Management Dashboard">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Event Medical — Management Overview</h1>
+                        <div class="text-muted">Live figures from Bookings, Jobs, Fleet, Inventory and Accounting.</div>
+                    </div>
+                    <group>
+                        <group string="Service delivery">
+                            <field name="bookings_total"/>
+                            <field name="confirmed_bookings"/>
+                            <field name="completed_bookings"/>
+                            <field name="upcoming_deployments"/>
+                            <field name="open_jobs"/>
+                        </group>
+                        <group string="Resources">
+                            <field name="vehicles_available"/>
+                            <field name="vehicles_maintenance"/>
+                            <field name="stock_alerts"/>
+                        </group>
+                        <group string="Finance">
+                            <field name="invoices_open"/>
+                            <field name="revenue_invoiced"/>
+                            <field name="expenses_total"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_kem_dashboard" model="ir.actions.act_window">
+        <field name="name">Dashboard</field>
+        <field name="res_model">kem.dashboard</field>
+        <field name="view_mode">form</field>
+    </record>
+
+</odoo>
