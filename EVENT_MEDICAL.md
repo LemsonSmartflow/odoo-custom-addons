@@ -8,7 +8,7 @@ Enterprise bridge.
 | Addon | Folder | Installable | Purpose |
 |---|---|---|---|
 | Event Medical Services | `kem_event_medical` | Yes | Event bookings, operational jobs, document records, dashboard |
-| Event Medical - Enterprise Bridge | `kem_event_medical_enterprise` | Yes (Enterprise / Odoo.sh only) | Planning, Field Service, Documents and Sign integration |
+| Event Medical - Enterprise Bridge | `kem_event_medical_enterprise` | Yes (Enterprise / Odoo.sh only) | Planning, Documents and Sign integration; Field Service when available |
 
 ## How the apps communicate
 
@@ -20,7 +20,7 @@ the bridge overrides:
 | `booking._enterprise_on_confirm()` | Creates a booking confirmation file in **Documents** |
 | `booking._enterprise_create_planning_slots()` | Creates a **Planning** slot per assigned employee |
 | `booking._enterprise_on_complete()` | Publishes the service report to **Documents**, refreshes Sign |
-| `job._enterprise_create_fsm_task()` | Creates a linked **Field Service** task (`project.task`) |
+| `job._enterprise_create_fsm_task()` | Creates a linked **Field Service** task when the separate `fieldservice` app is available; otherwise no-op |
 
 Standard Odoo links carry the rest of the flow:
 
@@ -39,8 +39,10 @@ source record.
 ## Odoo.sh / Enterprise deployment
 
 1. Push this repository to the Odoo.sh project (the two folders are ordinary addons).
-2. Ensure the Enterprise apps **Planning**, **Field Service**, **Documents** and
-   **Sign** are installed on the database.
+2. Ensure the Enterprise apps **Planning**, **Documents** and **Sign** are
+   available on the database. **Field Service** is optional: if that separate
+   app is installed, job records also create Field Service tasks; if it is not,
+   the bridge installs and works without it.
 3. Install **Event Medical Services**, then **Event Medical - Enterprise Bridge**.
 
 If you ever use the repository on a **Community** database, keep the bridge

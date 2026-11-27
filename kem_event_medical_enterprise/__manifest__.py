@@ -1,14 +1,13 @@
 {
     'name': 'Event Medical - Enterprise Bridge',
     'version': '19.0.1.0.0',
-    'summary': 'Planning, Field Service, Documents and Sign integration for Event Medical Services',
+    'summary': 'Planning, Documents and Sign integration for Event Medical Services (Field Service optional)',
     'category': 'Services',
     'license': 'LGPL-3',
     'author': 'Smartflow',
     'depends': [
         'kem_event_medical',
         'planning',
-        'fieldservice',
         'documents',
         'sign',
     ],
@@ -21,13 +20,14 @@
     'description': """
 Enterprise integration for Event Medical Services.
 
-Synchronises bookings and jobs with Planning slots, Field Service tasks,
-the Documents app and Odoo Sign. The core addon contains no Enterprise
-reference and all hooks degrade gracefully if this bridge is not installed.
+Synchronises bookings and jobs with Planning slots, the Documents app and
+Odoo Sign. Field Service is optional: if the separate `fieldservice` app is
+available, operational jobs also create linked Field Service tasks; if not,
+the job workflow still works without it.
 
-Requires an Enterprise / Odoo.sh database with Planning, Field Service,
-Documents and Sign installed. On a Community database set installable to
-False (or simply do not deploy this folder) - the core addon still works.
+Requires an Enterprise / Odoo.sh database with Planning, Documents and Sign
+available. On a Community database set installable to False (or simply do not
+deploy this folder) - the core addon still works.
     """,
     'installable': True,
     'application': False,
