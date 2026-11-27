@@ -32,6 +32,8 @@ class KemEventBooking(models.Model):
         ]))
 
     def _kem_documents_folder(self):
+        if 'documents.folder' not in self.env:
+            return False
         Folder = self.env['documents.folder'].sudo()
         folder = Folder.search([('name', '=', 'Event Medical Services')], limit=1)
         if not folder:
@@ -42,15 +44,17 @@ class KemEventBooking(models.Model):
         return folder
 
     def _kem_ensure_document(self, name, res_model=None, res_id=None):
-        if not self._kem_module_installed('documents'):
+        if not self._kem_module_installed('documents') or 'documents.document' not in self.env:
             return False
         Document = self.env['documents.document'].sudo()
         fields_map = Document._fields
+        folder = self._kem_documents_folder()
         vals = {
             'name': name,
-            'folder_id': self._kem_documents_folder().id,
             'kem_booking_id': self.id,
         }
+        if folder and 'folder_id' in fields_map:
+            vals['folder_id'] = folder.id
         if 'company_id' in fields_map:
             vals['company_id'] = self.company_id.id
         if res_model and 'res_model' in fields_map:

@@ -1,6 +1,6 @@
 {
     'name': 'Event Medical Services',
-    'version': '19.0.3.0.0',
+    'version': '19.0.3.1.0',
     'summary': 'Emergency response and event medical bookings, jobs and records',
     'category': 'Services',
     'author': 'Smartflow',
