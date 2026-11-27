@@ -1,79 +1,72 @@
-# Event Medical Services addons
+# Event Medical Services addon
 
-Two addons were added to this repository for the emergency response / event
-medical demonstration. They follow the same convention as the car rental
-modules: a core addon that stays installable on Community, and a separate
-Enterprise bridge.
+The demonstration is provided as **one single Odoo addon**: `kem_event_medical`.
+It sits alongside the untouched car rental addons at the repository root.
 
-| Addon | Folder | Installable | Purpose |
-|---|---|---|---|
-| Event Medical Services | `kem_event_medical` | Yes | Event bookings, operational jobs, document records, dashboard |
-| Event Medical - Enterprise Bridge | `kem_event_medical_enterprise` | Yes (Enterprise / Odoo.sh only) | Planning, Documents and Sign integration; Field Service when available |
+```
+car_rental_management_odoo/
+car_rental_sign_bridge/
+kem_event_medical/            <-- the Event Medical addon
+compose.yaml
+```
+
+There is no second Event Medical module. Odoo.sh therefore has only one new
+addon to install from this repository.
+
+## Dependencies
+
+Standard applications: CRM, Sales, Contacts, Employees, Fleet, Inventory,
+Maintenance, Project, Accounting and Expenses.
+
+Enterprise applications: **Planning**, **Documents** and **Sign**.
+
+**Field Service is optional.** The separate `fieldservice` app is not a
+dependency. When it is available, operational jobs also create linked Field
+Service tasks; when it is not, the job workflow still works.
 
 ## How the apps communicate
 
-The core addon never imports an Enterprise module. It exposes three hooks that
-the bridge overrides:
+The addon exposes hooks that synchronise the custom records with Enterprise
+apps:
 
-| Core hook | Enterprise action |
+| Hook | Action |
 |---|---|
 | `booking._enterprise_on_confirm()` | Creates a booking confirmation file in **Documents** |
 | `booking._enterprise_create_planning_slots()` | Creates a **Planning** slot per assigned employee |
 | `booking._enterprise_on_complete()` | Publishes the service report to **Documents**, refreshes Sign |
-| `job._enterprise_create_fsm_task()` | Creates a linked **Field Service** task when the separate `fieldservice` app is available; otherwise no-op |
+| `job._enterprise_create_fsm_task()` | Creates a linked **Field Service** task when `fieldservice` is installed |
 
 Standard Odoo links carry the rest of the flow:
 
 ```
 CRM opportunity ──► booking ──► quotation (sale.order) ──► invoice (account.move)
                       ├──► hr.employee team ──► planning.slot
-                      ├──► fleet.vehicle ──► field service task
+                      ├──► fleet.vehicle ──► field service task (optional)
                       ├──► project.project / project.task
                       └──► kem.document.record ──► documents.document / sign.request
 ```
 
-Native records carry `kem_booking_id` / `kem_job_id` link fields, so a user
-starting in Planning, Field Service or Documents can navigate back to the
-source record.
+## Odoo.sh deployment
 
-## Odoo.sh / Enterprise deployment
+1. Push this repository.
+2. Install / ensure **Planning**, **Documents** and **Sign** are available.
+3. Install **Event Medical Services**.
 
-1. Push this repository to the Odoo.sh project (the two folders are ordinary addons).
-2. Ensure the Enterprise apps **Planning**, **Documents** and **Sign** are
-   available on the database. **Field Service** is optional: if that separate
-   app is installed, job records also create Field Service tasks; if it is not,
-   the bridge installs and works without it.
-3. Install **Event Medical Services**, then **Event Medical - Enterprise Bridge**.
+The fictional sample records are in `demo/demo_data.xml` and load only when
+demo data is enabled on the database.
 
-If you ever use the repository on a **Community** database, keep the bridge
-disabled: edit `kem_event_medical_enterprise/__manifest__.py` and set
-`installable: False` (the same approach used for `car_rental_sign_bridge`).
-The core addon installs and works without the bridge.
-
-## Demonstration data
-
-`kem_event_medical/demo/demo_data.xml` contains fictional customers, CRM
-opportunities, service products, quotations, crew, vehicles, bookings, jobs and
-document records. It is loaded only when Odoo demo data is enabled, so a
-production database stays clean.
-
-## Files
+## Source layout
 
 ```
 kem_event_medical/
-  models/booking.py          Event booking hub + integration hooks
-  models/job.py              Operational job workflow
-  models/document.py         Document register
-  models/dashboard.py        Live management figures
-  security/                  Groups, access rights, company record rules
-  views/                     Bookings, jobs, documents, dashboard, navigation
-  data/                      Sequences, CRM pipeline stages
-  demo/                      Fictional demonstration records
-
-kem_event_medical_enterprise/
-  models/native_links.py     Link fields on planning.slot / project.task / documents.document
-  models/booking_enterprise.py   Planning, Documents, Sign + hook implementations
-  models/job_enterprise.py       Field Service task creation
-  models/document_enterprise.py  Push to Documents app
-  views/                     Extended forms + connected-app menus
+  models/booking.py                 Event booking hub + integration hooks
+  models/job.py                     Operational job workflow
+  models/document.py                Document register
+  models/dashboard.py               Live management figures
+  models/enterprise_*.py            Enterprise synchronisation and link fields
+  security/                         Groups, access rights, company record rules
+  views/                            Bookings, jobs, documents, dashboard, navigation,
+                                    plus Enterprise form extensions
+  data/                             Sequences, CRM pipeline stages
+  demo/                             Fictional demonstration records
 ```

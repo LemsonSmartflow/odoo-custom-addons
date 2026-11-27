@@ -1,20 +1,20 @@
 {
     'name': 'Event Medical Services',
-    'version': '19.0.1.0.0',
+    'version': '19.0.2.0.0',
     'summary': 'Emergency response and event medical bookings, jobs and records',
     'category': 'Services',
     'author': 'Smartflow',
     'license': 'LGPL-3',
     'description': """
-Event Medical Services — core application.
+Event Medical Services — single application addon.
 
 Adds event booking and operational job records on top of the standard Odoo
 applications (CRM, Sales, Employees, Fleet, Inventory, Maintenance, Project,
-Accounting and Expenses). It is deliberately free of any Enterprise-only
-reference so it installs on Community as well as Enterprise / Odoo.sh.
+Accounting and Expenses). Enterprise integrations (Planning, Documents and
+Sign) are included in this same addon. Field Service is optional: when the
+separate `fieldservice` app is available, jobs also create Field Service
+tasks; otherwise the job workflow works without it.
 
-Enterprise integrations (Planning, Field Service, Documents and Sign) live in
-the separate `kem_event_medical_enterprise` addon in this repository.
 All demonstration records are fictional.
     """,
     'depends': [
@@ -30,6 +30,9 @@ All demonstration records are fictional.
         'project',
         'account',
         'hr_expense',
+        'planning',
+        'documents',
+        'sign',
     ],
     'data': [
         'security/security.xml',
@@ -41,6 +44,10 @@ All demonstration records are fictional.
         'views/document_views.xml',
         'views/dashboard_views.xml',
         'views/navigation_views.xml',
+        'views/enterprise_booking_views.xml',
+        'views/enterprise_job_views.xml',
+        'views/enterprise_document_views.xml',
+        'views/enterprise_navigation_views.xml',
     ],
     'demo': [
         'demo/demo_data.xml',
