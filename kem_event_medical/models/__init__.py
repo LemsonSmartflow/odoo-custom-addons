@@ -2,6 +2,7 @@ from . import booking
 from . import job
 from . import document
 from . import dashboard
+from . import crm_lead
 
 # Enterprise integrations. All Enterprise access is guarded, so the addon
 # remains safe to install on databases where these apps are present.

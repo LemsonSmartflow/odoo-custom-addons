@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+
+    <template id="kem_enquiry_form" name="Event Medical Enquiry Form">
+        <t t-call="website.layout">
+            <div class="container py-5">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <h1>Request Medical Standby</h1>
+                        <p class="lead text-muted">
+                            Tell us about your event and our operations team will prepare a quotation.
+                            All information entered here is for this demonstration.
+                        </p>
+                        <form action="/event-medical/enquire/submit" method="post" class="row g-3 mt-2">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                            <div class="col-md-6">
+                                <label class="form-label" for="contact_name">Your name</label>
+                                <input class="form-control" id="contact_name" name="contact_name" required="required"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="company">Company / organisation</label>
+                                <input class="form-control" id="company" name="company"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="email">Email</label>
+                                <input class="form-control" type="email" id="email" name="email" required="required"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="phone">Phone</label>
+                                <input class="form-control" id="phone" name="phone"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="event_name">Event name</label>
+                                <input class="form-control" id="event_name" name="event_name" required="required"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="event_type">Event type</label>
+                                <select class="form-select" id="event_type" name="event_type">
+                                    <t t-foreach="event_types" t-as="option">
+                                        <option t-att-value="option[0]"><t t-esc="option[1]"/></option>
+                                    </t>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="event_date">Event date</label>
+                                <input class="form-control" type="date" id="event_date" name="event_date"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="attendance">Expected attendance</label>
+                                <input class="form-control" type="number" id="attendance" name="attendance" min="0"/>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="location">Venue / location</label>
+                                <input class="form-control" id="location" name="location"/>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="service_hours">Service hours (e.g. 07:00-18:00)</label>
+                                <input class="form-control" id="service_hours" name="service_hours" placeholder="07:00-18:00"/>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="requirements">Service requirements</label>
+                                <textarea class="form-control" id="requirements" name="requirements" rows="5"
+                                          placeholder="Personnel, ambulance, first aid cover, equipment..."/>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">Submit enquiry</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="kem_enquiry_thanks" name="Event Medical Enquiry Received">
+        <t t-call="website.layout">
+            <div class="container py-5 text-center">
+                <h1>Thank you</h1>
+                <p class="lead">Your enquiry has been received and added to our CRM pipeline.</p>
+                <p>Reference: <strong t-esc="reference"/></p>
+                <a class="btn btn-primary mt-3" href="/event-medical/enquire">Submit another enquiry</a>
+            </div>
+        </t>
+    </template>
+
+    <record id="website_menu_kem_enquiry" model="website.menu">
+        <field name="name">Request Medical Cover</field>
+        <field name="url">/event-medical/enquire</field>
+        <field name="parent_id" ref="website.main_menu"/>
+        <field name="sequence" eval="70"/>
+    </record>
+
+</odoo>

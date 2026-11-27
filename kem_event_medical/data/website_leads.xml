@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo noupdate="1">
+
+    <record id="utm_source_website_enquiry" model="utm.source">
+        <field name="name">Website Enquiry</field>
+    </record>
+
+    <!-- Available from the Action menu on CRM leads / opportunities. -->
+    <record id="server_action_create_booking" model="ir.actions.server">
+        <field name="name">Create Event Medical Booking</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="binding_model_id" ref="crm.model_crm_lead"/>
+        <field name="binding_type">action</field>
+        <field name="state">code</field>
+        <field name="code">if record: action = record.action_create_kem_booking()</field>
+    </record>
+
+</odoo>
