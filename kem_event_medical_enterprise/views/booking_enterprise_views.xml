@@ -23,7 +23,7 @@
                     <field name="documents_document_ids" widget="statinfo" string="Documents"/>
                 </button>
             </xpath>
-            <xpath expr="//group[@string='Planning']" position="after">
+            <xpath expr="//group[field[@name='project_id']]" position="after">
                 <group string="Enterprise integrations">
                     <field name="sign_request_id"/>
                 </group>

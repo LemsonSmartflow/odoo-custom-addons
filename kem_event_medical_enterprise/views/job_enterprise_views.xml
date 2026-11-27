@@ -12,7 +12,7 @@
                     <div class="o_stat_info"><span class="o_stat_text">Field Service Task</span></div>
                 </button>
             </xpath>
-            <xpath expr="//group[@string='Resources']" position="inside">
+            <xpath expr="//group[field[@name='team_ids']]" position="inside">
                 <field name="fieldservice_task_id" invisible="1"/>
                 <field name="planning_slot_ids" widget="many2many_tags" readonly="1" invisible="not planning_slot_ids"/>
             </xpath>
